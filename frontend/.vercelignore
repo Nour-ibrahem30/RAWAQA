@@ -1,0 +1,9 @@
+# Source product images (original high-res — not needed in deployment)
+Products/
+Hero_images/
+scripts/
+legacy/
+
+# Development files
+*.log
+.env.local
