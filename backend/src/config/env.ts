@@ -62,7 +62,7 @@ const envSchema = z.object({
   PAYMOB_HMAC_SECRET:           z.string().optional(),
 
   // Odoo
-  ODOO_URL: z.string().url().optional(),
+  ODOO_URL: z.string().optional(),
   ODOO_DB: z.string().optional(),
   ODOO_USERNAME: z.string().optional(),
   ODOO_PASSWORD: z.string().optional(),
@@ -132,6 +132,14 @@ const envSchema = z.object({
   // Admin
   ADMIN_EMAIL: z.string().email().default('admin@rawaqa.com'),
   ADMIN_PASSWORD: z.string().min(8).optional(),
+  EXPORT_PASSWORD: z.string().optional(),
+
+  // Cloudinary (file uploads)
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY:    z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_FOLDER:     z.string().default('rawaqa/products'),
+  CLOUDINARY_ENABLED:    z.string().transform((val) => val === 'true').default('false'),
 
   // Security
   HELMET_CSP_ENABLED: z.string().transform((val) => val === 'true').default('true'),

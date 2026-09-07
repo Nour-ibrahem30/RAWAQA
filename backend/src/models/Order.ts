@@ -116,6 +116,9 @@ export interface IOrder extends Document {
   // Coupon
   couponCode?:    string;
   couponDiscount: number;   // actual EGP discount applied
+
+  // Payment gateway
+  paymobTransactionId?: string;
   
   // Methods
   calculateTotal(): number;
@@ -311,6 +314,13 @@ const orderSchema = new Schema<IOrder>(
       type: Number,
       default: 0,
       min: 0,
+    },
+
+    // Payment gateway
+    paymobTransactionId: {
+      type: String,
+      sparse: true,
+      index: true,
     },
   },
   {

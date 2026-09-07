@@ -9,16 +9,18 @@ import { SkeletonGrid } from '@/components/ui/SkeletonCard';
 import { Tilt3D } from '@/components/ui/ScrollAnimations';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import HeroSlideshow from '@/components/ui/HeroSlideshow';
+import AdPopup from '@/components/ui/AdPopup';
 import { productsApi } from '@/lib/api';
+import { useSiteContent, locContent } from '@/lib/useSiteContent';
 import { STATIC_PRODUCTS } from '@/lib/staticProducts';
 import type { Product } from '@/lib/types';
 
 /* ─── Category config ─────────────────────────────────────── */
 const CATS = [
-  { key: 'relax',   color: '#A8543A', icon: '🛋️' },
-  { key: 'game',    color: '#3B5578', icon: '🎮' },
-  { key: 'kids',    color: '#BE8F2E', icon: '🧸' },
-  { key: 'outdoor', color: '#4B5B45', icon: '🌿' },
+  { key: 'relax',   color: '#A8543A', icon: '🛋️', image: '/products/chair-lounge-new/img-1.jpg' },
+  { key: 'game',    color: '#3B5578', icon: '🎮', image: '/products/8ball-new/img-1.jpg' },
+  { key: 'kids',    color: '#BE8F2E', icon: '🧸', image: '/products/football-new/img-1.jpg' },
+  { key: 'outdoor', color: '#4B5B45', icon: '🌿', image: '/products/football-new/img-5.jpg' },
 ];
 
 /* ─── Reviews ─────────────────────────────────────────────── */
@@ -34,24 +36,86 @@ const REVIEWS = [
     textEn: 'Bought one for my son and he never leaves it. High quality materials.' },
 ];
 
-/* ─── Floating Particles (subtle) ────────────────────────── */
+/* ─── Floating Particles (rich golden system) ────────────────── */
 function Particles() {
+  // Rising particles — varied sizes, gold + white
+  const rising = Array.from({ length: 22 }, (_, i) => ({
+    left:     `${5 + (i * 4.3) % 91}%`,
+    size:     i % 5 === 0 ? 4 : i % 3 === 0 ? 3 : i % 2 === 0 ? 2 : 1.5,
+    dur:      `${11 + (i * 2.7) % 16}s`,
+    delay:    `${(i * 1.8) % 12}s`,
+    dx:       `${-30 + (i * 11) % 60}px`,
+    gold:     i % 3 !== 0,
+    bottom:   `${(i * 7) % 40}%`,
+  }));
+
+  // Floating ambient orbs
+  const orbs = Array.from({ length: 8 }, (_, i) => ({
+    left:  `${8 + (i * 11.5) % 82}%`,
+    top:   `${15 + (i * 13) % 65}%`,
+    size:  12 + (i * 5) % 20,
+    dur:   `${7 + (i * 1.3) % 8}s`,
+    delay: `${i * 0.9}s`,
+  }));
+
+  // Golden streaks
+  const streaks = Array.from({ length: 5 }, (_, i) => ({
+    top:    `${15 + i * 16}%`,
+    width:  `${80 + i * 40}px`,
+    dur:    `${14 + i * 3}s`,
+    delay:  `${i * 4.5}s`,
+    angle:  `${18 + i * 4}deg`,
+  }));
+
   return (
     <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-      {[14, 22, 35, 48, 60, 72, 82].map((left, i) => (
+      {/* Rising particles */}
+      {rising.map((p, i) => (
         <div
-          key={i}
+          key={`r${i}`}
+          className={`particle-v2 ${p.gold ? 'gold' : 'white'} rise`}
           style={{
-            position: 'absolute',
-            bottom: -8,
-            left: `${left}%`,
-            width: i % 2 === 0 ? 3 : 2,
-            height: i % 2 === 0 ? 3 : 2,
-            borderRadius: '50%',
-            background: 'var(--gold-light)',
-            animation: `particleDrift ${9 + i * 2.5}s ${i * 1.3}s linear infinite`,
-            opacity: 0.35,
+            left: p.left,
+            bottom: p.bottom,
+            width: p.size,
+            height: p.size,
+            animationDuration: p.dur,
+            animationDelay: p.delay,
+            '--dx': p.dx,
+          } as React.CSSProperties}
+        />
+      ))}
+
+      {/* Ambient floating orbs */}
+      {orbs.map((o, i) => (
+        <div
+          key={`o${i}`}
+          className="particle-v2 gold orbit"
+          style={{
+            left: o.left,
+            top: o.top,
+            width: o.size,
+            height: o.size,
+            opacity: 0.12 + (i % 4) * 0.04,
+            animationDuration: o.dur,
+            animationDelay: o.delay,
           }}
+        />
+      ))}
+
+      {/* Golden streaks */}
+      {streaks.map((s, i) => (
+        <div
+          key={`s${i}`}
+          className="streak"
+          style={{
+            top: s.top,
+            left: '-100px',
+            width: s.width,
+            animationDuration: s.dur,
+            animationDelay: s.delay,
+            '--angle': s.angle,
+          } as React.CSSProperties}
         />
       ))}
     </div>
@@ -64,12 +128,29 @@ function Particles() {
 export default function HomeClient({ locale }: { locale: string }) {
   const t    = useTranslations('home');
   const isAr = locale === 'ar';
+  const { data: heroContent }  = useSiteContent('hero');
+  const { data: aboutContent } = useSiteContent('about');
+  const { data: whyContent }   = useSiteContent('why');
+  const { data: ctaContent }   = useSiteContent('cta');
+  const { data: statsContent } = useSiteContent('stats');
   const [featured, setFeatured] = useState<Product[]>(
     STATIC_PRODUCTS.filter(p => p.featured).slice(0, 3)
   );
   const [loading, setLoading]   = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [statsVisible, setStats] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
+
+  // Section reveal refs
+  const categoriesRef = useRef<HTMLElement>(null);
+  const featuredRef   = useRef<HTMLElement>(null);
+  const aboutRef      = useRef<HTMLElement>(null);
+  const whyRef        = useRef<HTMLElement>(null);
+  const reviewsRef    = useRef<HTMLElement>(null);
+  const [catsVisible,     setCatsVisible]     = useState(false);
+  const [featuredVisible, setFeaturedVisible] = useState(false);
+  const [aboutVisible,    setAboutVisible]    = useState(false);
+  const [whyVisible,      setWhyVisible]      = useState(false);
+  const [reviewsVisible,  setReviewsVisible]  = useState(false);
 
   useEffect(() => {
     productsApi.featured(locale)
@@ -86,9 +167,30 @@ export default function HomeClient({ locale }: { locale: string }) {
     return () => io.disconnect();
   }, []);
 
+  // Section reveal observers
+  useEffect(() => {
+    const sections: [React.RefObject<HTMLElement>, (v: boolean) => void][] = [
+      [categoriesRef, setCatsVisible],
+      [featuredRef,   setFeaturedVisible],
+      [aboutRef,      setAboutVisible],
+      [whyRef,        setWhyVisible],
+      [reviewsRef,    setReviewsVisible],
+    ];
+    const observers = sections.map(([ref, setter]) => {
+      if (!ref.current) return null;
+      const io = new IntersectionObserver(([e]) => {
+        if (e.isIntersecting) { setter(true); io.disconnect(); }
+      }, { threshold: 0.08 });
+      io.observe(ref.current);
+      return io;
+    });
+    return () => observers.forEach(io => io?.disconnect());
+  }, []);
+
   return (
     <>
       <LoadingScreen />
+      <AdPopup locale={locale} />
       {/* ═══════════════════════════════════════════════
           HERO
           Layout: Text (left/right) + 3D Bag (right/left)
@@ -122,11 +224,10 @@ export default function HomeClient({ locale }: { locale: string }) {
           paddingBottom: '6rem',
           display: 'grid',
           /* Arabic: bag left, text right | English: text left, bag right */
-          gridTemplateColumns: '1fr 1fr',
-          gap: '3rem',
+          gridTemplateColumns: 'minmax(0,1fr) minmax(0,42%)',
+          gap: 'clamp(1.5rem, 3vw, 3rem)',
           alignItems: 'center',
-        }}>
-          {/* ── Text block ── */}
+        }}>          {/* ── Text block ── */}
           <div style={{ order: isAr ? 2 : 1 }}>
             {/* Eyebrow */}
             <p style={{
@@ -138,7 +239,7 @@ export default function HomeClient({ locale }: { locale: string }) {
               opacity: 0,
               animation: 'fadeSlideUp 600ms 100ms forwards',
             }}>
-              {t('hero.eyebrow')}
+              {locContent(heroContent, 'eyebrow', locale) || t('hero.eyebrow')}
             </p>
 
             {/* Headline */}
@@ -157,10 +258,10 @@ export default function HomeClient({ locale }: { locale: string }) {
                 animation: 'shimmerGold 4s linear infinite',
                 display: 'block',
               }}>
-                {t('hero.headline').split('\n')[0]}
+                {(locContent(heroContent, 'headline', locale) || t('hero.headline')).split('\n')[0]}
               </span>
               <span style={{ color: 'var(--ivory)', display: 'block' }}>
-                {t('hero.headline').split('\n')[1] || ''}
+                {(locContent(heroContent, 'headline', locale) || t('hero.headline')).split('\n')[1] || ''}
               </span>
             </h1>
 
@@ -174,7 +275,7 @@ export default function HomeClient({ locale }: { locale: string }) {
               opacity: 0,
               animation: 'fadeSlideUp 700ms 340ms forwards',
             }}>
-              {t('hero.sub')}
+              {locContent(heroContent, 'sub', locale) || t('hero.sub')}
             </p>
 
             {/* CTAs */}
@@ -186,10 +287,10 @@ export default function HomeClient({ locale }: { locale: string }) {
               animation: 'fadeSlideUp 700ms 460ms forwards',
             }}>
               <Link href={`/${locale}/shop`} className="btn btn-gold">
-                {t('hero.cta_shop')}
+                {locContent(heroContent, 'ctaShop', locale) || t('hero.cta_shop')}
               </Link>
               <Link href={`/${locale}/shop`} className="btn btn-line-dark">
-                {t('hero.cta_discover')}
+                {locContent(heroContent, 'ctaDiscover', locale) || t('hero.cta_discover')}
               </Link>
             </div>
 
@@ -204,11 +305,11 @@ export default function HomeClient({ locale }: { locale: string }) {
               opacity: 0,
               animation: 'fadeSlideUp 700ms 600ms forwards',
             }}>
-              {[
-                { num: '500+', ar: 'عميل سعيد',    en: 'Happy Clients' },
-                { num: '4.9★', ar: 'تقييم العملاء', en: 'Customer Rating' },
-                { num: '100%', ar: 'صنع في مصر',   en: 'Made in Egypt' },
-              ].map((s, i) => (
+              {(statsContent?.items || [
+                { num: '500+', labelAr: 'عميل سعيد',    labelEn: 'Happy Clients' },
+                { num: '4.9★', labelAr: 'تقييم العملاء', labelEn: 'Customer Rating' },
+                { num: '100%', labelAr: 'صنع في مصر',   labelEn: 'Made in Egypt' },
+              ] as any[]).map((s: any, i: number) => (
                 <div key={i}>
                   <p style={{
                     fontSize: 'clamp(1.4rem, 2.5vw, 1.9rem)',
@@ -223,7 +324,7 @@ export default function HomeClient({ locale }: { locale: string }) {
                     {s.num}
                   </p>
                   <p style={{ fontSize: '.72rem', color: 'rgba(247,244,236,.42)', marginTop: '.2rem' }}>
-                    {isAr ? s.ar : s.en}
+                    {isAr ? (s.labelAr || s.ar) : (s.labelEn || s.en)}
                   </p>
                 </div>
               ))}
@@ -231,17 +332,17 @@ export default function HomeClient({ locale }: { locale: string }) {
           </div>
 
           {/* ── Slideshow ── */}
-          <div style={{
-            order: isAr ? 1 : 2,
-            position: 'relative',
-            borderRadius: 28,
-            overflow: 'hidden',
-            aspectRatio: '4/5',
-            minHeight: 360,
-            opacity: 0,
-            animation: 'fadeIn 900ms 300ms forwards',
-            boxShadow: '0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(210,181,106,.1)',
-          }}>
+          <div
+            className="hero-slideshow-wrap"
+            style={{
+              order: isAr ? 1 : 2,
+              position: 'relative',
+              borderRadius: 28,
+              overflow: 'hidden',
+              opacity: 0,
+              animation: 'fadeIn 900ms 300ms forwards',
+              boxShadow: '0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(210,181,106,.1)',
+            }}>
             <HeroSlideshow style={{ borderRadius: 28 }} />
           </div>
         </div>
@@ -256,11 +357,15 @@ export default function HomeClient({ locale }: { locale: string }) {
       {/* ═══════════════════════════════════════════════
           CATEGORIES — 3D tilt
       ═══════════════════════════════════════════════ */}
-      <section style={{
-        padding: '5.5rem 0',
-        background: '#1a1710',
-        overflow: 'hidden',
-      }}>
+      <section
+        ref={categoriesRef}
+        style={{
+          padding: '5.5rem 0',
+          background: '#1a1710',
+          overflow: 'hidden',
+        }}
+        className={`section-reveal${catsVisible ? ' visible' : ''}`}
+      >
         <div className="wrap">
           <div data-reveal="up" style={{ textAlign: 'center', marginBottom: '3rem' }}>
             <p style={{ fontSize: '.7rem', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--gold-light)', marginBottom: '.6rem' }}>
@@ -289,27 +394,44 @@ export default function HomeClient({ locale }: { locale: string }) {
                   justifyContent: 'flex-end',
                   height: '100%',
                   padding: '1.25rem',
-                  background: `linear-gradient(145deg, ${cat.color}bb, ${cat.color})`,
                   position: 'relative',
                   overflow: 'hidden',
                   borderRadius: 20,
                 }}>
-                  <div aria-hidden style={{ position:'absolute',inset:0,background:'radial-gradient(circle at 28% 28%, rgba(255,255,255,.14) 0%, transparent 55%)' }} />
-                  <div aria-hidden style={{ position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-62%) scale(2.2)',fontSize:'3rem',opacity:.12,filter:'blur(1px)' }}>{cat.icon}</div>
-                  <div style={{ fontSize:'1.8rem',marginBottom:'.6rem',position:'relative',zIndex:1 }}>{cat.icon}</div>
+                  {/* Real product photo background */}
+                  <Image
+                    src={cat.image}
+                    alt={cat.key}
+                    fill
+                    style={{ objectFit: 'cover', transition: 'transform 500ms ease' }}
+                    sizes="(max-width: 640px) 100vw, 25vw"
+                    className="cat-img"
+                  />
+                  {/* Dark gradient overlay */}
+                  <div aria-hidden style={{
+                    position: 'absolute', inset: 0,
+                    background: `linear-gradient(160deg, ${cat.color}88 0%, ${cat.color}cc 100%)`,
+                    mixBlendMode: 'multiply',
+                  }} />
+                  <div aria-hidden style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to top, rgba(0,0,0,.6) 0%, transparent 55%)',
+                  }} />
                   <span style={{
-                    color:'white',fontWeight:700,fontSize:'.95rem',
-                    letterSpacing: isAr ? '.02em' : '.05em',
-                    textTransform: isAr ? 'none' : 'uppercase',
-                    position:'relative',zIndex:1,
+                    color: 'white', fontWeight: 700, fontSize: '.95rem',
+                    letterSpacing: isAr ? '.02em' : '.08em',
+                    textTransform: 'uppercase',
+                    position: 'relative', zIndex: 1,
+                    textShadow: '0 2px 8px rgba(0,0,0,.5)',
                   }}>
                     {t(`discover.${cat.key}` as 'discover.relax')}
                   </span>
                   <span aria-hidden style={{
-                    position:'absolute',top:'.85rem',
-                    [isAr?'left':'right']: '.85rem',
-                    color:'rgba(255,255,255,.55)',fontSize:'1rem',
-                  }}>{isAr?'←':'→'}</span>
+                    position: 'absolute', top: '.85rem',
+                    [isAr ? 'left' : 'right']: '.85rem',
+                    color: 'rgba(255,255,255,.8)', fontSize: '1rem',
+                    zIndex: 1,
+                  }}>{isAr ? '←' : '→'}</span>
                 </Link>
               </Tilt3D>
             ))}
@@ -320,7 +442,11 @@ export default function HomeClient({ locale }: { locale: string }) {
       {/* ═══════════════════════════════════════════════
           FEATURED PRODUCTS
       ═══════════════════════════════════════════════ */}
-      <section style={{ padding: '6rem 0', background: '#12100c', overflow: 'hidden' }}>
+      <section
+        ref={featuredRef}
+        style={{ padding: '6rem 0', background: '#12100c', overflow: 'hidden' }}
+        className={`section-reveal${featuredVisible ? ' visible' : ''}`}
+      >
         <div className="wrap">
           {/* Header */}
           <div data-reveal="up" style={{
@@ -345,7 +471,11 @@ export default function HomeClient({ locale }: { locale: string }) {
               gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
               gap: '1.75rem',
             }}>
-              {featured.map(p => <ProductCard key={p.id} product={p} />)}
+              {featured.map(p => (
+                <div key={p.id} className="product-card-stagger">
+                  <ProductCard product={p} />
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -354,22 +484,27 @@ export default function HomeClient({ locale }: { locale: string }) {
       {/* ═══════════════════════════════════════════════
           BRAND STORY — real hero image
       ═══════════════════════════════════════════════ */}
-      <section id="moment" style={{ padding:'5.5rem 0', background:'var(--charcoal)', color:'var(--ivory)', overflow:'hidden' }}>
+      <section
+        ref={aboutRef}
+        id="moment"
+        style={{ padding:'5.5rem 0', background:'var(--charcoal)', color:'var(--ivory)', overflow:'hidden' }}
+        className={`section-reveal${aboutVisible ? ' visible' : ''}`}
+      >
         <div className="wrap" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:'4rem', alignItems:'center' }}>
           <div data-reveal={isAr?'right':'left'}>
             <p style={{ fontSize:'.7rem',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--gold-light)',marginBottom:'1rem' }}>
               {isAr ? 'القصة' : 'The Story'}
             </p>
             <h2 className="display-2" style={{ color:'var(--ivory)',marginBottom:'1.5rem' }}>
-              {isAr ? 'مصنوع لحظات الحياة الحقيقية' : 'Made for Real Life Moments'}
+              {locContent(aboutContent, 'title', locale) || (isAr ? 'مصنوع لحظات الحياة الحقيقية' : 'Made for Real Life Moments')}
             </h2>
             <p style={{ fontSize:'1.05rem',lineHeight:1.75,color:'rgba(247,244,236,.62)',maxWidth:'42ch',marginBottom:'2rem' }}>
-              {isAr
+              {locContent(aboutContent, 'body', locale) || (isAr
                 ? 'كل كرسي رواقة يُصنع بعناية باستخدام مواد مختارة لتحمل الاستخدام اليومي مع الحفاظ على جماله وراحته لسنوات.'
-                : 'Every Rawaqa chair is handcrafted using selected materials built for daily use while maintaining its beauty and comfort for years.'}
+                : 'Every Rawaqa chair is handcrafted using selected materials built for daily use while maintaining its beauty and comfort for years.')}
             </p>
             <Link href={`/${locale}/shop`} className="btn btn-gold">
-              {isAr ? 'اكتشف المجموعة' : 'Explore Collection'}
+              {locContent(aboutContent, 'cta', locale) || (isAr ? 'اكتشف المجموعة' : 'Explore Collection')}
             </Link>
           </div>
 
@@ -412,7 +547,12 @@ export default function HomeClient({ locale }: { locale: string }) {
       {/* ═══════════════════════════════════════════════
           WHY RAWAQA
       ═══════════════════════════════════════════════ */}
-      <section id="why" style={{ padding:'5.5rem 0', background:'#1a1710', overflow:'hidden' }}>
+      <section
+        ref={whyRef}
+        id="why"
+        style={{ padding:'5.5rem 0', background:'#1a1710', overflow:'hidden' }}
+        className={`section-reveal${whyVisible ? ' visible' : ''}`}
+      >
         <div className="wrap">
           <div data-reveal="up" style={{ textAlign:'center',marginBottom:'3.5rem' }}>
             <p style={{ fontSize:'.7rem',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--gold)',marginBottom:'.6rem' }}>
@@ -456,7 +596,11 @@ export default function HomeClient({ locale }: { locale: string }) {
       {/* ═══════════════════════════════════════════════
           REVIEWS
       ═══════════════════════════════════════════════ */}
-      <section style={{ padding:'5.5rem 0', background:'#0f0e0a', overflow:'hidden' }}>
+      <section
+        ref={reviewsRef}
+        style={{ padding:'5.5rem 0', background:'#0f0e0a', overflow:'hidden' }}
+        className={`section-reveal${reviewsVisible ? ' visible' : ''}`}
+      >
         <div className="wrap">
           <div data-reveal="up" style={{ textAlign:'center',marginBottom:'3rem' }}>
             <p style={{ fontSize:'.7rem',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--gold)',marginBottom:'.6rem' }}>
@@ -527,12 +671,14 @@ export default function HomeClient({ locale }: { locale: string }) {
         }} />
         <Particles />
         <div className="wrap" style={{ position:'relative',zIndex:1 }} data-reveal="scale">
-          <h2 className="display-3" style={{ color:'var(--ivory)',marginBottom:'1rem' }}>{t('cta.title')}</h2>
+          <h2 className="display-3" style={{ color:'var(--ivory)',marginBottom:'1rem' }}>
+            {locContent(ctaContent, 'title', locale) || t('cta.title')}
+          </h2>
           <p style={{ fontSize:'1rem',lineHeight:1.65,color:'rgba(247,244,236,.52)',maxWidth:'42ch',margin:'0 auto 2rem' }}>
-            {t('cta.sub')}
+            {locContent(ctaContent, 'sub', locale) || t('cta.sub')}
           </p>
           <Link href={`/${locale}/shop`} className="btn btn-gold" style={{ fontSize:'.85rem',padding:'.9rem 2.4rem' }}>
-            {t('cta.btn')}
+            {locContent(ctaContent, 'btn', locale) || t('cta.btn')}
           </Link>
         </div>
       </section>

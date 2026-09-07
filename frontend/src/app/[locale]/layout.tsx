@@ -14,6 +14,7 @@ import Toast from '@/components/ui/Toast';
 import ColorLoader from '@/components/ui/ColorLoader';
 import { ScrollReveal, ScrollProgress } from '@/components/ui/ScrollAnimations';
 import BackToTop from '@/components/ui/BackToTop';
+import LocaleHtmlAttrs from '@/components/ui/LocaleHtmlAttrs';
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -49,6 +50,13 @@ export const metadata: Metadata = {
   description: 'Premium bean bags and relaxed seating for the Egyptian home.',
 };
 
+const fontClasses = [
+  fraunces.variable,
+  manrope.variable,
+  notoArabic.variable,
+  cairo.variable,
+].join(' ');
+
 export default async function LocaleLayout({
   children,
   params,
@@ -61,32 +69,25 @@ export default async function LocaleLayout({
   if (!routing.locales.includes(locale as 'ar' | 'en')) notFound();
 
   const messages = await getMessages();
-  const dir = locale === 'ar' ? 'rtl' : 'ltr';
 
   return (
-    <html
-      lang={locale}
-      dir={dir}
-      className={`${fraunces.variable} ${manrope.variable} ${notoArabic.variable} ${cairo.variable}`}
-    >
-      <body>
-        <NextIntlClientProvider messages={messages}>
-          <AuthProvider>
-            <CartProvider>
-              <ToastProvider>
-                <ScrollProgress />
-                <Navbar />
-                <ColorLoader />
-                <ScrollReveal />
-                <main>{children}</main>
-                <Footer />
-                <BackToTop />
-                <Toast />
-              </ToastProvider>
-            </CartProvider>
-          </AuthProvider>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages}>
+      {/* Sets lang, dir, and font class-names on <html> client-side */}
+      <LocaleHtmlAttrs locale={locale} fontClasses={fontClasses} />
+      <AuthProvider>
+        <CartProvider>
+          <ToastProvider>
+            <ScrollProgress />
+            <Navbar />
+            <ColorLoader />
+            <ScrollReveal />
+            <main>{children}</main>
+            <Footer />
+            <BackToTop />
+            <Toast />
+          </ToastProvider>
+        </CartProvider>
+      </AuthProvider>
+    </NextIntlClientProvider>
   );
 }

@@ -14,6 +14,8 @@ import {
   verifyPhoneHandler,
   updateProfileHandler,
   changePasswordHandler,
+  sendEmailVerificationHandler,
+  verifyEmailHandler,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth.middleware';
 import {
@@ -95,5 +97,9 @@ router.post('/verify-phone',     authenticate, verifyPhoneHandler);
 // ─── Profile & Password (authenticated) ──────────────────────────────────────
 router.put('/profile',           authenticate, updateProfileHandler);
 router.put('/change-password',   authenticate, changePasswordHandler);
+
+// ─── Email Verification ───────────────────────────────────────────────────────
+router.post('/send-email-verification', authenticate, sendEmailVerificationHandler);
+router.post('/verify-email',     verifyEmailHandler);  // public — token from email link
 
 export default router;

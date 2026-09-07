@@ -22,10 +22,14 @@ export interface LocalizedString {
 /* ============ USER ============ */
 export interface User {
   id: string;
-  name: string;
+  name: string;          // computed from firstName + lastName
+  firstName?: string;
+  lastName?: string;
   email: string;
   phone: string;
-  role: 'customer' | 'admin';
+  role: 'customer' | 'admin' | 'super_admin';
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
 }
 
 export interface AuthTokens {

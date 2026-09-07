@@ -4,8 +4,18 @@ import { useEffect, useState } from 'react';
 import { DEFAULT_COLORS, type SiteColors } from '@/lib/types';
 import { applyColors } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
+import { adminApi } from '@/lib/api';
 
 const STORAGE_KEY = 'rawaqa_site_colors';
+const COLORS_CHANNEL = 'rawaqa_colors_update';
+
+function broadcastColors(colors: Record<string, string>) {
+  try {
+    const ch = new BroadcastChannel(COLORS_CHANNEL);
+    ch.postMessage({ colors, ts: Date.now() });
+    ch.close();
+  } catch { /* not supported */ }
+}
 
 const COLOR_GROUPS: Array<{
   label: string;
@@ -53,7 +63,7 @@ const COLOR_GROUPS: Array<{
   },
 ];
 
-function loadColors(): SiteColors {
+function loadLocalColors(): SiteColors {
   if (typeof window === 'undefined') return { ...DEFAULT_COLORS };
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -65,27 +75,54 @@ function loadColors(): SiteColors {
 export default function AdminSettingsPage() {
   const [colors, setColors] = useState<SiteColors>({ ...DEFAULT_COLORS });
   const [saved, setSaved] = useState(false);
+  const [serverSynced, setServerSynced] = useState(false);
   const { showToast } = useToast();
 
+  // Load: try server first, fall back to localStorage
   useEffect(() => {
-    const c = loadColors();
-    setColors(c);
-    applyColors(c as unknown as Record<string, string>);
+    adminApi.getSettings()
+      .then(r => {
+        if (r.data && Object.keys(r.data).length > 0) {
+          const merged = { ...DEFAULT_COLORS, ...r.data };
+          setColors(merged);
+          applyColors(merged as unknown as Record<string, string>);
+          setServerSynced(true);
+        } else {
+          const c = loadLocalColors();
+          setColors(c);
+          applyColors(c as unknown as Record<string, string>);
+        }
+      })
+      .catch(() => {
+        const c = loadLocalColors();
+        setColors(c);
+        applyColors(c as unknown as Record<string, string>);
+      });
   }, []);
 
   const handleChange = (key: keyof SiteColors, value: string) => {
     const updated = { ...colors, [key]: value };
     setColors(updated);
-    // Live preview — apply immediately
     applyColors(updated as unknown as Record<string, string>);
     setSaved(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // Always save to localStorage as fallback
     localStorage.setItem(STORAGE_KEY, JSON.stringify(colors));
     applyColors(colors as unknown as Record<string, string>);
-    setSaved(true);
-    showToast('Theme saved! Colors applied to site.', 'success');
+
+    try {
+      await adminApi.updateSettings(colors as unknown as Record<string, string>);
+      broadcastColors(colors as unknown as Record<string, string>); // push to all tabs
+      setServerSynced(true);
+      setSaved(true);
+      showToast('Theme saved — site colors updated live!', 'success');
+    } catch {
+      // Server save failed — localStorage still worked
+      setSaved(true);
+      showToast('Theme saved locally. Server sync failed.', 'error');
+    }
   };
 
   const handleReset = () => {
@@ -123,7 +160,7 @@ export default function AdminSettingsPage() {
             className="text-sm font-semibold px-5 py-2 rounded-pill"
             style={{ background: saved ? '#4B5B45' : '#D2B56A', color: saved ? '#fff' : '#15130F' }}
           >
-            {saved ? '✓ Saved' : 'Save Changes'}
+            {saved ? (serverSynced ? '✓ Saved to Server' : '✓ Saved Locally') : 'Save Changes'}
           </button>
         </div>
       </div>
@@ -235,7 +272,7 @@ export default function AdminSettingsPage() {
           className="text-sm font-semibold px-6 py-3 rounded-pill"
           style={{ background: saved ? '#4B5B45' : '#D2B56A', color: saved ? '#fff' : '#15130F' }}
         >
-          {saved ? '✓ Changes Saved' : 'Save Changes'}
+          {saved ? (serverSynced ? '✓ Saved to Server' : '✓ Saved Locally') : 'Save Changes'}
         </button>
         <button
           onClick={handleReset}
@@ -246,9 +283,11 @@ export default function AdminSettingsPage() {
         </button>
       </div>
 
-      {/* Storage note */}
+      {/* Sync status note */}
       <p className="text-xs pb-4" style={{ color: 'rgba(247,244,236,.25)' }}>
-        ⚠ Colors are saved to browser localStorage and applied on page load. For permanent server-side persistence, connect to a Site Config API endpoint.
+        {serverSynced
+          ? '✓ Colors are synced with the server. All admins and devices will see the same theme.'
+          : '⚠ Colors saved to localStorage only. Click "Save Changes" to persist to the server.'}
       </p>
     </div>
   );

@@ -1,26 +1,29 @@
 import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export enum OtpPurpose {
-  PHONE_VERIFY  = 'phone_verify',
+  PHONE_VERIFY   = 'phone_verify',
   PASSWORD_RESET = 'password_reset',
+  EMAIL_VERIFY   = 'email_verify',
 }
 
 export interface IOtpToken extends Document {
   userId:    Types.ObjectId;
-  phone:     string;
-  code:      string;       // 6-digit hashed OTP
+  phone?:    string;          // required for SMS-based OTPs
+  email?:    string;          // required for email-based OTPs
+  code:      string;          // hashed token / OTP
   purpose:   OtpPurpose;
   expiresAt: Date;
   used:      boolean;
-  attempts:  number;       // wrong-code attempts (max 5)
+  attempts:  number;          // wrong-code attempts (max 5)
   createdAt: Date;
 }
 
 const otpTokenSchema = new Schema<IOtpToken>(
   {
     userId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    phone:     { type: String, required: true },
-    code:      { type: String, required: true },           // bcrypt hash
+    phone:     { type: String },                                  // SMS OTPs
+    email:     { type: String, lowercase: true, trim: true },    // email OTPs
+    code:      { type: String, required: true },                  // sha256 hash
     purpose:   { type: String, enum: Object.values(OtpPurpose), required: true },
     expiresAt: { type: Date,   required: true },
     used:      { type: Boolean, default: false },

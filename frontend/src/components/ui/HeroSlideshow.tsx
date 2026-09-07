@@ -4,9 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 
 const SLIDES = [
-  { src: '/hero/hero-1.jpg', alt: 'RAWAQA — Brown Leather Bean Bag' },
-  { src: '/hero/hero-2.jpg', alt: 'RAWAQA — Black Leather Bean Bag' },
-  { src: '/hero/hero-3.jpg', alt: 'RAWAQA — Fabric Bean Bag' },
+  { src: '/hero/hero-1.jpg', alt: 'RAWAQA — Premium Bean Bag Chair' },
+  { src: '/hero/hero-2.jpg', alt: 'RAWAQA — Leather Bean Bag' },
   { src: '/hero/hero-4.jpg', alt: 'RAWAQA — Velvet Bean Bag' },
 ];
 

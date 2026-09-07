@@ -9,6 +9,7 @@ import {
 } from '../services/admin.service';
 import { logError } from '../config/logger';
 import { UserRole } from '../models/User';
+import { SiteSettings } from '../models/SiteSettings';
 
 // GET /api/admin/users
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
@@ -119,5 +120,65 @@ export const dashboardStats = async (_req: Request, res: Response): Promise<void
   } catch (err) {
     logError('dashboardStats error', err);
     res.status(500).json({ success: false, message: 'Failed to fetch stats' });
+  }
+};
+
+// GET /api/admin/settings
+export const getSettings = async (_req: Request, res: Response): Promise<void> => {  try {
+    const settings = await SiteSettings.findOne({ key: 'default' }).lean();
+    res.json({ success: true, data: settings?.colors ?? {} });
+  } catch (err) {
+    logError('getSettings error', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch settings' });
+  }
+};
+
+// PUT /api/admin/settings
+export const updateSettings = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { colors } = req.body;
+    if (!colors || typeof colors !== 'object') {
+      res.status(400).json({ success: false, message: 'colors object is required' });
+      return;
+    }
+
+    const settings = await SiteSettings.findOneAndUpdate(
+      { key: 'default' },
+      { $set: { colors, updatedBy: req.user?.userId } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.json({ success: true, data: settings.colors });
+  } catch (err) {
+    logError('updateSettings error', err);
+    res.status(500).json({ success: false, message: 'Failed to update settings' });
+  }
+};
+
+// GET /api/admin/reconciliation-reports
+export const getReconciliationReports = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ReconciliationReport } = await import('../models/ReconciliationReport');
+    const page  = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip  = (page - 1) * limit;
+
+    const [reports, total] = await Promise.all([
+      ReconciliationReport.find()
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ReconciliationReport.countDocuments(),
+    ]);
+
+    res.json({
+      success: true,
+      data: reports,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  } catch (err) {
+    logError('getReconciliationReports error', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch reports' });
   }
 };

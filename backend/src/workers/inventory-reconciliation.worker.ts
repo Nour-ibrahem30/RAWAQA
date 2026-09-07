@@ -1,6 +1,8 @@
 import { Product } from '../models/Product';
+import { ReconciliationReport } from '../models/ReconciliationReport';
 import { odooService } from '../services/odoo.service';
 import { logInfo, logError, logWarn } from '../config/logger';
+import { env } from '../config/env';
 import mongoose from 'mongoose';
 
 /**
@@ -63,7 +65,14 @@ class InventoryReconciliationWorker {
       return;
     }
 
+    // Skip if Odoo sync is disabled
+    if (!env.ODOO_SYNC_ENABLED) {
+      logInfo('Inventory reconciliation skipped - Odoo sync disabled');
+      return;
+    }
+
     logInfo('Starting inventory reconciliation');
+    const startTime = Date.now();
 
     try {
       // Get all active products
@@ -131,6 +140,8 @@ class InventoryReconciliationWorker {
         }
       }
 
+      const durationMs = Date.now() - startTime;
+
       // Log summary
       logInfo(
         `Inventory reconciliation complete: ${syncedCount} synced, ${errorCount} errors, ${discrepancies.length} discrepancies`
@@ -141,13 +152,14 @@ class InventoryReconciliationWorker {
         logWarn('Inventory discrepancies found:', discrepancies);
       }
 
-      // Store reconciliation report (optional - could save to database)
+      // Persist reconciliation report to database
       await this.saveReconciliationReport({
         timestamp: new Date(),
         totalProducts: products.length,
         syncedCount,
         errorCount,
         discrepancies,
+        durationMs,
       });
     } catch (error) {
       logError('Inventory reconciliation failed', error);
@@ -203,23 +215,33 @@ class InventoryReconciliationWorker {
   }
 
   /**
-   * Save reconciliation report
+   * Save reconciliation report to database
    */
-  private async saveReconciliationReport(report: any): Promise<void> {
-    // This could be saved to a ReconciliationReport model
-    // For now, just log it
+  private async saveReconciliationReport(report: {
+    timestamp:     Date;
+    totalProducts: number;
+    syncedCount:   number;
+    errorCount:    number;
+    discrepancies: any[];
+    durationMs?:   number;
+  }): Promise<void> {
     logInfo('Reconciliation Report:', {
       timestamp: report.timestamp,
       summary: {
-        total: report.totalProducts,
-        synced: report.syncedCount,
-        errors: report.errorCount,
+        total:        report.totalProducts,
+        synced:       report.syncedCount,
+        errors:       report.errorCount,
         discrepancies: report.discrepancies.length,
+        durationMs:   report.durationMs,
       },
     });
 
-    // Optionally: Save to database or send to monitoring service
-    // await ReconciliationReport.create(report);
+    try {
+      await ReconciliationReport.create(report);
+      logInfo('Reconciliation report saved to database');
+    } catch (err) {
+      logError('Failed to save reconciliation report to database', err);
+    }
   }
 
   /**

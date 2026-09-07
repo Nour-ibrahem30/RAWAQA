@@ -7,6 +7,9 @@ import {
   toggleStatus,
   removeUser,
   dashboardStats,
+  getSettings,
+  updateSettings,
+  getReconciliationReports,
 } from '../controllers/admin.controller';
 
 const router = Router();
@@ -57,5 +60,26 @@ router.put('/users/:id/toggle-status', toggleStatus);
  * @access Super Admin
  */
 router.delete('/users/:id', requireSuperAdmin, removeUser);
+
+/**
+ * @route  GET /api/admin/settings
+ * @desc   Get site settings (colors, etc.)
+ * @access Admin
+ */
+router.get('/settings', getSettings);
+
+/**
+ * @route  PUT /api/admin/settings
+ * @desc   Update site settings
+ * @access Admin
+ */
+router.put('/settings', updateSettings);
+
+/**
+ * @route  GET /api/admin/reconciliation-reports
+ * @desc   List inventory reconciliation reports
+ * @access Admin
+ */
+router.get('/reconciliation-reports', getReconciliationReports);
 
 export default router;

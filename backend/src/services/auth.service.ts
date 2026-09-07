@@ -356,6 +356,7 @@ export const cleanupExpiredSessions = async (): Promise<number> => {
 import crypto from 'crypto';
 import { OtpToken, OtpPurpose } from '../models/OtpToken';
 import { smsService } from './sms.service';
+import { emailService } from './email.service';
 
 // ─── OTP helpers ──────────────────────────────────────────────────────────────
 
@@ -516,3 +517,76 @@ export const changePassword = async (
 
 // needed for verifyOtp return type - import at top to avoid circular reference
 import type { IOtpToken } from '../models/OtpToken';
+
+// ─── Email verification ───────────────────────────────────────────────────────
+
+const EMAIL_VERIFY_TTL_HOURS = 24;
+
+/**
+ * Generate a secure random token, store its sha256 hash in OtpToken,
+ * and send a verification email with a clickable link.
+ */
+export const sendEmailVerification = async (userId: string): Promise<void> => {
+  const user = await User.findById(userId);
+  if (!user) throw new Error('User not found.');
+  if (user.isEmailVerified) throw new Error('Email already verified.');
+
+  // Invalidate any previous unused email-verify tokens
+  await OtpToken.deleteMany({ userId, purpose: OtpPurpose.EMAIL_VERIFY, used: false });
+
+  // Generate a URL-safe random token (48 bytes → 96 hex chars)
+  const rawToken = crypto.randomBytes(48).toString('hex');
+  const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+  const expiresAt = new Date(Date.now() + EMAIL_VERIFY_TTL_HOURS * 60 * 60 * 1000);
+
+  await OtpToken.create({
+    userId,
+    email:    user.email,
+    code:     hashedToken,
+    purpose:  OtpPurpose.EMAIL_VERIFY,
+    expiresAt,
+  });
+
+  // Build verification URL using CLIENT_URL from env
+  const verifyUrl = `${env.CLIENT_URL}/verify-email?token=${rawToken}`;
+
+  await emailService.sendEmailVerification({
+    email:     user.email,
+    firstName: user.firstName,
+    verifyUrl,
+  });
+
+  logInfo('Email verification sent', { userId, email: user.email });
+};
+
+/**
+ * Verify the raw token from the email link.
+ * Returns the verified user.
+ */
+export const verifyEmailToken = async (rawToken: string): Promise<IUser> => {
+  const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+  const token = await OtpToken.findOne({
+    code:    hashedToken,
+    purpose: OtpPurpose.EMAIL_VERIFY,
+    used:    false,
+    expiresAt: { $gt: new Date() },
+  });
+
+  if (!token) throw new Error('Verification link is invalid or has expired.');
+
+  token.used = true;
+  await token.save();
+
+  const user = await User.findByIdAndUpdate(
+    token.userId,
+    { isEmailVerified: true },
+    { new: true }
+  );
+
+  if (!user) throw new Error('User not found.');
+
+  logInfo('Email verified', { userId: user._id, email: user.email });
+  return user;
+};

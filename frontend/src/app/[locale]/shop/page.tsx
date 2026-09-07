@@ -126,7 +126,7 @@ export default function ShopPage() {
             {/* Search + sort toolbar */}
             <div className="flex items-center gap-3 flex-wrap">
               {/* Search */}
-              <div className="relative">
+              <div className="relative shop-search">
                 <svg
                   className="absolute top-1/2 -translate-y-1/2"
                   style={{ [isAr ? 'right' : 'left']: '0.75rem', color: 'rgba(247,244,236,.35)' }}
@@ -200,7 +200,7 @@ export default function ShopPage() {
         <div className="flex gap-8">
           {/* Sidebar Filters — desktop */}
           <aside
-            className={`w-60 flex-shrink-0 ${filtersOpen ? 'block' : 'hidden'} md:block`}
+            className={`w-60 flex-shrink-0 shop-filter-in ${filtersOpen ? 'block' : 'hidden'} md:block`}
           >
             <div className="sticky top-28 flex flex-col gap-6">
               {/* Categories */}
@@ -295,7 +295,11 @@ export default function ShopPage() {
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {products.map(p => <ProductCard key={p.id} product={p} />)}
+                  {products.map((p, idx) => (
+                    <div key={p.id} className="shop-grid-card" style={{ animationDelay: `${Math.min(idx * 60, 680)}ms` }}>
+                      <ProductCard product={p} />
+                    </div>
+                  ))}
                 </div>
                 {/* Load more */}
                 {hasMore && (

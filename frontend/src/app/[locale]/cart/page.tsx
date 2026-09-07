@@ -26,6 +26,7 @@ export default function CartPage() {
   const { cart, isLoading, updateItem, removeItem, fetchCart } = useCart();
   const { showToast } = useToast();
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [bouncingId, setBouncingId] = useState<string | null>(null);
 
   useEffect(() => { fetchCart(); }, [fetchCart]);
 
@@ -36,6 +37,8 @@ export default function CartPage() {
 
   const handleUpdate = async (productId: string, qty: number) => {
     if (qty < 1) return;
+    setBouncingId(productId);
+    setTimeout(() => setBouncingId(null), 420);
     try { await updateItem(productId, qty); }
     catch { showToast(isAr ? 'حدث خطأ' : 'Error', 'error'); }
   };
@@ -76,7 +79,9 @@ export default function CartPage() {
               width: 80, height: 80, borderRadius: '50%', margin: '0 auto 1.75rem',
               background: 'rgba(210,181,106,.08)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            }}
+              className="cart-empty-bounce"
+            >
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
                 <path d="M6 8h12l-1 12H7L6 8z" stroke={GOLD} strokeWidth="1.5" strokeLinejoin="round" />
                 <path d="M9 8V6a3 3 0 016 0v2" stroke={GOLD} strokeWidth="1.5" />
@@ -92,12 +97,14 @@ export default function CartPage() {
 
             {/* ── Cart items ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {cart!.items.map(item => {
+              {cart!.items.map((item, idx) => {
                 const name = loc(item.product.nameAr, item.product.nameEn, locale);
                 return (
                   <div
                     key={item.product.id}
+                    className="cart-item-in"
                     style={{
+                      animationDelay: `${idx * 80}ms`,
                       display: 'flex', gap: '1rem', padding: '1.25rem',
                       background: CARD, borderRadius: 18, border: `1px solid ${BORDER}`,
                       transition: 'border-color 300ms ease',
@@ -158,7 +165,8 @@ export default function CartPage() {
                             </button>
                           );
                           if (i === 0) acc.push(
-                            <span key="q" style={{ minWidth: 24, textAlign: 'center', fontWeight: 700, fontSize: '.9rem', color: IVORY }}>
+                            <span key="q" style={{ minWidth: 24, textAlign: 'center', fontWeight: 700, fontSize: '.9rem', color: IVORY }}
+                              className={bouncingId === item.product.id ? 'qty-bounce' : ''}>
                               {item.quantity}
                             </span>
                           );
@@ -233,7 +241,7 @@ export default function CartPage() {
                       </p>
                       {/* Progress bar */}
                       <div style={{ height: 3, borderRadius: 999, background: 'rgba(210,181,106,.15)', marginTop: '.5rem', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${Math.min(100, (sub / FREE) * 100)}%`, background: GOLD, borderRadius: 999, transition: 'width 500ms ease' }} />
+                        <div className="shipping-progress-bar" style={{ height: '100%', width: `${Math.min(100, (sub / FREE) * 100)}%`, background: GOLD, borderRadius: 999 }} />
                       </div>
                     </div>
                   )}
@@ -241,11 +249,11 @@ export default function CartPage() {
                   <div style={{ height: 1, background: BORDER }} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: 700, color: IVORY }}>{t('total')}</span>
-                    <span style={{ fontWeight: 800, fontSize: '1.3rem', color: GOLD }}>{formatPrice(total, locale)}</span>
+                    <span style={{ fontWeight: 800, fontSize: '1.3rem', color: GOLD }} className="cart-total-in">{formatPrice(total, locale)}</span>
                   </div>
                 </div>
 
-                <button onClick={() => router.push(`/${locale}/checkout`)} className="btn btn-gold btn-block">
+                <button onClick={() => router.push(`/${locale}/checkout`)} className="btn btn-gold btn-block checkout-pulse">
                   {t('checkout')}
                 </button>
 

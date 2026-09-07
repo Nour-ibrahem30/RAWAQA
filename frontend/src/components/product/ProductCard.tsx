@@ -10,6 +10,7 @@ import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import { loc, formatPrice } from '@/lib/utils';
 import type { Product } from '@/lib/types';
+import WishlistButton from './WishlistButton';
 
 /* SVG fallback paths */
 const BAG_SVG: Record<string, string> = {
@@ -141,6 +142,12 @@ export default function ProductCard({ product }: { product: Product }) {
             {isAr ? 'مميز' : 'Featured'}
           </span>
         )}
+
+        {/* Wishlist button */}
+        <div style={{ position: 'absolute', top: '0.875rem', [isAr ? 'left' : 'right']: '0.875rem', zIndex: 2 }}
+          onClick={e => e.preventDefault()}>
+          <WishlistButton productId={product.id} variant="icon" size={16} />
+        </div>
 
         {/* Out of stock overlay */}
         {!available && (

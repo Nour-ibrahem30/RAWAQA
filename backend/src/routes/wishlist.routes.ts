@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware';
+import { featureFlag } from '../middleware/feature-flag.middleware';
 import { get, add, remove, toggle, check, clear } from '../controllers/wishlist.controller';
 
 const router = Router();
 
+router.use(featureFlag('FEATURE_WISHLIST'));
 router.use(authenticate);
 
 router.get(   '/',                    get);     // GET    /api/wishlist

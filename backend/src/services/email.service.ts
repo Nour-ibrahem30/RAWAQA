@@ -161,9 +161,37 @@ class EmailService {
     });
   }
 
-  // ─── Password reset OTP ─────────────────────────────────────────────────────
-  async sendPasswordResetOTP(params: {
+  // ─── Email verification ─────────────────────────────────────────────────────
+  async sendEmailVerification(params: {
     email:     string;
+    firstName: string;
+    verifyUrl: string;
+  }): Promise<EmailResult> {
+    const html = baseTemplate(`
+      <p>مرحباً ${params.firstName}،</p>
+      <p>شكراً لتسجيلك في <strong>رواقة</strong>. تحتاج فقط لتأكيد بريدك الإلكتروني لتفعيل حسابك.</p>
+      <div style="text-align:center; margin: 28px 0;">
+        <a href="${params.verifyUrl}" class="btn" style="background:#AD8A4C; color:#fff; padding:14px 32px; border-radius:8px; text-decoration:none; font-weight:bold; display:inline-block;">
+          تأكيد البريد الإلكتروني
+        </a>
+      </div>
+      <p style="font-size:13px; color:#888;">ينتهي الرابط خلال 24 ساعة. إذا لم تقم بإنشاء هذا الحساب، تجاهل هذه الرسالة.</p>
+      <p style="font-size:12px; color:#aaa; margin-top:16px;">
+        أو انسخ هذا الرابط في متصفحك:<br/>
+        <span style="word-break:break-all;">${params.verifyUrl}</span>
+      </p>
+    `);
+
+    return this.send({
+      to:      params.email,
+      subject: 'تأكيد البريد الإلكتروني — رواقة',
+      html,
+      text:    `أكّد بريدك الإلكتروني بزيارة: ${params.verifyUrl}`,
+    });
+  }
+
+  // ─── Password reset OTP ─────────────────────────────────────────────────────
+  async sendPasswordResetOTP(params: {    email:     string;
     firstName: string;
     otp:       string;
   }): Promise<EmailResult> {

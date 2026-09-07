@@ -7,6 +7,10 @@ import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
 import { rateLimit } from 'express-rate-limit';
 
+// ⚠️  Sentry MUST be initialised before any other imports so it can instrument them
+import { initSentry, sentryErrorHandler, captureException } from './config/sentry';
+initSentry();
+
 import { env } from './config/env';
 import logger, { logError, logInfo } from './config/logger';
 import database from './config/database';
@@ -94,6 +98,11 @@ import shippingAddressRoutes from './routes/shipping-address.routes';
 import uploadRoutes          from './routes/upload.routes';
 import wishlistRoutes        from './routes/wishlist.routes';
 import reviewRoutes, { adminReviewRoutes } from './routes/review.routes';
+import adRoutes, { adminAdRoutes } from './routes/ad.routes';
+import contentRoutes, { adminContentRoutes } from './routes/content.routes';
+import exportRoutes from './routes/export.routes';
+
+import { featureFlag } from './middleware/feature-flag.middleware';
 
 // Serve uploaded files statically
 import path from 'path';
@@ -123,15 +132,20 @@ app.use('/api/payments',   paymentRoutes);
 app.use('/api/coupons',    couponRoutes);
 app.use('/api/addresses',  shippingAddressRoutes);
 app.use('/api/upload',     uploadRoutes);
-app.use('/api/wishlist',   wishlistRoutes);
+app.use('/api/wishlist',   featureFlag('FEATURE_WISHLIST'),   wishlistRoutes);
 app.use('/api/products',   reviewRoutes);   // mounts /:productId/reviews
+app.use('/api/ads',            adRoutes);
+app.use('/api/admin/ads',      adminAdRoutes);
+app.use('/api/content',        contentRoutes);
+app.use('/api/admin/content',  adminContentRoutes);
+app.use('/api/admin/export',   exportRoutes);
 
 // Standalone review actions (delete, approve, helpful)
 import { removeReview, approve, markHelpful } from './controllers/review.controller';
 import { authenticate, requireAdmin } from './middleware/auth.middleware';
 app.delete('/api/reviews/:id',         authenticate, removeReview);
 app.put(   '/api/reviews/:id/approve', authenticate, requireAdmin, approve);
-app.post(  '/api/reviews/:id/helpful', markHelpful);
+app.post(  '/api/reviews/:id/helpful', featureFlag('FEATURE_REVIEWS'), markHelpful);
 
 // Root Route
 app.get('/', (_req: Request, res: Response) => {
@@ -142,9 +156,118 @@ app.get('/', (_req: Request, res: Response) => {
   });
 });
 
+// API Documentation (basic endpoint catalogue)
+app.get('/api/docs', (_req: Request, res: Response) => {
+  res.json({
+    version: '2.0.0',
+    baseUrl: '/api',
+    endpoints: {
+      auth: {
+        'POST /auth/register':        'Register a new customer account',
+        'POST /auth/login':           'Login and receive access + refresh tokens',
+        'POST /auth/refresh':         'Exchange refresh token for new access token',
+        'POST /auth/logout':          'Invalidate the current session',
+        'POST /auth/logout-all':      'Invalidate all sessions for the user',
+        'GET  /auth/me':              'Get current authenticated user',
+        'PUT  /auth/profile':         'Update name / phone',
+        'PUT  /auth/password':        'Change password',
+        'POST /auth/send-phone-otp':  'Send OTP to phone number',
+        'POST /auth/verify-phone':    'Verify OTP code',
+        'POST /auth/forgot-password': 'Request password reset email',
+        'POST /auth/reset-password':  'Reset password using token',
+        'GET  /auth/sessions':        'List active sessions',
+      },
+      products: {
+        'GET  /products':             'List products (page, limit, category, search, sort, minPrice, maxPrice)',
+        'GET  /products/featured':    'Get featured products',
+        'GET  /products/low-stock':   'Get low-stock products (admin)',
+        'GET  /products/:id':         'Get single product',
+        'GET  /products/:id/related': 'Get related products',
+        'POST /products':             'Create product (admin)',
+        'PUT  /products/:id':         'Update product (admin)',
+        'DELETE /products/:id':       'Delete product (admin)',
+      },
+      categories: {
+        'GET  /categories':           'List all categories (admin)',
+        'GET  /categories/active':    'List active categories',
+        'GET  /categories/:id':       'Get single category',
+        'POST /categories':           'Create category (admin)',
+        'PUT  /categories/:id':       'Update category (admin)',
+        'DELETE /categories/:id':     'Delete category (admin)',
+      },
+      cart: {
+        'GET    /cart':               'Get current cart',
+        'POST   /cart/items':         'Add item to cart',
+        'PUT    /cart/items/:id':     'Update item quantity',
+        'DELETE /cart/items/:id':     'Remove item from cart',
+        'DELETE /cart':               'Clear cart',
+        'GET    /cart/totals':        'Get cart totals (optionally with governorate for shipping)',
+        'POST   /cart/merge':         'Merge guest cart into authenticated cart',
+      },
+      checkout: {
+        'POST /checkout':             'Place order (requires Idempotency-Key header)',
+        'POST /checkout/cancel/:id':  'Cancel an order',
+      },
+      orders: {
+        'GET /orders/my':             'Get current user orders',
+        'GET /orders/stats':          'Get order statistics',
+        'GET /orders/:id':            'Get order by ID',
+        'GET /orders/number/:num':    'Get order by order number (public tracking)',
+        'GET /orders':                'List all orders (admin)',
+        'PUT /orders/:id/status':     'Update order status (admin)',
+      },
+      wishlist: {
+        'GET    /wishlist':           'Get wishlist',
+        'POST   /wishlist/:id':       'Add product to wishlist',
+        'DELETE /wishlist/:id':       'Remove product from wishlist',
+        'POST   /wishlist/:id/toggle':'Toggle product in wishlist',
+        'GET    /wishlist/:id/check': 'Check if product is in wishlist',
+        'DELETE /wishlist':           'Clear wishlist',
+      },
+      reviews: {
+        'GET  /products/:id/reviews': 'List reviews for a product',
+        'POST /products/:id/reviews': 'Submit a review (authenticated, must have purchased)',
+        'POST /reviews/:id/helpful':  'Mark review as helpful',
+        'DELETE /reviews/:id':        'Delete own review',
+        'PUT  /reviews/:id/approve':  'Approve review (admin)',
+      },
+      addresses: {
+        'GET    /addresses':          'Get saved shipping addresses',
+        'POST   /addresses':          'Add a shipping address',
+        'PUT    /addresses/:id':      'Update a shipping address',
+        'DELETE /addresses/:id':      'Delete a shipping address',
+      },
+      coupons: {
+        'POST /coupons/apply':        'Apply coupon code',
+        'POST /coupons/validate':     'Validate coupon without applying',
+        'GET  /coupons':              'List coupons (admin)',
+        'POST /coupons':              'Create coupon (admin)',
+        'PUT  /coupons/:id':          'Update coupon (admin)',
+        'DELETE /coupons/:id':        'Delete coupon (admin)',
+      },
+      admin: {
+        'GET /admin/customers':       'List customers (admin)',
+        'GET /admin/customers/:id':   'Get customer details (admin)',
+        'PUT /admin/customers/:id/role':   'Change user role (super_admin)',
+        'PUT /admin/customers/:id/ban':    'Toggle user ban (admin)',
+        'PUT /admin/customers/:id/delete': 'Soft-delete user (admin)',
+        'GET /admin/reviews/pending': 'List pending reviews (admin)',
+        'GET /admin/settings':        'Get site settings (admin)',
+        'PUT /admin/settings':        'Update site settings (admin)',
+      },
+      upload: {
+        'POST /upload/product':       'Upload product image (admin, multipart/form-data)',
+      },
+    },
+  });
+});
+
 // =============================================================================
 // ERROR HANDLING
 // =============================================================================
+
+// Sentry must capture errors BEFORE the custom error handler responds
+app.use(sentryErrorHandler());
 
 // 404 Handler
 app.use((req: Request, res: Response) => {
@@ -265,12 +388,14 @@ const startServer = async () => {
     // Handle uncaught exceptions
     process.on('uncaughtException', (error: Error) => {
       logError('Uncaught Exception', error);
+      captureException(error, { source: 'uncaughtException' });
       gracefulShutdown('uncaughtException');
     });
 
     // Handle unhandled promise rejections
     process.on('unhandledRejection', (reason: any) => {
       logError('Unhandled Rejection', reason);
+      captureException(reason, { source: 'unhandledRejection' });
       gracefulShutdown('unhandledRejection');
     });
   } catch (error) {

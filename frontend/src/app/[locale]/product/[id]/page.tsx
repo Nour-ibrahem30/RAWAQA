@@ -6,6 +6,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import ProductCarousel from '@/components/product/ProductCarousel';
+import WishlistButton from '@/components/product/WishlistButton';
+import ProductReviews from '@/components/product/ProductReviews';
 import { productsApi } from '@/lib/api';
 import { STATIC_PRODUCTS } from '@/lib/staticProducts';
 import { useCart } from '@/context/CartContext';
@@ -308,9 +310,12 @@ export default function ProductDetailPage() {
               <button onClick={handleAdd} disabled={!available || adding} className="btn btn-gold btn-block">
                 {adding ? '...' : (isLoggedIn ? t('add_to_cart') : (isAr ? 'سجّل دخولك للشراء' : 'Login to Purchase'))}
               </button>
-              <button onClick={handleBuyNow} disabled={!available} className="btn btn-line-dark btn-block">
-                {isLoggedIn ? t('buy_now') : (isAr ? 'اشتري الآن' : 'Buy Now')}
-              </button>
+              <div style={{ display: 'flex', gap: '.75rem' }}>
+                <button onClick={handleBuyNow} disabled={!available} className="btn btn-line-dark btn-block" style={{ flex: 1 }}>
+                  {isLoggedIn ? t('buy_now') : (isAr ? 'اشتري الآن' : 'Buy Now')}
+                </button>
+                <WishlistButton productId={id} variant="icon" size={18} />
+              </div>
             </div>
 
             <p style={{ fontSize: '.78rem', color: 'rgba(247,244,236,.3)', paddingTop: '1rem', borderTop: `1px solid ${BORDER}` }}>
@@ -340,6 +345,13 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Reviews ── */}
+        <ProductReviews
+          productId={id}
+          locale={locale}
+          productRatings={(product as any).ratings}
+        />
 
         {/* ── Related products carousel ── */}
         {related.length > 0 && (

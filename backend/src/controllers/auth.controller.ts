@@ -81,7 +81,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User registered successfully. Please check your email to verify your account.',
       data: {
         user: {
           id: user._id,
@@ -89,8 +89,14 @@ export const register = async (req: Request, res: Response): Promise<void> => {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
+          isEmailVerified: user.isEmailVerified,
         },
       },
+    });
+
+    // Send verification email in the background (non-blocking)
+    sendEmailVerification((user._id as any).toString()).catch((err) => {
+      logError('Failed to send registration verification email', err);
     });
   } catch (error) {
     logError('Registration error', error);
@@ -378,6 +384,8 @@ import {
   verifyPhone,
   updateProfile,
   changePassword,
+  sendEmailVerification,
+  verifyEmailToken,
 } from '../services/auth.service';
 
 // POST /api/auth/forgot-password
@@ -462,6 +470,39 @@ export const changePasswordHandler = async (req: Request, res: Response): Promis
   } catch (err) {
     logError('changePassword error', err);
     const msg = err instanceof Error ? err.message : 'Failed to change password';
+    res.status(400).json({ success: false, message: msg });
+  }
+};
+
+// POST /api/auth/send-email-verification
+export const sendEmailVerificationHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    await sendEmailVerification(req.user!.userId);
+    res.json({ success: true, message: 'Verification email sent' });
+  } catch (err) {
+    logError('sendEmailVerification error', err);
+    const msg = err instanceof Error ? err.message : 'Failed to send verification email';
+    res.status(400).json({ success: false, message: msg });
+  }
+};
+
+// POST /api/auth/verify-email
+export const verifyEmailHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      res.status(400).json({ success: false, message: 'token is required' });
+      return;
+    }
+    const user = await verifyEmailToken(token);
+    res.json({
+      success: true,
+      message: 'Email verified successfully',
+      data: { id: user._id, email: user.email, isEmailVerified: user.isEmailVerified },
+    });
+  } catch (err) {
+    logError('verifyEmail error', err);
+    const msg = err instanceof Error ? err.message : 'Verification failed';
     res.status(400).json({ success: false, message: msg });
   }
 };

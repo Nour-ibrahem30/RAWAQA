@@ -620,3 +620,291 @@ img, svg { display: block; max-width: 100%; }
     padding-right: 1.125rem;
   }
 }
+
+/* ─── HERO SLIDESHOW — Responsive sizing ───────────────────── */
+.hero-slideshow-wrap {
+  aspect-ratio: 4/5;
+  min-height: 340px;
+}
+
+/* On laptop (1024px–1280px) reduce height so image isn't overwhelming */
+@media (min-width: 1024px) and (max-width: 1280px) {
+  .hero-slideshow-wrap {
+    aspect-ratio: 3/4;
+    min-height: 300px;
+    max-height: 520px;
+  }
+}
+
+/* On desktop (1280px+) full height */
+@media (min-width: 1280px) {
+  .hero-slideshow-wrap {
+    aspect-ratio: 4/5;
+    min-height: 380px;
+    max-height: 640px;
+  }
+}
+
+/* On tablet / small laptop — stack vertically */
+@media (max-width: 768px) {
+  .hero-slideshow-wrap {
+    aspect-ratio: 16/9;
+    min-height: 220px;
+    max-height: 340px;
+  }
+}
+
+/* ─── HERO GRID — Responsive layout ────────────────────────── */
+/* On very small screens, stack the hero into a single column */
+@media (max-width: 640px) {
+  .hero-slideshow-wrap {
+    display: none; /* hide image on mobile — text-only hero */
+  }
+}
+
+/* ─── CATEGORY TILE — image hover zoom ─────────────────────── */
+.category-tile:hover .cat-img {
+  transform: scale(1.08);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RAWAQA — RICH ANIMATIONS v2
+   Hero particles · Homepage · Shop · Cart
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── NEW KEYFRAMES ──────────────────────────────────────────── */
+@keyframes particleRise {
+  0%   { transform: translateY(0) translateX(0) scale(1);   opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: .6; }
+  100% { transform: translateY(-110vh) translateX(var(--dx,20px)) scale(.5); opacity: 0; }
+}
+@keyframes particleFloat {
+  0%,100% { transform: translateY(0) translateX(0); }
+  25%     { transform: translateY(-12px) translateX(8px); }
+  50%     { transform: translateY(-20px) translateX(-4px); }
+  75%     { transform: translateY(-8px) translateX(12px); }
+}
+@keyframes streakSlide {
+  0%   { transform: translateX(-100%) rotate(var(--angle,25deg)); opacity: 0; }
+  20%  { opacity: .7; }
+  80%  { opacity: .3; }
+  100% { transform: translateX(200vw) rotate(var(--angle,25deg)); opacity: 0; }
+}
+@keyframes orbitSpin {
+  from { transform: rotate(0deg) translateX(var(--r,60px)) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(var(--r,60px)) rotate(-360deg); }
+}
+@keyframes cardEntrance {
+  from { opacity: 0; transform: translateY(40px) scale(.94); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes sectionReveal {
+  from { opacity: 0; transform: translateY(60px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes filterSlideIn {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes filterSlideInRtl {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes cartItemIn {
+  from { opacity: 0; transform: translateX(-32px) scale(.97); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes cartItemInRtl {
+  from { opacity: 0; transform: translateX(32px) scale(.97); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes qtyBounce {
+  0%,100% { transform: scale(1); }
+  30%     { transform: scale(1.35); }
+  60%     { transform: scale(.9); }
+}
+@keyframes checkoutPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(210,181,106,.45); }
+  50%     { box-shadow: 0 0 0 10px rgba(210,181,106,.0); }
+}
+@keyframes searchGlow {
+  0%,100% { box-shadow: 0 0 0 0 rgba(210,181,106,.3); }
+  50%     { box-shadow: 0 0 12px 3px rgba(210,181,106,.15); }
+}
+@keyframes emptyBounce {
+  0%,100% { transform: translateY(0); }
+  40%     { transform: translateY(-16px); }
+  70%     { transform: translateY(-6px); }
+}
+@keyframes progressFill {
+  from { width: 0%; }
+}
+@keyframes glowLine {
+  0%,100% { opacity: .4; transform: scaleX(.85); }
+  50%     { opacity: 1; transform: scaleX(1); }
+}
+@keyframes tagSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes totalCountUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── PARTICLE SYSTEM v2 — richer, more golden ───────────────── */
+/* Drop these onto the hero .particle elements via inline style */
+.particle-v2 {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.particle-v2.gold {
+  background: radial-gradient(circle at 35% 35%, rgba(255,235,140,.9), rgba(210,181,106,.5) 60%, transparent);
+  box-shadow: 0 0 6px 2px rgba(210,181,106,.4);
+}
+.particle-v2.white {
+  background: rgba(247,244,236,.7);
+}
+.particle-v2.rise {
+  animation: particleRise linear infinite;
+}
+.particle-v2.orbit {
+  animation: particleFloat ease-in-out infinite;
+}
+
+/* Golden streaks */
+.streak {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(210,181,106,.6), rgba(255,235,140,.8), transparent);
+  pointer-events: none;
+  border-radius: 999px;
+  animation: streakSlide linear infinite;
+  will-change: transform, opacity;
+}
+
+/* ─── HOMEPAGE CARD STAGGER ──────────────────────────────────── */
+.product-card-stagger {
+  animation: cardEntrance 600ms var(--ease-brand) both;
+}
+.product-card-stagger:nth-child(1) { animation-delay: 80ms; }
+.product-card-stagger:nth-child(2) { animation-delay: 160ms; }
+.product-card-stagger:nth-child(3) { animation-delay: 240ms; }
+.product-card-stagger:nth-child(4) { animation-delay: 320ms; }
+.product-card-stagger:nth-child(5) { animation-delay: 400ms; }
+.product-card-stagger:nth-child(6) { animation-delay: 480ms; }
+
+/* ─── SECTION REVEAL ─────────────────────────────────────────── */
+.section-reveal {
+  opacity: 0;
+}
+.section-reveal.visible {
+  animation: sectionReveal 700ms var(--ease-brand) forwards;
+}
+
+/* ─── SHOP ANIMATIONS ────────────────────────────────────────── */
+.shop-filter-in {
+  animation: filterSlideIn 500ms var(--ease-brand) both;
+}
+[dir="rtl"] .shop-filter-in {
+  animation-name: filterSlideInRtl;
+}
+/* Product grid cards stagger on load */
+.shop-grid-card {
+  animation: cardEntrance 550ms var(--ease-brand) both;
+}
+.shop-grid-card:nth-child(1) { animation-delay: 60ms; }
+.shop-grid-card:nth-child(2) { animation-delay: 120ms; }
+.shop-grid-card:nth-child(3) { animation-delay: 180ms; }
+.shop-grid-card:nth-child(4) { animation-delay: 240ms; }
+.shop-grid-card:nth-child(5) { animation-delay: 300ms; }
+.shop-grid-card:nth-child(6) { animation-delay: 360ms; }
+.shop-grid-card:nth-child(7) { animation-delay: 420ms; }
+.shop-grid-card:nth-child(8) { animation-delay: 480ms; }
+.shop-grid-card:nth-child(9) { animation-delay: 540ms; }
+.shop-grid-card:nth-child(10){ animation-delay: 600ms; }
+.shop-grid-card:nth-child(11){ animation-delay: 640ms; }
+.shop-grid-card:nth-child(12){ animation-delay: 680ms; }
+
+/* Search bar — animated glow on focus */
+.shop-search:focus-within {
+  animation: searchGlow 2s ease-in-out infinite;
+}
+
+/* Category pill — slide in tag style */
+.cat-pill-active {
+  animation: tagSlideIn 300ms var(--ease-brand) both;
+}
+
+/* ─── CART ANIMATIONS ────────────────────────────────────────── */
+.cart-item-in {
+  animation: cartItemIn 500ms var(--ease-brand) both;
+}
+[dir="rtl"] .cart-item-in {
+  animation-name: cartItemInRtl;
+}
+.cart-item-in:nth-child(1) { animation-delay: 60ms; }
+.cart-item-in:nth-child(2) { animation-delay: 140ms; }
+.cart-item-in:nth-child(3) { animation-delay: 220ms; }
+.cart-item-in:nth-child(4) { animation-delay: 300ms; }
+.cart-item-in:nth-child(5) { animation-delay: 380ms; }
+
+/* Quantity bounce when changed */
+.qty-bounce {
+  animation: qtyBounce 400ms var(--ease-bounce);
+}
+
+/* Checkout button persistent pulse */
+.checkout-pulse {
+  animation: checkoutPulse 2.5s ease-in-out infinite;
+}
+
+/* Cart empty icon */
+.cart-empty-bounce {
+  animation: emptyBounce 2.4s ease-in-out infinite;
+}
+
+/* Summary total */
+.cart-total-in {
+  animation: totalCountUp 400ms var(--ease-bounce) both;
+}
+
+/* Progress bar fill */
+.shipping-progress-bar {
+  animation: progressFill 800ms var(--ease-brand) both;
+}
+
+/* ─── HERO SECTION — parallax hint ──────────────────────────── */
+.hero-content-in {
+  animation: sectionReveal 800ms var(--ease-brand) both;
+}
+
+/* Orbit dots around hero image */
+.orbit-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(210,181,106,.55);
+  pointer-events: none;
+  animation: orbitSpin linear infinite;
+  will-change: transform;
+}
+
+/* ─── REVIEW CARD ────────────────────────────────────────────── */
+.review-card {
+  transition: transform var(--dur-mid) var(--ease-brand), box-shadow var(--dur-mid) ease;
+}
+.review-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0,0,0,.25);
+}
+
+/* ─── GLOW LINE ACCENT ───────────────────────────────────────── */
+.glow-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
+  animation: glowLine 3s ease-in-out infinite;
+  transform-origin: center;
+}

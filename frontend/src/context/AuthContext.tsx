@@ -33,7 +33,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!token) { setIsLoading(false); return; }
     try {
       const res = await authApi.me();
-      setUser(res.data);
+      // Backend returns { data: { user: {...} } } or { data: {...} }
+      const userData = (res.data as any)?.user ?? res.data;
+      // Normalize name field
+      if (userData && !userData.name && (userData.firstName || userData.lastName)) {
+        userData.name = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+      }
+      setUser(userData);
     } catch {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
@@ -48,7 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback((accessToken: string, refreshToken: string, userData: User) => {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
-    setUser(userData);
+    // Normalize: backend returns firstName+lastName, frontend expects name
+    const normalized = { ...userData } as any;
+    if (!normalized.name && (normalized.firstName || normalized.lastName)) {
+      normalized.name = `${normalized.firstName || ''} ${normalized.lastName || ''}`.trim();
+    }
+    setUser(normalized);
     // Trigger cart merge after login — imported lazily to avoid circular dep
     import('@/context/CartContext').then(() => {
       // mergeWithBackend is called from AuthContext via a custom event
@@ -71,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       isLoggedIn: !!user,
-      isAdmin: user?.role === 'admin',
+      isAdmin: user?.role === 'admin' || user?.role === 'super_admin',
       login,
       logout,
       refreshUser,

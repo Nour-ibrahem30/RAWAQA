@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/lib/api';
+import AdminLoadingScreen from '@/components/ui/AdminLoadingScreen';
 
 /* ── tiny particle canvas ─────────────────────────────────── */
 function ParticleCanvas() {
@@ -194,6 +195,8 @@ export default function LoginPage() {
   const [loading, setLoading]   = useState(false);
   const [success, setSuccess]   = useState(false);
   const [cardIn, setCardIn]     = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminUserName, setAdminUserName] = useState('Admin');
 
   useEffect(() => {
     const t = setTimeout(() => setCardIn(true), 80);
@@ -206,11 +209,24 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await authApi.login(email, password);
-      setSuccess(true);
-      setTimeout(() => {
-        login(res.data.accessToken, res.data.refreshToken, res.data.user);
-        router.push(`/${locale}`);
-      }, 700);
+      // Backend returns res.data = { user, accessToken, refreshToken }
+      const { user: userData, accessToken, refreshToken } = res.data as any;
+      const role = userData?.role;
+      const firstName = userData?.firstName || userData?.name?.split(' ')[0] || 'Admin';
+
+      if (role === 'admin' || role === 'super_admin') {
+        // Admin: show loading screen first, then redirect
+        login(accessToken, refreshToken, userData);
+        setAdminUserName(firstName);
+        setAdminLoading(true);
+      } else {
+        // Customer: normal flow
+        setSuccess(true);
+        setTimeout(() => {
+          login(accessToken, refreshToken, userData);
+          router.push(`/${locale}`);
+        }, 700);
+      }
     } catch {
       setError(t('error_invalid'));
       setLoading(false);
@@ -231,9 +247,18 @@ export default function LoginPage() {
   );
 
   return (
+    <>
+      {/* Admin loading screen — shown after admin login before dashboard */}
+      {adminLoading && (
+        <AdminLoadingScreen
+          userName={adminUserName}
+          lang={locale === 'ar' ? 'ar' : 'en'}
+          onDone={() => router.push('/admin')}
+        />
+      )}
+
     <div style={{
-      minHeight: '100vh',
-      background: 'radial-gradient(ellipse 80% 70% at 50% 0%, rgba(173,138,76,.09) 0%, transparent 60%), #0d0b08',
+      minHeight: '100vh',      background: 'radial-gradient(ellipse 80% 70% at 50% 0%, rgba(173,138,76,.09) 0%, transparent 60%), #0d0b08',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -379,7 +404,8 @@ export default function LoginPage() {
                   >
                     <EyeIcon open={showPass} />
                   </button>
-                  <button type="button" style={{ fontSize: '.68rem', color: 'var(--gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, letterSpacing: '.02em' }}>
+                  <button type="button" style={{ fontSize: '.68rem', color: 'var(--gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, letterSpacing: '.02em' }}
+                    onClick={() => router.push(`/${locale}/forgot-password`)}>
                     {isAr ? 'نسيت؟' : 'Forgot?'}
                   </button>
                 </div>
@@ -470,5 +496,6 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -29,10 +29,11 @@ export interface IDimensions {
 
 // Product images
 export interface IProductImage {
-  url: string;
-  alt: string;
+  url:       string;
+  publicId?: string;   // Cloudinary public_id for deletion
+  alt:       string;
   isPrimary: boolean;
-  order: number;
+  order:     number;
 }
 
 // Product interface
@@ -148,6 +149,9 @@ const imageSchema = new Schema<IProductImage>(
     url: {
       type: String,
       required: true,
+    },
+    publicId: {
+      type: String,   // Cloudinary public_id — undefined for local-disk images
     },
     alt: {
       type: String,

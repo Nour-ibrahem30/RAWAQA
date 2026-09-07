@@ -99,6 +99,36 @@ export const authApi = {
       method: 'PUT',
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
+
+  forgotPassword: (email: string) =>
+    apiFetch('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, newPassword: string) =>
+    apiFetch('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    }),
+
+  sendPhoneOtp: () =>
+    apiFetch('/auth/send-phone-otp', { method: 'POST' }),
+
+  verifyPhone: (code: string) =>
+    apiFetch('/auth/verify-phone', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+
+  sendEmailVerification: () =>
+    apiFetch('/auth/send-email-verification', { method: 'POST' }),
+
+  verifyEmail: (token: string) =>
+    apiFetch('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }),
 };
 
 /* ============ PRODUCTS ============ */
@@ -278,5 +308,142 @@ export const ordersApi = {
 /* ============ ADMIN ============ */
 export const adminApi = {
   stats: () => apiFetch<AdminStats>('/orders/stats'),
+  dashboardStats: () => apiFetch<any>('/admin/stats'),
   customers: (page = 1) => apiFetch<{ users: User[]; pagination: unknown }>(`/admin/customers?page=${page}`),
+  getSettings: () => apiFetch<Record<string, string>>('/admin/settings'),
+  updateSettings: (colors: Record<string, string>) =>
+    apiFetch<Record<string, string>>('/admin/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ colors }),
+    }),
+
+  // Excel export — returns a blob URL for direct download
+  exportOrders: async (params?: { status?: string; from?: string; to?: string }) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
+    const q = new URLSearchParams();
+    if (params?.status) q.set('status', params.status);
+    if (params?.from)   q.set('from', params.from);
+    if (params?.to)     q.set('to', params.to);
+    const url = `${API_BASE}/admin/export/orders${q.toString() ? '?' + q : ''}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Export failed');
+    const blob = await res.blob();
+    return blob;
+  },
+
+  exportAnalytics: async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
+    const res = await fetch(`${API_BASE}/admin/export/analytics`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error('Export failed');
+    return res.blob();
+  },
+};
+
+/* ============ WISHLIST ============ */
+export const wishlistApi = {
+  get: () => apiFetch<{ products: Product[] }>('/wishlist'),
+  add: (productId: string) => apiFetch(`/wishlist/${productId}`, { method: 'POST' }),
+  remove: (productId: string) => apiFetch(`/wishlist/${productId}`, { method: 'DELETE' }),
+  toggle: (productId: string) =>
+    apiFetch<{ inWishlist: boolean }>(`/wishlist/${productId}/toggle`, { method: 'POST' }),
+  check: (productId: string) =>
+    apiFetch<{ inWishlist: boolean }>(`/wishlist/${productId}/check`),
+  clear: () => apiFetch('/wishlist', { method: 'DELETE' }),
+};
+
+/* ============ REVIEWS ============ */
+export interface Review {
+  id: string;
+  user: { id: string; name: string };
+  rating: number;
+  titleAr?: string;
+  titleEn?: string;
+  comment: string;
+  isVerifiedPurchase: boolean;
+  helpfulVotes: number;
+  createdAt: string;
+}
+
+export const reviewsApi = {
+  list: (productId: string, page = 1, locale = 'ar') =>
+    apiFetch<Review[]>(`/products/${productId}/reviews?page=${page}&limit=10`, { locale }),
+  add: (productId: string, payload: { rating: number; comment: string; titleAr?: string; titleEn?: string }) =>
+    apiFetch<Review>(`/products/${productId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  markHelpful: (reviewId: string) =>
+    apiFetch(`/reviews/${reviewId}/helpful`, { method: 'POST' }),
+  remove: (reviewId: string) =>
+    apiFetch(`/reviews/${reviewId}`, { method: 'DELETE' }),
+};
+
+/* ============ SITE CONTENT ============ */
+export const contentApi = {
+  getAll: () => apiFetch<Record<string, any>>('/content'),
+  get: (section: string) => apiFetch<Record<string, any>>(`/content/${section}`),
+  adminGetAll: () => apiFetch<{ data: Record<string, any>; sections: string[] }>('/admin/content'),
+  update: (section: string, data: Record<string, any>) =>
+    apiFetch<Record<string, any>>(`/admin/content/${section}`, {
+      method: 'PUT',
+      body: JSON.stringify({ data }),
+    }),
+};
+
+/* ============ ADS ============ */
+export interface Ad {
+  _id: string;
+  titleAr: string;
+  titleEn: string;
+  subtitleAr?: string;
+  subtitleEn?: string;
+  imageUrl: string;
+  publicId?: string;
+  linkUrl?: string;
+  placement: 'homepage_banner' | 'homepage_mid' | 'shop_sidebar' | 'product_page';
+  isActive: boolean;
+  order: number;
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+}
+
+export const adsApi = {
+  // Public
+  list: (placement?: string) =>
+    apiFetch<Ad[]>(`/ads${placement ? `?placement=${placement}` : ''}`),
+
+  // Admin
+  adminList: () => apiFetch<Ad[]>('/admin/ads'),
+  create: (payload: Partial<Ad>) =>
+    apiFetch<Ad>('/admin/ads', { method: 'POST', body: JSON.stringify(payload) }),
+  update: (id: string, payload: Partial<Ad>) =>
+    apiFetch<Ad>(`/admin/ads/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  toggle: (id: string) =>
+    apiFetch<{ id: string; isActive: boolean }>(`/admin/ads/${id}/toggle`, { method: 'PATCH' }),
+  delete: (id: string) =>
+    apiFetch(`/admin/ads/${id}`, { method: 'DELETE' }),
+};
+export interface ShippingAddressPayload {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email?: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  governorate: string;
+  postalCode?: string;
+  isDefault?: boolean;
+}
+
+export const addressesApi = {
+  list: () => apiFetch<ShippingAddressPayload[]>('/addresses'),
+  create: (payload: ShippingAddressPayload) =>
+    apiFetch<ShippingAddressPayload>('/addresses', { method: 'POST', body: JSON.stringify(payload) }),
+  update: (id: string, payload: Partial<ShippingAddressPayload>) =>
+    apiFetch<ShippingAddressPayload>(`/addresses/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  remove: (id: string) => apiFetch(`/addresses/${id}`, { method: 'DELETE' }),
 };

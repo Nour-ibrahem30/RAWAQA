@@ -15,6 +15,51 @@ import {
 } from '../services/product.service';
 import { logError } from '../config/logger';
 
+// ─── Transform product for frontend ──────────────────────────────────────────
+// Backend stores images as [{url, alt, isPrimary, order}]
+// Frontend expects images as string[]
+// This transform extracts the URL strings, sorted by order/isPrimary
+const transformProduct = (product: any): any => {
+  if (!product) return product;
+  
+  const images = Array.isArray(product.images)
+    ? product.images
+        .sort((a: any, b: any) => {
+          if (a.isPrimary && !b.isPrimary) return -1;
+          if (!a.isPrimary && b.isPrimary) return 1;
+          return (a.order ?? 0) - (b.order ?? 0);
+        })
+        .map((img: any) => (typeof img === 'string' ? img : img.url))
+        .filter(Boolean)
+    : [];
+
+  // Normalize category: backend returns populated object, frontend expects {id, nameAr, nameEn, slug}
+  const cat = product.category;
+  const category = cat && typeof cat === 'object' ? {
+    id:     (cat._id ?? cat.id)?.toString() ?? cat.slug,
+    nameAr: cat.nameAr,
+    nameEn: cat.nameEn,
+    slug:   cat.slugEn ?? cat.slug,
+  } : cat;
+
+  return {
+    ...product,
+    id:       (product._id ?? product.id)?.toString(),
+    images,
+    category,
+    inventory: {
+      onHandQuantity:   product.inventory?.onHandQuantity   ?? 0,
+      reservedQuantity: product.inventory?.reservedQuantity ?? 0,
+      availableQuantity: product.inventory?.availableQuantity ?? 0,
+      lowStockThreshold: product.inventory?.lowStockThreshold ?? 5,
+    },
+    ratings: product.ratings ?? { average: 0, count: 0 },
+  };
+};
+
+const transformProducts = (products: any[]): any[] =>
+  products.map(transformProduct);
+
 /**
  * GET /api/products
  * Get all products with filters and pagination
@@ -26,7 +71,7 @@ export const listProducts = async (req: Request, res: Response): Promise<void> =
 
     res.status(200).json({
       success: true,
-      data: result.products,
+      data: transformProducts(result.products),
       pagination: result.pagination,
     });
   } catch (error) {
@@ -53,7 +98,7 @@ export const listFeaturedProducts = async (
 
     res.status(200).json({
       success: true,
-      data: products,
+      data: transformProducts(products),
     });
   } catch (error) {
     logError('List featured products error', error);
@@ -75,11 +120,7 @@ export const listLowStockProducts = async (
 ): Promise<void> => {
   try {
     const products = await getLowStockProducts();
-
-    res.status(200).json({
-      success: true,
-      data: products,
-    });
+    res.status(200).json({ success: true, data: transformProducts(products) });
   } catch (error) {
     logError('List low stock products error', error);
     res.status(500).json({
@@ -118,10 +159,7 @@ export const getProduct = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    res.status(200).json({
-      success: true,
-      data: product,
-    });
+    res.status(200).json({ success: true, data: transformProduct(product) });
   } catch (error) {
     logError('Get product error', error);
     res.status(500).json({
@@ -164,10 +202,7 @@ export const getProductBySlugHandler = async (
       return;
     }
 
-    res.status(200).json({
-      success: true,
-      data: product,
-    });
+    res.status(200).json({ success: true, data: transformProduct(product) });
   } catch (error) {
     logError('Get product by slug error', error);
     res.status(500).json({
@@ -200,11 +235,7 @@ export const getRelatedProductsHandler = async (
     
     const limit = parseInt(req.query.limit as string) || 6;
     const products = await getRelatedProducts(id, limit);
-
-    res.status(200).json({
-      success: true,
-      data: products,
-    });
+    res.status(200).json({ success: true, data: transformProducts(products) });
   } catch (error) {
     logError('Get related products error', error);
     res.status(500).json({
@@ -226,11 +257,7 @@ export const createProductHandler = async (
   try {
     const product = await createProduct(req.body);
 
-    res.status(201).json({
-      success: true,
-      message: 'Product created successfully',
-      data: product,
-    });
+    res.status(201).json({ success: true, message: 'Product created successfully', data: transformProduct(product) });
   } catch (error) {
     logError('Create product error', error);
 
@@ -284,11 +311,7 @@ export const updateProductHandler = async (
       return;
     }
 
-    res.status(200).json({
-      success: true,
-      message: 'Product updated successfully',
-      data: product,
-    });
+    res.status(200).json({ success: true, message: 'Product updated successfully', data: transformProduct(product) });
   } catch (error) {
     logError('Update product error', error);
 
@@ -342,11 +365,7 @@ export const deleteProductHandler = async (
       return;
     }
 
-    res.status(200).json({
-      success: true,
-      message: 'Product deleted successfully',
-      data: product,
-    });
+    res.status(200).json({ success: true, message: 'Product deleted successfully', data: transformProduct(product) });
   } catch (error) {
     logError('Delete product error', error);
     res.status(500).json({
@@ -407,7 +426,7 @@ export const getProductBySkuHandler = async (req: Request, res: Response): Promi
       return;
     }
 
-    res.json({ success: true, data: product });
+    res.json({ success: true, data: transformProduct(product) });
   } catch (err) {
     logError('getProductBySku error', err);
     res.status(500).json({ success: false, message: 'Failed to fetch product' });
