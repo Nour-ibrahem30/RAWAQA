@@ -110,7 +110,7 @@ export default function ShopPage() {
         style={{ borderColor: 'rgba(210,181,106,.1)', background: '#0f0e0a' }}
       >
         <div className="wrap">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 shop-header-row">
             <div>
               <p style={{ fontSize: '.68rem', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '.4rem' }}>
                 RAWAQA
@@ -124,7 +124,7 @@ export default function ShopPage() {
             </div>
 
             {/* Search + sort toolbar */}
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap shop-toolbar">
               {/* Search */}
               <div className="relative shop-search">
                 <svg

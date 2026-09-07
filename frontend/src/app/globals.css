@@ -908,3 +908,313 @@ img, svg { display: block; max-width: 100%; }
   animation: glowLine 3s ease-in-out infinite;
   transform-origin: center;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   RAWAQA — RESPONSIVE v2  (mobile-first fixes)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── WRAP — tighter padding on small screens ───────────────── */
+@media (max-width: 480px) {
+  .wrap {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* ─── HERO SECTION ──────────────────────────────────────────── */
+/* Stack hero text + image vertically on mobile/tablet */
+@media (max-width: 900px) {
+  /* Hero grid becomes single column */
+  .wrap[style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Hero headline smaller on mobile */
+  .display-1 {
+    font-size: clamp(2rem, 7vw, 3.5rem) !important;
+  }
+  .display-2 {
+    font-size: clamp(1.6rem, 5vw, 2.5rem) !important;
+  }
+  .display-3 {
+    font-size: clamp(1.3rem, 4vw, 2rem) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Hero image — show but smaller on mobile */
+  .hero-slideshow-wrap {
+    aspect-ratio: 16/9 !important;
+    min-height: 200px !important;
+    max-height: 260px !important;
+    order: -1 !important; /* image above text on mobile */
+  }
+
+  /* Hero padding reduction */
+  .wrap {
+    padding-top: 0 !important;
+  }
+
+  /* Stats row — 2 columns */
+  .hero-stats {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1rem !important;
+  }
+}
+
+/* ─── NAVBAR ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  nav.fixed {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+  }
+}
+
+/* ─── CATEGORIES GRID ────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* 2x2 grid on mobile */
+  [data-stagger]:has(.category-tile) {
+    grid-template-columns: 1fr 1fr !important;
+    gap: .75rem !important;
+  }
+}
+
+/* ─── PRODUCT CARDS GRID ─────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Single column on very small screens */
+  .grid.grid-cols-1 {
+    gap: 1rem !important;
+  }
+
+  /* Product card image height */
+  .product-card-3d [style*="aspectRatio"] {
+    aspect-ratio: 4/3 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Full width product cards */
+  .product-card-3d {
+    border-radius: 14px !important;
+  }
+}
+
+/* ─── CART PAGE ──────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  /* Stack cart items and summary */
+  div[style*="gridTemplateColumns"]:has(.cart-item-in) {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Cart items — smaller thumbnail */
+  .cart-item-in > div[style*="width: 80px"] {
+    width: 64px !important;
+    height: 64px !important;
+  }
+
+  /* Cart summary — not sticky on mobile */
+  div[style*="position: sticky"] {
+    position: relative !important;
+    top: auto !important;
+  }
+}
+
+/* ─── SHOP PAGE ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Hide sidebar on mobile (uses toggle button) */
+  .shop-filter-in {
+    background: #15130F;
+    border: 1px solid rgba(210,181,106,.12);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Shop header — stack */
+  .shop-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  /* Shop toolbar — full width */
+  .shop-toolbar {
+    width: 100% !important;
+    flex-direction: column !important;
+  }
+  .shop-search input {
+    min-width: unset !important;
+    width: 100% !important;
+  }
+}
+
+/* ─── ADMIN PAGES ────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Dashboard KPI cards — 2 columns */
+  .grid.grid-cols-2.lg\:grid-cols-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Admin charts row — stack */
+  div[style*="gridTemplateColumns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Admin quick actions — 3 columns */
+  div[style*="minmax(130px"] {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* ─── PRODUCT DETAIL PAGE ────────────────────────────────────── */
+@media (max-width: 900px) {
+  /* Stack gallery and info */
+  div[style*="gridTemplateColumns"]:has(.hero-slideshow-wrap, img[alt]) {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── AD POPUP ───────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Full screen on tiny phones */
+  .ad-popup-card {
+    border-radius: 16px !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ─── FOOTER ─────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  footer .grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 2rem !important;
+  }
+}
+
+/* ─── BUTTONS — full width on mobile ────────────────────────── */
+@media (max-width: 480px) {
+  .btn-block {
+    padding: .85rem 1.5rem !important;
+    font-size: .8rem !important;
+  }
+}
+
+/* ─── SECTION PADDING — reduce on mobile ────────────────────── */
+@media (max-width: 640px) {
+  section[style*="padding: '5.5rem 0'"],
+  section[style*="padding: '6rem 0'"],
+  section[style*="padding: '4rem 0'"] {
+    padding: 3rem 0 !important;
+  }
+
+  /* Why cards — full width */
+  div[style*="width: calc(50% - .75rem)"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ─── ACCOUNT PAGE TABS ──────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Address grid — single column */
+  div[style*="gridTemplateColumns: '1fr 1fr'"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── LOGIN / REGISTER CARDS ─────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Reduce card padding on tiny screens */
+  div[style*="padding: 'clamp(2rem"] {
+    padding: 1.5rem !important;
+  }
+}
+
+/* ─── TOUCH TARGETS — minimum 44px for accessibility ─────────── */
+@media (max-width: 768px) {
+  button, a[href], [role="button"] {
+    min-height: 36px;
+  }
+}
+
+/* ─── TEXT READABILITY ON SMALL SCREENS ─────────────────────── */
+@media (max-width: 480px) {
+  p[style*="fontSize: '.875rem'"],
+  p[style*="font-size: .875rem"] {
+    font-size: .82rem !important;
+  }
+}
+
+/* ─── HIDE OVERFLOW on mobile globally ──────────────────────── */
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* ─── HERO GRID — responsive column stacking ────────────────── */
+.hero-grid {
+  grid-template-columns: minmax(0,1fr) minmax(0,42%);
+}
+
+@media (max-width: 860px) {
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+    padding-top: 6rem !important;
+    padding-bottom: 3rem !important;
+    gap: 2rem !important;
+  }
+
+  .hero-grid > div:first-child {
+    order: 2;
+  }
+
+  .hero-slideshow-wrap {
+    order: 1 !important;
+    aspect-ratio: 16/9 !important;
+    min-height: 220px !important;
+    max-height: 320px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-grid {
+    padding-top: 5rem !important;
+    gap: 1.5rem !important;
+  }
+
+  .hero-slideshow-wrap {
+    aspect-ratio: 4/3 !important;
+    min-height: 200px !important;
+    max-height: 260px !important;
+  }
+}
+
+/* ─── CATEGORY GRID — 2 cols on mobile ──────────────────────── */
+@media (max-width: 640px) {
+  [data-stagger] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: .75rem !important;
+  }
+}
+
+/* ─── PRODUCT CARDS — 2 cols on tablet, 1 on tiny ───────────── */
+@media (max-width: 480px) {
+  .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── WHY CARDS — full width on mobile ──────────────────────── */
+@media (max-width: 640px) {
+  [style*="calc(50% - .75rem)"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: unset !important;
+  }
+}

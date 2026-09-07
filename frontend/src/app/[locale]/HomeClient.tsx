@@ -216,13 +216,12 @@ export default function HomeClient({ locale }: { locale: string }) {
         }} />
         <Particles />
 
-        <div className="wrap" style={{
+        <div className="wrap hero-grid" style={{
           position: 'relative',
           zIndex: 1,
           paddingTop: '7.5rem',
           paddingBottom: '6rem',
           display: 'grid',
-          /* Arabic: bag left, text right | English: text left, bag right */
           gridTemplateColumns: 'minmax(0,1fr) minmax(0,42%)',
           gap: 'clamp(1.5rem, 3vw, 3rem)',
           alignItems: 'center',
