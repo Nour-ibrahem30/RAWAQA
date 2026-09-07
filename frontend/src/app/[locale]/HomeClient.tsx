@@ -130,7 +130,6 @@ export default function HomeClient({ locale }: { locale: string }) {
   const isAr = locale === 'ar';
   const { data: heroContent }  = useSiteContent('hero');
   const { data: aboutContent } = useSiteContent('about');
-  const { data: whyContent }   = useSiteContent('why');
   const { data: ctaContent }   = useSiteContent('cta');
   const { data: statsContent } = useSiteContent('stats');
   const [featured, setFeatured] = useState<Product[]>(

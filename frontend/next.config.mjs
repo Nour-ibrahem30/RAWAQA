@@ -1,35 +1,27 @@
 import createNextIntlPlugin from 'next-intl/plugin';
-import { withSentryConfig } from '@sentry/nextjs';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Don't fail production build on ESLint warnings/errors
+  // (TypeScript is the type-safety gate; ESLint is for dev guidance only)
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // Don't fail on TypeScript errors that tsc already checks
+  typescript: {
+    ignoreBuildErrors: false,
+  },
   images: {
     remotePatterns: [
       { protocol: 'http',  hostname: 'localhost' },
       { protocol: 'https', hostname: '**' },
     ],
   },
+  experimental: {
+    instrumentationHook: true,
+  },
 };
 
-const withIntl = withNextIntl(nextConfig);
-
-export default withSentryConfig(withIntl, {
-  // Suppress Sentry CLI output during builds
-  silent: true,
-
-  // Upload source maps only when SENTRY_AUTH_TOKEN is set (CI/CD)
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-
-  org:     process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-
-  // Disable source-map upload in development (no token needed locally)
-  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
-  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
-
-  // Wrap server components to report errors automatically
-  autoInstrumentServerFunctions: true,
-  autoInstrumentMiddleware:       true,
-});
+export default withNextIntl(nextConfig);

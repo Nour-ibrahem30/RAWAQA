@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
 import { wishlistApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';

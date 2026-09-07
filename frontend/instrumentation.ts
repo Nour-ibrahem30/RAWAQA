@@ -1,4 +1,7 @@
 export async function register() {
+  // Only initialize Sentry if DSN is configured
+  if (!process.env.NEXT_PUBLIC_SENTRY_DSN) return;
+
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     await import('./sentry.server.config');
   }

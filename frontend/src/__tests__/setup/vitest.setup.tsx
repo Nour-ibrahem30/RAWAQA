@@ -16,9 +16,9 @@ vi.mock('next-intl', () => ({
 
 // Mock next/image — render a plain <img>
 vi.mock('next/image', () => ({
-  default: (props: any) => {
+  default: (props: Record<string, unknown>) => {
+    const { src, alt, ...rest } = props;
     // eslint-disable-next-line @next/next/no-img-element
-    const { src, alt, fill, ...rest } = props;
-    return <img src={src} alt={alt} {...rest} />;
+    return <img src={src as string} alt={alt as string} {...(rest as any)} />;
   },
 }));

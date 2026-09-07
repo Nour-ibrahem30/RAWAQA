@@ -16,7 +16,6 @@ export default function LocaleHtmlAttrs({
 }) {
   useEffect(() => {
     const html = document.documentElement;
-    const body = document.body;
 
     html.setAttribute('lang', locale);
     html.setAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');

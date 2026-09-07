@@ -98,7 +98,7 @@ export default function VerifyPhonePage() {
       setSuccess(true);
       showToast(t('otp_success'), 'success');
       setTimeout(() => router.push(`/${locale}/account`), 1800);
-    } catch (err: unknown) {
+    } catch {
       setError(t('otp_invalid'));
     } finally {
       setVerifying(false);

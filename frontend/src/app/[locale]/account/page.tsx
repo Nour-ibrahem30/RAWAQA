@@ -11,7 +11,7 @@ import { formatPrice, orderStatusColor, orderStatusLabel } from '@/lib/utils';
 import type { Order } from '@/lib/types';
 
 /* ──────────────────────────────────────────────────────────── */
-function ResendEmailButton({ locale, isAr }: { locale: string; isAr: boolean }) {
+function ResendEmailButton({ isAr }: { locale?: string; isAr: boolean }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const { showToast } = useToast();

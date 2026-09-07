@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
     try {
       await authApi.forgotPassword(email);
       setSent(true);
-    } catch (err: unknown) {
+    } catch {
       // Don't reveal if email exists — show success regardless
       setSent(true);
     } finally {

@@ -124,6 +124,7 @@ export default function AdminDashboard() {
 
   // Show welcome banner on first visit after login (once per session)
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const key = 'rawaqa_admin_welcomed';
     if (!sessionStorage.getItem(key)) {
       setShowWelcome(true);
