@@ -133,6 +133,7 @@ const envSchema = z.object({
   ADMIN_EMAIL: z.string().email().default('admin@rawaqa.com'),
   ADMIN_PASSWORD: z.string().min(8).optional(),
   EXPORT_PASSWORD: z.string().optional(),
+  SEED_SECRET: z.string().optional(),
 
   // Cloudinary (file uploads)
   CLOUDINARY_CLOUD_NAME: z.string().optional(),

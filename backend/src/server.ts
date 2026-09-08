@@ -101,6 +101,7 @@ import reviewRoutes, { adminReviewRoutes } from './routes/review.routes';
 import adRoutes, { adminAdRoutes } from './routes/ad.routes';
 import contentRoutes, { adminContentRoutes } from './routes/content.routes';
 import exportRoutes from './routes/export.routes';
+import seedRoutes from './routes/seed.routes';
 
 import { featureFlag } from './middleware/feature-flag.middleware';
 
@@ -139,6 +140,8 @@ app.use('/api/admin/ads',      adminAdRoutes);
 app.use('/api/content',        contentRoutes);
 app.use('/api/admin/content',  adminContentRoutes);
 app.use('/api/admin/export',   exportRoutes);
+// ⚠️ TEMP — delete after seeding production
+app.use('/api/seed',           seedRoutes);
 
 // Standalone review actions (delete, approve, helpful)
 import { removeReview, approve, markHelpful } from './controllers/review.controller';
