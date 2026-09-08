@@ -140,8 +140,7 @@ app.use('/api/admin/ads',      adminAdRoutes);
 app.use('/api/content',        contentRoutes);
 app.use('/api/admin/content',  adminContentRoutes);
 app.use('/api/admin/export',   exportRoutes);
-// ⚠️ TEMP — delete after seeding production
-app.use('/api/seed',           seedRoutes);
+app.use('/api/seed',           seedRoutes); // TEMP
 
 // Standalone review actions (delete, approve, helpful)
 import { removeReview, approve, markHelpful } from './controllers/review.controller';
