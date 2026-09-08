@@ -1,5 +1,10 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
 import logger, { logError, logInfo } from './logger';
+
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (_e) {}
 
 interface DatabaseConfig {
   uri: string;

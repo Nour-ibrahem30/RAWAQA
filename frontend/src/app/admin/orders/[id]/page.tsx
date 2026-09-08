@@ -70,15 +70,21 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         {/* Items */}
         <div style={CARD} className="lg:col-span-2">
           <p className="text-sm font-semibold mb-4" style={{ color: '#D2B56A' }}>Order Items</p>
-          {order.items.map((item, i) => (
-            <div key={i} className="flex justify-between py-3 border-b last:border-0" style={{ borderColor: 'rgba(210,181,106,.08)' }}>
-              <div>
-                <p className="text-sm" style={{ color: '#F7F4EC' }}>{loc(item.product.nameAr, item.product.nameEn, 'en')}</p>
-                <p className="text-xs" style={{ color: 'rgba(247,244,236,.35)' }}>SKU: {item.product.sku} × {item.quantity}</p>
+          {order.items.map((item: any, i: number) => {
+            const nameAr = item.productSnapshot?.nameAr || item.product?.nameAr || '';
+            const nameEn = item.productSnapshot?.nameEn || item.product?.nameEn || '';
+            const sku = item.productSnapshot?.sku || item.product?.sku || '';
+            const itemTotal = item.subtotal || item.total || (item.price * item.quantity);
+            return (
+              <div key={i} className="flex justify-between py-3 border-b last:border-0" style={{ borderColor: 'rgba(210,181,106,.08)' }}>
+                <div>
+                  <p className="text-sm" style={{ color: '#F7F4EC' }}>{loc(nameAr, nameEn, 'en')}</p>
+                  <p className="text-xs" style={{ color: 'rgba(247,244,236,.35)' }}>{sku ? `SKU: ${sku} × ` : ''}{item.quantity}</p>
+                </div>
+                <p className="font-semibold text-sm" style={{ color: '#D2B56A' }}>{formatPrice(itemTotal, 'en')}</p>
               </div>
-              <p className="font-semibold text-sm" style={{ color: '#D2B56A' }}>{formatPrice(item.total, 'en')}</p>
-            </div>
-          ))}
+            );
+          })}
           <div className="flex justify-between pt-4 font-bold" style={{ color: '#F7F4EC' }}>
             <span>Total</span>
             <span>{formatPrice(order.total, 'en')}</span>
@@ -88,13 +94,15 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         {/* Customer */}
         <div style={CARD}>
           <p className="text-sm font-semibold mb-4" style={{ color: '#D2B56A' }}>Customer</p>
-          <p className="text-sm font-medium" style={{ color: '#F7F4EC' }}>{order.shippingAddress.recipientName}</p>
-          <p className="text-sm" style={{ color: 'rgba(247,244,236,.5)' }}>{order.shippingAddress.phone}</p>
+          <p className="text-sm font-medium" style={{ color: '#F7F4EC' }}>
+            {(order.shippingAddress as any)?.recipientName || `${(order.shippingAddress as any)?.firstName || ''} ${(order.shippingAddress as any)?.lastName || ''}`.trim() || 'Customer'}
+          </p>
+          <p className="text-sm" style={{ color: 'rgba(247,244,236,.5)' }}>{order.shippingAddress?.phone}</p>
           <div className="mt-3 text-sm" style={{ color: 'rgba(247,244,236,.5)' }}>
-            <p>{order.shippingAddress.streetAddress}</p>
-            <p>{order.shippingAddress.city}, {order.shippingAddress.governorate}</p>
+            <p>{(order.shippingAddress as any)?.streetAddress || (order.shippingAddress as any)?.addressLine1 || ''}</p>
+            <p>{order.shippingAddress?.city}, {order.shippingAddress?.governorate}</p>
           </div>
-          {order.shippingAddress.notes && (
+          {order.shippingAddress?.notes && (
             <p className="mt-2 text-xs rounded-lg p-2" style={{ background: 'rgba(255,255,255,.04)', color: 'rgba(247,244,236,.45)' }}>
               {order.shippingAddress.notes}
             </p>

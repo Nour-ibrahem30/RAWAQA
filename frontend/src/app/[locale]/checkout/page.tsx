@@ -7,6 +7,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { formatPrice } from '@/lib/utils';
+import { checkoutApi, cartApi } from '@/lib/api';
 
 const DARK   = '#0f0e0a';
 const CARD   = 'rgba(30,27,21,.95)';
@@ -98,11 +99,43 @@ export default function CheckoutPage() {
     }
     setPlacing(true);
     try {
-      // Simulate order creation (replace with real API when backend is ready)
-      await new Promise(r => setTimeout(r, 800));
-      const orderNumber = `RWQ${Date.now().toString().slice(-8)}`;
+      // 1. Get or sync backend cart
+      let backendCart = (await cartApi.get(locale)).data;
+      if ((!backendCart?.items || backendCart.items.length === 0) && cart.items.length > 0) {
+        for (const item of cart.items) {
+          await cartApi.add(item.product.id, item.quantity);
+        }
+        backendCart = (await cartApi.get(locale)).data;
+      }
+
+      const cartId = (backendCart as any)?._id || (backendCart as any)?.id;
+      if (!cartId) {
+        throw new Error(isAr ? 'تعذر جلب تفاصيل السلة' : 'Failed to retrieve cart details');
+      }
+
+      const idempotencyKey = `checkout-${user.id || 'usr'}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
+      const res = await checkoutApi.create(
+        {
+          cartId,
+          shippingAddress: {
+            recipientName: form.recipientName.trim(),
+            phone: form.phone.trim(),
+            streetAddress: form.streetAddress.trim(),
+            city: form.city.trim(),
+            governorate: form.governorate,
+            notes: form.notes.trim() || undefined,
+          },
+          paymentMethod: 'cash_on_delivery',
+          notes: form.notes.trim() || undefined,
+        },
+        idempotencyKey
+      );
+
+      const createdOrder = res.data;
       await clearCart();
-      router.push(`/${locale}/order-confirmation/${orderNumber}`);
+      showToast(isAr ? 'تم تأكيد طلبك بنجاح!' : 'Order placed successfully!', 'success');
+      router.push(`/${locale}/order-confirmation/${createdOrder.orderNumber}`);
     } catch (err: unknown) {
       showToast((err as Error).message || t('error'), 'error');
     } finally {

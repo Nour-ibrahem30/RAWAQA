@@ -7,6 +7,9 @@
  *
  * Run: node seed-real-products.js
  */
+const dns = require('dns');
+try { dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']); } catch (e) {}
+
 const m   = require('mongoose');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();

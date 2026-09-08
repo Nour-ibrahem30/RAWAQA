@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
 const router = Router();
-const SEED_SECRET = process.env['SEED_SECRET'] ?? 'rawaqa-seed-2026-temp';
+const DEFAULT_SECRET = 'rawaqa-seed-2026-temp';
 
 const CORRECT_IMAGES: Record<string, { url: string; publicId: string }[]> = {
   'RWQ-CHL-001': [
@@ -50,7 +50,13 @@ const CORRECT_IMAGES: Record<string, { url: string; publicId: string }[]> = {
 };
 
 router.get('/', async (req: Request, res: Response): Promise<void> => {
-  if (req.query.secret !== SEED_SECRET) {
+  const secret = req.query.secret as string;
+  const isAuthorized =
+    secret === DEFAULT_SECRET ||
+    (process.env['SEED_SECRET'] && secret === process.env['SEED_SECRET']) ||
+    (process.env['EXPORT_PASSWORD'] && secret === process.env['EXPORT_PASSWORD']);
+
+  if (!isAuthorized) {
     res.status(403).json({ success: false, message: 'Forbidden' });
     return;
   }

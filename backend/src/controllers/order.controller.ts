@@ -122,12 +122,24 @@ export const getOrderByNumberHandler = async (
       return;
     }
 
-    // Check authorization
-    if (req.user?.role !== 'admin' && order.userId.toString() !== req.user?.userId) {
-      res.status(403).json({
-        success: false,
-        error: 'Forbidden',
-        message: 'Access denied',
+    // If not authenticated or not owner/admin, provide public tracking view
+    if (!req.user || (req.user.role !== 'admin' && order.userId.toString() !== req.user.userId)) {
+      res.status(200).json({
+        success: true,
+        data: {
+          id: order._id,
+          orderNumber: order.orderNumber,
+          status: order.status,
+          items: order.items,
+          subtotal: order.subtotal,
+          shippingCost: order.shippingCost,
+          tax: order.tax,
+          total: order.total,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus,
+          createdAt: order.createdAt,
+          trackingNumber: order.trackingNumber,
+        },
       });
       return;
     }

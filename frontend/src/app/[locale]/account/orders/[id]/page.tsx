@@ -61,17 +61,23 @@ export default function OrderDetailPage() {
           <div className="lg:col-span-2 rounded-soft border p-6 bg-ivory-2" style={{ borderColor: 'var(--sand)' }}>
             <h2 className="font-semibold text-ink mb-4">{isAr ? 'المنتجات' : 'Items'}</h2>
             <div className="flex flex-col gap-3">
-              {order.items.map((item, i) => (
-                <div key={i} className="flex justify-between py-3 border-b last:border-0" style={{ borderColor: 'var(--sand)' }}>
-                  <div>
-                    <p className="text-sm font-medium text-ink">
-                      {loc(item.product.nameAr, item.product.nameEn, locale)}
-                    </p>
-                    <p className="text-xs text-ink-soft">SKU: {item.product.sku} × {item.quantity}</p>
+              {order.items.map((item: any, i: number) => {
+                const nameAr = item.productSnapshot?.nameAr || item.product?.nameAr || '';
+                const nameEn = item.productSnapshot?.nameEn || item.product?.nameEn || '';
+                const sku = item.productSnapshot?.sku || item.product?.sku || '';
+                const itemTotal = item.subtotal || item.total || (item.price * item.quantity);
+                return (
+                  <div key={i} className="flex justify-between py-3 border-b last:border-0" style={{ borderColor: 'var(--sand)' }}>
+                    <div>
+                      <p className="text-sm font-medium text-ink">
+                        {loc(nameAr, nameEn, locale)}
+                      </p>
+                      <p className="text-xs text-ink-soft">{sku ? `SKU: ${sku} × ` : ''}{item.quantity}</p>
+                    </div>
+                    <p className="font-semibold text-ink text-sm">{formatPrice(itemTotal, locale)}</p>
                   </div>
-                  <p className="font-semibold text-ink text-sm">{formatPrice(item.total, locale)}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="mt-4 pt-4 border-t flex justify-between font-bold text-ink" style={{ borderColor: 'var(--sand)' }}>
               <span>{isAr ? 'الإجمالي' : 'Total'}</span>
@@ -82,11 +88,17 @@ export default function OrderDetailPage() {
           {/* Shipping */}
           <div className="rounded-soft border p-6 bg-ivory-2 self-start" style={{ borderColor: 'var(--sand)' }}>
             <h2 className="font-semibold text-ink mb-4">{isAr ? 'التوصيل إلى' : 'Shipping To'}</h2>
-            <p className="text-sm text-ink font-medium">{order.shippingAddress.recipientName}</p>
-            <p className="text-sm text-ink-soft mt-1">{order.shippingAddress.phone}</p>
-            <p className="text-sm text-ink-soft">{order.shippingAddress.streetAddress}</p>
-            <p className="text-sm text-ink-soft">{order.shippingAddress.city}، {order.shippingAddress.governorate}</p>
-            {order.shippingAddress.notes && (
+            <p className="text-sm text-ink font-medium">
+              {(order.shippingAddress as any)?.recipientName || `${(order.shippingAddress as any)?.firstName || ''} ${(order.shippingAddress as any)?.lastName || ''}`.trim() || 'Customer'}
+            </p>
+            <p className="text-sm text-ink-soft mt-1">{order.shippingAddress?.phone}</p>
+            <p className="text-sm text-ink-soft">
+              {(order.shippingAddress as any)?.streetAddress || (order.shippingAddress as any)?.addressLine1 || ''}
+            </p>
+            <p className="text-sm text-ink-soft">
+              {order.shippingAddress?.city}، {order.shippingAddress?.governorate}
+            </p>
+            {order.shippingAddress?.notes && (
               <p className="text-xs text-ink-soft mt-2 bg-sand/50 rounded-lg p-2">
                 {order.shippingAddress.notes}
               </p>

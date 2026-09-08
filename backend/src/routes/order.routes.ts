@@ -3,7 +3,7 @@ import {
   listOrders, getOrder, getOrderByNumberHandler, getMyOrders,
   updateStatus, updatePayment, addTracking, getStats, exportOrders,
 } from '../controllers/order.controller';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth.middleware';
 import {
   validate,
   updateOrderStatusSchema,
@@ -51,10 +51,10 @@ router.get('/:id', authenticate, getOrder);
 
 /**
  * @route   GET /api/orders/number/:orderNumber
- * @desc    Get order by order number
- * @access  Private
+ * @desc    Get order by order number (authenticated or public tracking)
+ * @access  Public / Authenticated
  */
-router.get('/number/:orderNumber', authenticate, getOrderByNumberHandler);
+router.get('/number/:orderNumber', optionalAuth, getOrderByNumberHandler);
 
 /**
  * @route   PUT /api/orders/:id/status

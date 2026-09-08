@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { Cart, CartItem } from '@/lib/types';
 import { STATIC_PRODUCTS } from '@/lib/staticProducts';
-import { cartApi } from '@/lib/api';
+import { cartApi, productsApi } from '@/lib/api';
 
 const STORAGE_KEY = 'rawaqa_cart';
 
@@ -59,8 +59,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       const res = await cartApi.get();
-      if (res.data?.items?.length) {
-        const mapped: CartItem[] = res.data.items.map((i: CartItem) => i);
+      if (res.data?.items) {
+        const mapped: CartItem[] = res.data.items.map((i: any) => {
+          const prod = i.product || {};
+          const prodId = prod._id || prod.id || String(prod);
+          const rawImages = Array.isArray(prod.images) ? prod.images : [];
+          const images = rawImages.map((img: any) => typeof img === 'string' ? img : (img?.url || '')).filter(Boolean);
+          const price = typeof i.price === 'number' ? i.price : (prod.price || 0);
+          const qty = typeof i.quantity === 'number' ? i.quantity : 1;
+
+          return {
+            product: {
+              id: prodId,
+              nameAr: prod.nameAr || '',
+              nameEn: prod.nameEn || '',
+              price: prod.price || price,
+              images: images.length > 0 ? images : ['/products/chair-lounge-new/img-1.jpg'],
+              sku: prod.sku || '',
+            },
+            quantity: qty,
+            price,
+            total: price * qty,
+          };
+        });
         persist(mapped);
       }
     } catch {
@@ -88,9 +109,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [fetchCart]);
 
   const addToCart = useCallback(async (productId: string, quantity = 1, imageIndex = 0) => {
-    const product = STATIC_PRODUCTS.find(p => p.id === productId);
-    if (!product) throw new Error('Product not found');
-    const selectedImage = product.images?.[imageIndex] ?? product.images?.[0];
+    let product = STATIC_PRODUCTS.find(p => p.id === productId || p.sku === productId);
+    if (!product) {
+      try {
+        const pRes = await productsApi.get(productId);
+        if (pRes?.data) product = pRes.data;
+      } catch {}
+    }
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
@@ -103,13 +128,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       } catch { /* fall through to local */ }
     }
 
+    if (!product) throw new Error('Product not found');
+    const selectedImage = product.images?.[imageIndex] ?? product.images?.[0];
+
     // Local cart
     setItems(prev => {
-      const existing = prev.find(i => i.product.id === productId);
+      const existing = prev.find(i => i.product.id === productId || i.product.sku === product?.sku);
       let newItems: CartItem[];
       if (existing) {
         newItems = prev.map(i =>
-          i.product.id === productId
+          (i.product.id === productId || i.product.sku === product?.sku)
             ? { ...i, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.price }
             : i
         );
