@@ -38,8 +38,8 @@
     
     /* Advanced */
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true
+    "declaration": false,
+    "declarationMap": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "src/scripts/seed.ts"]
