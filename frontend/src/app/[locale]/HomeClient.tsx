@@ -130,6 +130,7 @@ export default function HomeClient({ locale }: { locale: string }) {
   const isAr = locale === 'ar';
   const { data: heroContent }  = useSiteContent('hero');
   const { data: aboutContent } = useSiteContent('about');
+  const { data: whyContent }   = useSiteContent('why');
   const { data: ctaContent }   = useSiteContent('cta');
   const { data: statsContent } = useSiteContent('stats');
   const [featured, setFeatured] = useState<Product[]>(
@@ -216,12 +217,13 @@ export default function HomeClient({ locale }: { locale: string }) {
         }} />
         <Particles />
 
-        <div className="wrap hero-grid" style={{
+        <div className="wrap" style={{
           position: 'relative',
           zIndex: 1,
           paddingTop: '7.5rem',
           paddingBottom: '6rem',
           display: 'grid',
+          /* Arabic: bag left, text right | English: text left, bag right */
           gridTemplateColumns: 'minmax(0,1fr) minmax(0,42%)',
           gap: 'clamp(1.5rem, 3vw, 3rem)',
           alignItems: 'center',

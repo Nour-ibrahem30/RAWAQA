@@ -1218,3 +1218,165 @@ img, svg { display: block; max-width: 100%; }
     min-width: unset !important;
   }
 }
+
+/* ─── HERO SLIDESHOW — laptop size fix ──────────────────────── */
+@media (min-width: 861px) and (max-width: 1280px) {
+  .hero-slideshow-wrap {
+    aspect-ratio: 3/4 !important;
+    max-height: 480px !important;
+    min-height: 320px !important;
+  }
+}
+
+@media (min-width: 1281px) {
+  .hero-slideshow-wrap {
+    aspect-ratio: 4/5 !important;
+    max-height: 560px !important;
+  }
+}
+
+/* ─── HERO SLIDESHOW v2 — better laptop sizing ──────────────── */
+.hero-slideshow-wrap {
+  aspect-ratio: 4/5;
+  min-height: 300px;
+}
+
+@media (min-width: 861px) and (max-width: 1180px) {
+  /* Laptop — smaller image */
+  .hero-slideshow-wrap {
+    aspect-ratio: 1/1 !important;
+    max-height: 420px !important;
+    min-height: 320px !important;
+  }
+  .hero-grid {
+    grid-template-columns: minmax(0,1fr) minmax(0,38%) !important;
+    gap: 2.5rem !important;
+  }
+}
+
+@media (min-width: 1181px) and (max-width: 1400px) {
+  .hero-slideshow-wrap {
+    aspect-ratio: 3/4 !important;
+    max-height: 500px !important;
+  }
+}
+
+@media (min-width: 1401px) {
+  .hero-slideshow-wrap {
+    aspect-ratio: 4/5 !important;
+    max-height: 580px !important;
+  }
+}
+
+/* ─── HERO CINEMATIC — responsive ───────────────────────────── */
+.hero-cinematic .hero-bg-image {
+  transition: opacity 600ms ease;
+}
+
+@media (max-width: 860px) {
+  /* Stack on mobile — image on top, text below */
+  .hero-cinematic {
+    height: auto !important;
+    min-height: unset !important;
+    flex-direction: column;
+  }
+
+  .hero-cinematic .hero-bg-image {
+    position: relative !important;
+    width: 100% !important;
+    height: 55vw !important;
+    min-height: 240px !important;
+    max-height: 360px !important;
+  }
+
+  /* Override gradient direction for mobile */
+  .hero-cinematic .hero-bg-image > div:first-child {
+    background: linear-gradient(to bottom, transparent 40%, rgba(13,11,8,.95) 100%) !important;
+  }
+
+  /* Text side fills full width */
+  .hero-cinematic > .wrap {
+    position: relative !important;
+    padding-top: 1.5rem !important;
+    padding-bottom: 3rem !important;
+  }
+
+  .hero-cinematic > .wrap > div {
+    max-width: 100% !important;
+    margin-inline-start: 0 !important;
+    margin-inline-end: 0 !important;
+    padding-top: 0 !important;
+    text-align: center !important;
+  }
+
+  /* Center stats and CTAs */
+  .hero-cinematic [style*="justifyContent"] {
+    justify-content: center !important;
+  }
+  .hero-cinematic [style*="textAlign"] {
+    text-align: center !important;
+  }
+
+  /* Hide scroll indicator on mobile */
+  .hero-cinematic > div[style*="bottom: '1.5rem'"] {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-cinematic .hero-bg-image {
+    height: 60vw !important;
+  }
+}
+
+/* ─── HERO IMMERSIVE v3 — responsive ────────────────────────── */
+@media (max-width: 768px) {
+  /* Reduce hero height on mobile */
+  section[style*="height: 'clamp(600px"],
+  section[style*="height: clamp(600px"] {
+    height: auto !important;
+    min-height: 85vh !important;
+  }
+
+  /* Stats row — smaller padding */
+  .wrap > div[style*="position: 'absolute'"],
+  .wrap > div[style*="bottom:"] {
+    position: relative !important;
+    bottom: auto !important;
+    margin-top: 2rem !important;
+  }
+
+  /* Vertical accent line — hide on mobile */
+  div[style*="width: 3"][style*="borderRadius: 999"] {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Stats row wraps on tiny screens */
+  div[style*="borderInlineStart"] {
+    padding: '.75rem 1rem' !important;
+  }
+}
+
+/* ─── HERO IMAGE — laptop size reduction ────────────────────── */
+/* On laptop screens the hero image was too large — cap it */
+@media (min-width: 768px) and (max-width: 1280px) {
+  .hero-slideshow-wrap {
+    aspect-ratio: 1/1 !important;
+    max-height: 440px !important;
+    min-height: 300px !important;
+  }
+  /* Reduce hero min-height on laptop */
+  section[style*="minHeight: '100vh'"],
+  section[style*="min-height: 100vh"] {
+    min-height: 80vh !important;
+  }
+}
+
+@media (min-width: 1281px) {
+  .hero-slideshow-wrap {
+    aspect-ratio: 3/4 !important;
+    max-height: 560px !important;
+  }
+}
