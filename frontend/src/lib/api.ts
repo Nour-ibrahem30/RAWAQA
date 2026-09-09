@@ -1,6 +1,7 @@
 import type { ApiResponse, Cart, CartTotals, Category, CheckoutPayload, Order, Product, User, AdminStats } from './types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api';
+const rawApiBase = process.env.NEXT_PUBLIC_API_URL || 'https://formation-humiliating-whale.abasthan.app/api';
+const API_BASE = rawApiBase.replace(/\/+$/, '');
 
 /* ============ BASE FETCH ============ */
 async function apiFetch<T>(

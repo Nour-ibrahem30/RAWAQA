@@ -120,34 +120,39 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
-// API Routes
-app.use('/api/auth',       authRoutes);
-app.use('/api/products',   productRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/cart',       cartRoutes);
-app.use('/api/checkout',   checkoutRoutes);
-app.use('/api/orders',     orderRoutes);
-app.use('/api/admin',      adminRoutes);
-app.use('/api/admin/reviews', adminReviewRoutes);
-app.use('/api/payments',   paymentRoutes);
-app.use('/api/coupons',    couponRoutes);
-app.use('/api/addresses',  shippingAddressRoutes);
-app.use('/api/upload',     uploadRoutes);
-app.use('/api/wishlist',   featureFlag('FEATURE_WISHLIST'),   wishlistRoutes);
-app.use('/api/products',   reviewRoutes);   // mounts /:productId/reviews
-app.use('/api/ads',            adRoutes);
-app.use('/api/admin/ads',      adminAdRoutes);
-app.use('/api/content',        contentRoutes);
-app.use('/api/admin/content',  adminContentRoutes);
-app.use('/api/admin/export',   exportRoutes);
-app.use('/api/seed',           seedRoutes); // TEMP
+// API Routes (supports both /api and /api/v1)
+const apiPrefixes = ['/api', '/api/v1'];
+apiPrefixes.forEach(prefix => {
+  app.use(`${prefix}/auth`,          authRoutes);
+  app.use(`${prefix}/products`,      productRoutes);
+  app.use(`${prefix}/categories`,    categoryRoutes);
+  app.use(`${prefix}/cart`,          cartRoutes);
+  app.use(`${prefix}/checkout`,      checkoutRoutes);
+  app.use(`${prefix}/orders`,        orderRoutes);
+  app.use(`${prefix}/admin`,         adminRoutes);
+  app.use(`${prefix}/admin/reviews`, adminReviewRoutes);
+  app.use(`${prefix}/payments`,      paymentRoutes);
+  app.use(`${prefix}/coupons`,       couponRoutes);
+  app.use(`${prefix}/addresses`,     shippingAddressRoutes);
+  app.use(`${prefix}/upload`,        uploadRoutes);
+  app.use(`${prefix}/wishlist`,      featureFlag('FEATURE_WISHLIST'), wishlistRoutes);
+  app.use(`${prefix}/products`,      reviewRoutes);   // mounts /:productId/reviews
+  app.use(`${prefix}/ads`,           adRoutes);
+  app.use(`${prefix}/admin/ads`,     adminAdRoutes);
+  app.use(`${prefix}/content`,       contentRoutes);
+  app.use(`${prefix}/admin/content`, adminContentRoutes);
+  app.use(`${prefix}/admin/export`,  exportRoutes);
+  app.use(`${prefix}/seed`,          seedRoutes); // TEMP
+});
 
 // Standalone review actions (delete, approve, helpful)
 import { removeReview, approve, markHelpful } from './controllers/review.controller';
 import { authenticate, requireAdmin } from './middleware/auth.middleware';
-app.delete('/api/reviews/:id',         authenticate, removeReview);
-app.put(   '/api/reviews/:id/approve', authenticate, requireAdmin, approve);
-app.post(  '/api/reviews/:id/helpful', featureFlag('FEATURE_REVIEWS'), markHelpful);
+apiPrefixes.forEach(prefix => {
+  app.delete(`${prefix}/reviews/:id`,         authenticate, removeReview);
+  app.put(   `${prefix}/reviews/:id/approve`, authenticate, requireAdmin, approve);
+  app.post(  `${prefix}/reviews/:id/helpful`, featureFlag('FEATURE_REVIEWS'), markHelpful);
+});
 
 // Root Route
 app.get('/', (_req: Request, res: Response) => {
