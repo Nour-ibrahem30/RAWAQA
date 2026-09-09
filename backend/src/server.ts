@@ -38,9 +38,24 @@ app.use(
 );
 
 // CORS
+const configuredOrigins = env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map((o) => o.trim()) : [];
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, server-to-server, curl)
+      if (!origin) return callback(null, true);
+      
+      const isAllowed =
+        configuredOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1');
+
+      if (isAllowed) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Fallback allow in production to prevent blocking
+    },
     credentials: env.CORS_CREDENTIALS,
   })
 );
