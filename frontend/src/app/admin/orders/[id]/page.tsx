@@ -1,7 +1,8 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { ordersApi } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { formatPrice, loc, orderStatusColor, orderStatusLabel } from '@/lib/utils';
@@ -16,20 +17,41 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   cancelled: [],
 };
 
-export default function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function AdminOrderDetailPage() {
+  const params = useParams();
+  const id = (params?.id as string) || '';
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [note, setNote] = useState('');
   const { showToast } = useToast();
 
   const load = () => {
+    if (!id) return;
     setLoading(true);
-    ordersApi.get(id, 'en').then(r => setOrder(r.data)).catch(() => {}).finally(() => setLoading(false));
+    setError(null);
+    ordersApi.get(id, 'en')
+      .then(r => {
+        if (r && r.data) {
+          setOrder(r.data);
+        } else {
+          setError('Order not found');
+        }
+      })
+      .catch((e: unknown) => {
+        const msg = (e as Error)?.message || 'Failed to load order';
+        setError(msg);
+      })
+      .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    if (id) {
+      load();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [id]);
+  }, [id]);
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!order) return;
@@ -40,30 +62,73 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
       showToast(`Status updated to ${newStatus}`, 'success');
       setNote('');
       load();
-    } catch (e: unknown) { showToast((e as Error).message, 'error'); }
-    finally { setUpdating(false); }
+    } catch (e: unknown) {
+      showToast((e as Error).message || 'Failed to update status', 'error');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const CARD = { background: '#15130F', border: '1px solid rgba(210,181,106,.1)', borderRadius: 16, padding: 24 };
 
-  if (loading || !order) return (
-    <div className="flex flex-col gap-4">
-      <div className="h-8 w-48 rounded-xl skeleton" style={{ background: 'rgba(255,255,255,.06)' }} />
-      <div className="h-64 rounded-2xl skeleton" style={{ background: 'rgba(255,255,255,.04)' }} />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="h-8 w-48 rounded-xl skeleton" style={{ background: 'rgba(255,255,255,.06)' }} />
+        <div className="h-64 rounded-2xl skeleton" style={{ background: 'rgba(255,255,255,.04)' }} />
+      </div>
+    );
+  }
 
-  const nextStatuses = STATUS_TRANSITIONS[order.status] || [];
+  if (error || !order) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center gap-4 rounded-2xl" style={CARD}>
+        <p className="text-base font-semibold" style={{ color: '#F7F4EC' }}>
+          {error || 'Order not found'}
+        </p>
+        <div className="flex gap-3">
+          <Link
+            href="/admin/orders"
+            className="px-4 py-2 text-xs rounded-xl font-semibold transition-colors"
+            style={{ background: 'rgba(210,181,106,.15)', color: '#D2B56A' }}
+          >
+            ← Back to Orders
+          </Link>
+          <button
+            onClick={load}
+            className="px-4 py-2 text-xs rounded-xl font-semibold"
+            style={{ background: '#D2B56A', color: '#15130F' }}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const orderStatus = order.status || 'pending';
+  const nextStatuses = STATUS_TRANSITIONS[orderStatus] || [];
+  const shippingAddr = (order.shippingAddress || {}) as any;
+  const userObj = (order as any).userId;
+  const customerName =
+    shippingAddr.recipientName ||
+    `${shippingAddr.firstName || ''} ${shippingAddr.lastName || ''}`.trim() ||
+    (userObj && typeof userObj === 'object'
+      ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim()
+      : '') ||
+    'Customer';
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
       <div className="flex items-center justify-between">
         <div>
           <Link href="/admin/orders" style={{ fontSize: '.75rem', color: 'rgba(247,244,236,.4)' }}>← Orders</Link>
-          <h1 className="font-mono text-xl font-bold mt-1" style={{ color: '#F7F4EC', letterSpacing: '.06em' }}>{order.orderNumber}</h1>
+          <h1 className="font-mono text-xl font-bold mt-1" style={{ color: '#F7F4EC', letterSpacing: '.06em' }}>
+            {order.orderNumber || order.id || (order as any)._id}
+          </h1>
         </div>
-        <span className={`text-xs font-semibold px-3 py-1.5 rounded-pill ${orderStatusColor(order.status)}`}>
-          {orderStatusLabel(order.status, 'en')}
+        <span className={`text-xs font-semibold px-3 py-1.5 rounded-pill ${orderStatusColor(orderStatus)}`}>
+          {orderStatusLabel(orderStatus, 'en')}
         </span>
       </div>
 
@@ -75,12 +140,12 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
             const nameAr = item.productSnapshot?.nameAr || item.product?.nameAr || '';
             const nameEn = item.productSnapshot?.nameEn || item.product?.nameEn || '';
             const sku = item.productSnapshot?.sku || item.product?.sku || '';
-            const itemTotal = item.subtotal || item.total || (item.price * item.quantity);
+            const itemTotal = item.subtotal || item.total || ((item.price || 0) * (item.quantity || 1));
             return (
               <div key={i} className="flex justify-between py-3 border-b last:border-0" style={{ borderColor: 'rgba(210,181,106,.08)' }}>
                 <div>
-                  <p className="text-sm" style={{ color: '#F7F4EC' }}>{loc(nameAr, nameEn, 'en')}</p>
-                  <p className="text-xs" style={{ color: 'rgba(247,244,236,.35)' }}>{sku ? `SKU: ${sku} × ` : ''}{item.quantity}</p>
+                  <p className="text-sm" style={{ color: '#F7F4EC' }}>{loc(nameAr, nameEn, 'en') || 'Product'}</p>
+                  <p className="text-xs" style={{ color: 'rgba(247,244,236,.35)' }}>{sku ? `SKU: ${sku} × ` : ''}{item.quantity || 1}</p>
                 </div>
                 <p className="font-semibold text-sm" style={{ color: '#D2B56A' }}>{formatPrice(itemTotal, 'en')}</p>
               </div>
@@ -88,7 +153,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
           })}
           <div className="flex justify-between pt-4 font-bold" style={{ color: '#F7F4EC' }}>
             <span>Total</span>
-            <span>{formatPrice(order.total, 'en')}</span>
+            <span>{formatPrice(order.total || 0, 'en')}</span>
           </div>
         </div>
 
@@ -96,16 +161,18 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         <div style={CARD}>
           <p className="text-sm font-semibold mb-4" style={{ color: '#D2B56A' }}>Customer</p>
           <p className="text-sm font-medium" style={{ color: '#F7F4EC' }}>
-            {(order.shippingAddress as any)?.recipientName || `${(order.shippingAddress as any)?.firstName || ''} ${(order.shippingAddress as any)?.lastName || ''}`.trim() || 'Customer'}
+            {customerName}
           </p>
-          <p className="text-sm" style={{ color: 'rgba(247,244,236,.5)' }}>{order.shippingAddress?.phone}</p>
+          <p className="text-sm" style={{ color: 'rgba(247,244,236,.5)' }}>
+            {shippingAddr.phone || (userObj && typeof userObj === 'object' ? userObj.phone : '') || '—'}
+          </p>
           <div className="mt-3 text-sm" style={{ color: 'rgba(247,244,236,.5)' }}>
-            <p>{(order.shippingAddress as any)?.streetAddress || (order.shippingAddress as any)?.addressLine1 || ''}</p>
-            <p>{order.shippingAddress?.city}, {order.shippingAddress?.governorate}</p>
+            <p>{shippingAddr.streetAddress || shippingAddr.addressLine1 || ''}</p>
+            <p>{shippingAddr.city || ''}{shippingAddr.city && shippingAddr.governorate ? ', ' : ''}{shippingAddr.governorate || ''}</p>
           </div>
-          {order.shippingAddress?.notes && (
+          {shippingAddr.notes && (
             <p className="mt-2 text-xs rounded-lg p-2" style={{ background: 'rgba(255,255,255,.04)', color: 'rgba(247,244,236,.45)' }}>
-              {order.shippingAddress.notes}
+              {shippingAddr.notes}
             </p>
           )}
         </div>
