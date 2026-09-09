@@ -64,11 +64,9 @@ const cartSchema = new Schema<ICart>(
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      sparse: true,
     },
     sessionId: {
       type: String,
-      sparse: true,
     },
     items: {
       type: [cartItemSchema],

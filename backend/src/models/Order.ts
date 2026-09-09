@@ -187,7 +187,7 @@ const shippingAddressSchema = new Schema<IShippingAddress>(
 // Odoo integration subdocument schema
 const odooIntegrationSchema = new Schema<IOdooIntegration>(
   {
-    odooOrderId: { type: String, sparse: true },
+    odooOrderId: { type: String },
     syncStatus: {
       type: String,
       enum: Object.values(OdooSyncStatus),
