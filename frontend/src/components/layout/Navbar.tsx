@@ -87,23 +87,27 @@ export default function Navbar() {
         </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Lang toggle */}
           <button
             onClick={switchLocale}
-            className="hidden md:flex text-[.72rem] tracking-widest text-ivory/75 border border-white/25 rounded-pill px-3 py-1.5 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] transition-colors"
+            className="hidden md:inline-flex items-center justify-center h-9 px-3 text-[.75rem] tracking-widest font-semibold text-ivory/80 border border-white/20 rounded-full hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all"
           >
             {otherLocale.toUpperCase()}
           </button>
 
           {/* Cart */}
-          <Link href={`/${locale}/cart`} className="relative text-ivory/90 hover:text-[var(--gold-light)] transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <Link
+            href={`/${locale}/cart`}
+            className="relative inline-flex items-center justify-center w-10 h-10 rounded-full text-ivory/90 hover:text-[var(--gold-light)] hover:bg-white/5 transition-all"
+            aria-label="Cart"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="translate-y-[-0.5px]">
               <path d="M6 8h12l-1 12H7L6 8z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
               <path d="M9 8V6a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.6" />
             </svg>
             {itemCount > 0 && (
-              <span className="absolute -top-2 -right-2 w-4 h-4 text-[.6rem] font-black bg-[var(--gold-light)] text-charcoal rounded-full flex items-center justify-center">
+              <span className="absolute top-1.5 right-1.5 min-w-[17px] h-[17px] px-1 text-[.6rem] font-bold bg-[var(--gold-light)] text-[#15130F] rounded-full flex items-center justify-center shadow-md leading-none">
                 {itemCount > 99 ? '99+' : itemCount}
               </span>
             )}
@@ -111,36 +115,53 @@ export default function Navbar() {
 
           {/* Account */}
           {isLoggedIn ? (
-            <div className="hidden md:flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2">
               {isAdmin && (
-                <Link href="/admin" className="text-[.78rem] text-[var(--gold-light)] hover:underline">
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center justify-center h-9 px-3 text-[.75rem] font-semibold text-[var(--gold-light)] border border-[var(--gold-light)]/30 rounded-full hover:bg-[var(--gold-light)]/10 transition-all"
+                >
                   {t('admin')}
                 </Link>
               )}
-              <Link href={`/${locale}/account`} className="text-[.78rem] text-ivory/80 hover:text-[var(--gold-light)] transition-colors">
-                {user?.name?.split(' ')[0]}
+              <Link
+                href={`/${locale}/account`}
+                className="inline-flex items-center justify-center h-9 px-3 text-[.78rem] font-medium text-ivory/85 hover:text-[var(--gold-light)] hover:bg-white/5 rounded-full transition-all gap-1.5"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>{user?.name?.split(' ')[0]}</span>
               </Link>
-              <button onClick={handleLogout} className="text-[.78rem] text-ivory/50 hover:text-ivory/80 transition-colors">
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center justify-center h-9 px-2.5 text-[.75rem] text-ivory/50 hover:text-ivory/90 hover:bg-white/5 rounded-full transition-all"
+              >
                 {t('logout')}
               </button>
             </div>
           ) : (
             <Link
               href={`/${locale}/login`}
-              className="hidden md:flex text-[.78rem] text-ivory/80 hover:text-[var(--gold-light)] transition-colors"
+              className="hidden md:inline-flex items-center justify-center h-9 px-4 text-[.78rem] font-semibold text-ivory/90 hover:text-[var(--gold-light)] border border-white/20 hover:border-[var(--gold-light)] rounded-full hover:bg-white/5 transition-all gap-1.5"
             >
-              {t('login')}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              <span>{t('login')}</span>
             </Link>
           )}
 
           {/* Burger */}
           <button
-            className="md:hidden text-ivory"
+            className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-full text-ivory hover:bg-white/5 transition-all"
             onClick={() => setMenuOpen(true)}
             aria-label="Menu"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
           </button>
         </div>

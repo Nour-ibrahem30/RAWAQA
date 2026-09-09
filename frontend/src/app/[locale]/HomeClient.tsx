@@ -431,35 +431,44 @@ export default function HomeClient({ locale }: { locale: string }) {
       ═══════════════════════════════════════════════ */}
       <section
         ref={featuredRef}
-        style={{ padding: '6rem 0', background: '#12100c', overflow: 'hidden' }}
+        style={{ padding: '6.5rem 0', background: '#12100c', position: 'relative', overflow: 'hidden' }}
         className={`section-reveal${featuredVisible ? ' visible' : ''}`}
       >
-        <div className="wrap">
+        {/* Ambient background glow */}
+        <div aria-hidden style={{
+          position: 'absolute', top: '20%', [isAr ? 'right' : 'left']: '5%',
+          width: '35vw', height: '35vw', minWidth: 280,
+          background: 'radial-gradient(circle, rgba(210,181,106,.07) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        <div className="wrap relative z-10">
           {/* Header */}
-          <div data-reveal="up" style={{
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-            marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem',
-          }}>
+          <div data-reveal="up" className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 sm:mb-14 gap-5">
             <div>
-              <p style={{ fontSize: '.68rem', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '.5rem' }}>
-                {isAr ? 'اختيارات مميزة' : 'Top Picks'}
-              </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-3" style={{ background: 'rgba(210,181,106,.1)', border: '1px solid rgba(210,181,106,.2)' }}>
+                <span style={{ fontSize: '.68rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--gold-light)', fontWeight: 700 }}>
+                  ✨ {isAr ? 'اختيارات الموسم' : 'CURATED COLLECTION'}
+                </span>
+              </div>
               <h2 className="display-3" style={{ color: 'var(--ivory)' }}>{t('featured.title')}</h2>
             </div>
-            <Link href={`/${locale}/shop`} className="btn btn-line-dark btn-sm">{t('featured.view_all')}</Link>
+            <Link
+              href={`/${locale}/shop`}
+              className="btn btn-line-dark btn-sm inline-flex items-center gap-2 self-start sm:self-auto hover:shadow-lg transition-all"
+            >
+              <span>{t('featured.view_all')}</span>
+              <span>{isAr ? '←' : '→'}</span>
+            </Link>
           </div>
 
           {/* Grid */}
           {loading ? (
             <SkeletonGrid count={3} />
           ) : (
-            <div data-stagger style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
-              gap: '1.75rem',
-            }}>
+            <div data-stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               {featured.map(p => (
-                <div key={p.id} className="product-card-stagger">
+                <div key={p.id} className="product-card-stagger transition-transform duration-300 hover:-translate-y-1.5">
                   <ProductCard product={p} />
                 </div>
               ))}
@@ -585,55 +594,84 @@ export default function HomeClient({ locale }: { locale: string }) {
       ═══════════════════════════════════════════════ */}
       <section
         ref={reviewsRef}
-        style={{ padding:'5.5rem 0', background:'#0f0e0a', overflow:'hidden' }}
+        style={{ padding:'6.5rem 0', background:'#0d0b08', position: 'relative', overflow:'hidden' }}
         className={`section-reveal${reviewsVisible ? ' visible' : ''}`}
       >
-        <div className="wrap">
-          <div data-reveal="up" style={{ textAlign:'center',marginBottom:'3rem' }}>
-            <p style={{ fontSize:'.7rem',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--gold)',marginBottom:'.6rem' }}>
-              {isAr ? 'آراء العملاء' : 'Testimonials'}
+        {/* Glow */}
+        <div aria-hidden style={{
+          position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)',
+          width: '60vw', height: '400px', minWidth: 320,
+          background: 'radial-gradient(ellipse at center, rgba(210,181,106,.06) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        <div className="wrap relative z-10">
+          <div data-reveal="up" className="text-center max-w-xl mx-auto mb-12 sm:mb-16">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full mb-3" style={{ background: 'rgba(210,181,106,.1)', border: '1px solid rgba(210,181,106,.2)' }}>
+              <span style={{ fontSize: '.68rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--gold-light)', fontWeight: 700 }}>
+                ⭐ {isAr ? 'آراء العملاء وتجاربهم' : 'VERIFIED REVIEWS'}
+              </span>
+            </div>
+            <h2 className="display-3 mb-3" style={{ color:'var(--ivory)' }}>{t('reviews.title')}</h2>
+            <p style={{ color: 'rgba(247,244,236,.5)', fontSize: '.9rem' }}>
+              {isAr ? 'أكثر من ٥٠٠+ عميل يثقون في راحة وجودة منتجات رواقة' : 'Over 500+ happy customers trust RAWAQA quality and comfort'}
             </p>
-            <h2 className="display-3" style={{ color:'var(--ivory)' }}>{t('reviews.title')}</h2>
           </div>
 
-          <div data-stagger style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:'1.5rem', maxWidth: 960, margin: '0 auto' }}>
+          <div data-stagger className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
             {REVIEWS.map((r) => (
               <Tilt3D key={r.name}>
-                <div className="review-card" style={{
-                  background:'rgba(255,255,255,.04)',
-                  borderRadius:18,
-                  padding:'1.75rem',
-                  border:'1px solid rgba(210,181,106,.1)',
+                <div className="review-card h-full flex flex-col justify-between" style={{
+                  background:'linear-gradient(180deg, rgba(30,27,21,.9) 0%, rgba(20,18,14,.95) 100%)',
+                  borderRadius:22,
+                  padding:'2rem 1.75rem',
+                  border:'1px solid rgba(210,181,106,.15)',
                   position:'relative',overflow:'hidden',
+                  boxShadow: '0 15px 35px rgba(0,0,0,.3)',
+                  transition: 'all 350ms ease',
                 }}>
+                  {/* Decorative quote */}
                   <div aria-hidden style={{
-                    position:'absolute',top:'.75rem',
-                    [isAr?'left':'right']:'1rem',
-                    fontSize:'3.5rem',lineHeight:1,
-                    color:'var(--gold-pale)',fontFamily:'Georgia,serif',pointerEvents:'none',
+                    position:'absolute',top:'.5rem',
+                    [isAr?'left':'right']:'1.25rem',
+                    fontSize:'4.5rem',lineHeight:1,
+                    color:'rgba(210,181,106,.1)',fontFamily:'Georgia,serif',pointerEvents:'none',
                   }}>
                     &ldquo;
                   </div>
-                  <div style={{ display:'flex',gap:'.2rem',marginBottom:'.875rem' }}>
-                    {Array.from({length:r.rating}).map((_,j)=>(
-                      <span key={j} style={{ color:'var(--gold-light)',fontSize:'.95rem' }}>★</span>
-                    ))}
+
+                  {/* Rating & text */}
+                  <div>
+                    <div className="flex items-center gap-1 mb-4">
+                      {Array.from({length:r.rating}).map((_,j)=>(
+                        <span key={j} style={{ color:'var(--gold-light)', fontSize:'1.05rem', filter: 'drop-shadow(0 0 6px rgba(210,181,106,.4))' }}>★</span>
+                      ))}
+                      <span className="text-xs font-bold text-ivory/60 ms-2">5.0</span>
+                    </div>
+                    <p style={{ fontSize:'.925rem', color:'rgba(247,244,236,.85)', lineHeight:1.8, marginBottom:'1.75rem' }}>
+                      &ldquo;{isAr ? r.textAr : r.textEn}&rdquo;
+                    </p>
                   </div>
-                  <p style={{ fontSize:'.875rem',color:'rgba(247,244,236,.75)',lineHeight:1.75,marginBottom:'1.25rem',fontStyle:'italic' }}>
-                    &ldquo;{isAr ? r.textAr : r.textEn}&rdquo;
-                  </p>
-                  <div style={{ display:'flex',alignItems:'center',gap:'.75rem' }}>
+
+                  {/* Author footer */}
+                  <div className="flex items-center gap-3 pt-4 border-t border-white/5">
                     <div style={{
-                      width:36,height:36,borderRadius:'50%',flexShrink:0,
+                      width:42, height:42, borderRadius:'50%', flexShrink:0,
                       background:'linear-gradient(135deg, var(--gold-light), var(--dune))',
-                      display:'flex',alignItems:'center',justifyContent:'center',
-                      fontWeight:800,color:'var(--charcoal)',fontSize:'.85rem',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontWeight:800, color:'#15130F', fontSize:'.95rem',
+                      boxShadow: '0 4px 12px rgba(210,181,106,.25)',
                     }}>
                       {(isAr?r.name:r.nameEn)[0]}
                     </div>
-                    <div>
-                      <p style={{ fontSize:'.82rem',fontWeight:700,color:'var(--ivory)' }}>{isAr?r.name:r.nameEn}</p>
-                      <p style={{ fontSize:'.7rem',color:'rgba(247,244,236,.4)' }}>{isAr?'عميل موثّق':'Verified Customer'}</p>
+                    <div className="flex-1 min-w-0">
+                      <p style={{ fontSize:'.9rem', fontWeight:700, color:'var(--ivory)' }}>{isAr?r.name:r.nameEn}</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#4ade80">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                        </svg>
+                        <p style={{ fontSize:'.72rem', color:'#4ade80', fontWeight: 600 }}>{isAr?'مشترٍ موثّق':'Verified Buyer'}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
