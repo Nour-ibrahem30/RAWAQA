@@ -345,51 +345,14 @@ export const getOrderStats = async (userId?: string): Promise<any> => {
 
 // Helper function to validate status transitions
 function validateStatusTransition(currentStatus: OrderStatus, newStatus: OrderStatus): void {
-  const validTransitions: Record<OrderStatus, OrderStatus[]> = {
-    [OrderStatus.PENDING]: [
-      OrderStatus.CONFIRMED,
-      OrderStatus.PROCESSING,
-      OrderStatus.PENDING_ODOO,
-      OrderStatus.SHIPPED,
-      OrderStatus.CANCELLED,
-    ],
-    [OrderStatus.PENDING_ODOO]: [
-      OrderStatus.CONFIRMED,
-      OrderStatus.PROCESSING,
-      OrderStatus.CANCELLED,
-    ],
-    [OrderStatus.CONFIRMED]: [
-      OrderStatus.PROCESSING,
-      OrderStatus.SHIPPED,
-      OrderStatus.DELIVERED,
-      OrderStatus.CANCELLED,
-    ],
-    [OrderStatus.PROCESSING]: [
-      OrderStatus.CONFIRMED,
-      OrderStatus.SHIPPED,
-      OrderStatus.DELIVERED,
-      OrderStatus.CANCELLED,
-    ],
-    [OrderStatus.SHIPPED]: [
-      OrderStatus.DELIVERED,
-      OrderStatus.CANCELLED,
-    ],
-    [OrderStatus.DELIVERED]: [
-      OrderStatus.REFUNDED,
-    ],
-    [OrderStatus.CANCELLED]: [], // Final state
-    [OrderStatus.REFUNDED]: [], // Final state
-    [OrderStatus.FAILED]: [
-      OrderStatus.PENDING,
-      OrderStatus.CANCELLED,
-    ],
-  };
+  // If already in target status, valid no-op
+  if (currentStatus === newStatus) return;
 
-  const allowed = validTransitions[currentStatus] || [];
-
-  if (!allowed.includes(newStatus)) {
-    throw new Error(`Cannot transition from ${currentStatus} to ${newStatus}`);
+  const validStatuses = Object.values(OrderStatus);
+  if (!validStatuses.includes(newStatus)) {
+    throw new Error(`Invalid order status: ${newStatus}`);
   }
+  // Admin has full control to transition an order between any valid statuses (pending, confirmed, processing, shipped, etc.)
 }
 
 // ─── Export orders as CSV ─────────────────────────────────────────────────────
