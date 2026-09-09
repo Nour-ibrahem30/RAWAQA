@@ -58,7 +58,9 @@ export default function ProductCard({ product }: { product: Product }) {
   const isAr = locale === 'ar';
 
   const [imgIdx, setImgIdx] = useState(0);
-  const images = product.images ?? [];
+  const images = (product.images ?? [])
+    .map((img: any) => (typeof img === 'string' ? img : img?.url))
+    .filter(Boolean);
 
   const name        = loc(product.nameAr, product.nameEn, locale);
   const description = loc(product.descriptionAr, product.descriptionEn, locale);

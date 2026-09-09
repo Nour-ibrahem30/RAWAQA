@@ -122,7 +122,9 @@ export default function ProductDetailPage() {
   const longDesc    = loc(product.longDescriptionAr, product.longDescriptionEn, locale);
   const available   = product.inventory.availableQuantity > 0;
   const isLow       = available && product.inventory.availableQuantity <= product.inventory.lowStockThreshold;
-  const images      = product.images ?? [];
+  const images = (product.images ?? [])
+    .map((img: any) => (typeof img === 'string' ? img : img?.url))
+    .filter(Boolean);
 
   const accordions = [
     { key: 'description', label: t('description'), content: longDesc || description },

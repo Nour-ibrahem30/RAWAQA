@@ -154,6 +154,21 @@ export const createProduct = async (data: Partial<IProduct>): Promise<IProduct> 
     }
   }
 
+  // Normalize images
+  if (data.images && Array.isArray(data.images)) {
+    data.images = data.images.map((img: any, idx: number) => {
+      if (typeof img === 'string') {
+        return {
+          url: img.trim(),
+          alt: `${data.nameEn || 'Product'} image ${idx + 1}`,
+          isPrimary: idx === 0,
+          order: idx,
+        };
+      }
+      return img;
+    });
+  }
+
   // Create product
   const product = new Product(data);
   await product.save();
@@ -195,6 +210,21 @@ export const updateProduct = async (
     if (duplicateProduct) {
       throw new Error('Product with this SKU already exists');
     }
+  }
+
+  // Normalize images
+  if (data.images && Array.isArray(data.images)) {
+    data.images = data.images.map((img: any, idx: number) => {
+      if (typeof img === 'string') {
+        return {
+          url: img.trim(),
+          alt: `${data.nameEn || existingProduct.nameEn || 'Product'} image ${idx + 1}`,
+          isPrimary: idx === 0,
+          order: idx,
+        };
+      }
+      return img;
+    });
   }
 
   // Update product

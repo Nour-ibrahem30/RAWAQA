@@ -155,7 +155,7 @@ const imageSchema = new Schema<IProductImage>(
     },
     alt: {
       type: String,
-      required: true,
+      default: 'Product image',
     },
     isPrimary: {
       type: Boolean,
