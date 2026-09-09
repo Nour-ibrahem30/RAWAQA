@@ -60,14 +60,16 @@ export default function AdminTable<T>({ columns, data, loading, keyField, emptyT
             ))}
           </div>
           {/* Rows */}
-          {data.map(row => (
-            <div
-              key={String(row[keyField])}
-              className="flex gap-4 px-5 py-3.5 border-b transition-colors"
-              style={{ borderColor: 'rgba(210,181,106,.06)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
+          {data.map((row, idx) => {
+            const rowKey = String(row[keyField] ?? (row as any)._id ?? (row as any).id ?? idx);
+            return (
+              <div
+                key={rowKey}
+                className="flex gap-4 px-5 py-3.5 border-b transition-colors"
+                style={{ borderColor: 'rgba(210,181,106,.06)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
               {columns.map(c => (
                 <div
                   key={c.key}

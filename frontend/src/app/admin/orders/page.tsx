@@ -29,22 +29,38 @@ export default function AdminOrdersPage() {
 
   const columns = [
     { key: 'orderNumber', label: 'Order #', render: (o: Order) => <span className="font-mono text-xs" style={{ color: '#D2B56A' }}>{o.orderNumber}</span> },
-    { key: 'customer', label: 'Customer', render: (o: Order) => (
-      <div>
-        <p className="text-sm" style={{ color: '#F7F4EC' }}>{o.shippingAddress.recipientName}</p>
-        <p className="text-[.7rem]" style={{ color: 'rgba(247,244,236,.35)' }}>{o.shippingAddress.phone}</p>
-      </div>
-    )},
-    { key: 'total', label: 'Total', render: (o: Order) => <span style={{ color: '#D2B56A', fontWeight: 600 }}>{formatPrice(o.total, 'en')}</span> },
+    { key: 'customer', label: 'Customer', render: (o: Order) => {
+      const customerName =
+        (o.shippingAddress as any)?.recipientName ||
+        `${(o.shippingAddress as any)?.firstName || ''} ${(o.shippingAddress as any)?.lastName || ''}`.trim() ||
+        'Customer';
+      const phone = o.shippingAddress?.phone || '—';
+      return (
+        <div>
+          <p className="text-sm" style={{ color: '#F7F4EC' }}>{customerName}</p>
+          <p className="text-[.7rem]" style={{ color: 'rgba(247,244,236,.35)' }}>{phone}</p>
+        </div>
+      );
+    }},
+    { key: 'total', label: 'Total', render: (o: Order) => <span style={{ color: '#D2B56A', fontWeight: 600 }}>{formatPrice(o.total || 0, 'en')}</span> },
     { key: 'status', label: 'Status', render: (o: Order) => (
-      <span className={`text-[.65rem] font-semibold px-2 py-0.5 rounded-pill ${orderStatusColor(o.status)}`}>
-        {orderStatusLabel(o.status, 'en')}
+      <span className={`text-[.65rem] font-semibold px-2 py-0.5 rounded-pill ${orderStatusColor(o.status || 'pending')}`}>
+        {orderStatusLabel(o.status || 'pending', 'en')}
       </span>
     )},
-    { key: 'date', label: 'Date', render: (o: Order) => <span className="text-xs" style={{ color: 'rgba(247,244,236,.45)' }}>{new Date(o.createdAt).toLocaleDateString('en-EG')}</span> },
-    { key: 'actions', label: '', render: (o: Order) => (
-      <Link href={`/admin/orders/${o.id}`} className="text-xs hover:underline" style={{ color: '#D2B56A' }}>View →</Link>
+    { key: 'date', label: 'Date', render: (o: Order) => (
+      <span className="text-xs" style={{ color: 'rgba(247,244,236,.45)' }}>
+        {o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-EG') : '—'}
+      </span>
     )},
+    { key: 'actions', label: '', render: (o: Order) => {
+      const orderId = o.id || (o as any)._id || o.orderNumber;
+      return (
+        <Link href={`/admin/orders/${orderId}`} className="text-xs hover:underline" style={{ color: '#D2B56A' }}>
+          View →
+        </Link>
+      );
+    }},
   ];
 
   return (
