@@ -5,12 +5,24 @@ import {
   uploadProductImages,
   deleteProductImage,
   setPrimaryImage,
+  uploadDirect,
 } from '../controllers/upload.controller';
 
 const router = Router();
 
 // All upload routes require admin
 router.use(authenticate, requireAdmin);
+
+/**
+ * POST /api/upload/direct
+ * Upload files directly from device (up to 5 images)
+ */
+router.post(
+  '/direct',
+  upload.array('images', 5),
+  uploadDirect,
+  handleMulterError
+);
 
 /**
  * POST /api/upload/products/:id/images

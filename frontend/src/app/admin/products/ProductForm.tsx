@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { productsApi, categoriesApi } from '@/lib/api';
+import { productsApi, categoriesApi, uploadApi } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { AdminInput, AdminTextarea, AdminSelect } from '@/components/admin/AdminInput';
 import type { Category, Product } from '@/lib/types';
@@ -23,6 +23,7 @@ export default function ProductForm({ productId }: Props) {
   const [form, setForm] = useState(EMPTY);
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(!!productId);
 
   useEffect(() => {
@@ -151,13 +152,73 @@ export default function ProductForm({ productId }: Props) {
 
       {/* Images */}
       <div style={CARD}>
-        <p className="text-sm font-semibold mb-4" style={{ color: '#D2B56A' }}>Images</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm font-semibold" style={{ color: '#D2B56A' }}>Images</p>
+          <label className="text-xs font-semibold px-3 py-1.5 rounded-pill cursor-pointer transition-all" style={{ background: uploading ? 'rgba(210,181,106,.2)' : 'rgba(210,181,106,.15)', border: '1px solid #D2B56A', color: '#D2B56A' }}>
+            {uploading ? 'Uploading...' : '📁 Upload From Computer'}
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              disabled={uploading}
+              onChange={async (e) => {
+                const files = e.target.files;
+                if (!files || files.length === 0) return;
+                setUploading(true);
+                try {
+                  const uploadedUrls = await uploadApi.direct(Array.from(files));
+                  const currentUrls = form.images ? form.images.split(',').map(s => s.trim()).filter(Boolean) : [];
+                  const combined = [...currentUrls, ...uploadedUrls];
+                  setForm(f => ({ ...f, images: combined.join(', ') }));
+                  showToast(`${uploadedUrls.length} image(s) uploaded successfully!`, 'success');
+                } catch (err: any) {
+                  showToast(err.message || 'Failed to upload images', 'error');
+                } finally {
+                  setUploading(false);
+                }
+              }}
+            />
+          </label>
+        </div>
+
         <AdminInput
-          label="Image URLs (comma separated)"
+          label="Image URLs (comma separated or uploaded from computer)"
           value={form.images}
           onChange={set('images')}
-          placeholder="https://cdn.example.com/img1.jpg, https://cdn.example.com/img2.jpg"
+          placeholder="https://cdn.example.com/img1.jpg, /uploads/products/123.jpg"
         />
+
+        {/* Thumbnail Preview Grid */}
+        {form.images && (
+          <div className="flex flex-wrap gap-3 mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,.07)' }}>
+            {form.images.split(',').map(s => s.trim()).filter(Boolean).map((url, idx) => (
+              <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                <img
+                  src={url.startsWith('/') && !url.startsWith('/uploads') ? url : (url.startsWith('/uploads') ? `http://localhost:5002${url}` : url)}
+                  alt={`Product img ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback visual for broken link
+                    (e.currentTarget as HTMLImageElement).src = '/products/cloud-lounger.jpg';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const list = form.images.split(',').map(s => s.trim()).filter(Boolean);
+                    list.splice(idx, 1);
+                    setForm(f => ({ ...f, images: list.join(', ') }));
+                  }}
+                  className="absolute top-0.5 right-0.5 bg-red-600/80 hover:bg-red-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center"
+                  title="Remove image"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Status */}

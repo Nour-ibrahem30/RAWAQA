@@ -433,6 +433,29 @@ export const adsApi = {
   delete: (id: string) =>
     apiFetch(`/admin/ads/${id}`, { method: 'DELETE' }),
 };
+
+/* ============ UPLOAD ============ */
+export const uploadApi = {
+  direct: async (files: File[]): Promise<string[]> => {
+    const formData = new FormData();
+    files.forEach(f => formData.append('images', f));
+    const token = typeof window !== 'undefined' ? localStorage.getItem('rawaqa_token') : null;
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api'}/upload/direct`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Image upload failed');
+    }
+    const data = await res.json();
+    return data.urls || (data.data ? data.data.map((d: any) => d.url) : []);
+  },
+};
+
 export interface ShippingAddressPayload {
   firstName: string;
   lastName: string;

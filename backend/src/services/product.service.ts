@@ -154,6 +154,17 @@ export const createProduct = async (data: Partial<IProduct>): Promise<IProduct> 
     }
   }
 
+  // Auto-generate slugs if not provided
+  if (!data.slugEn) {
+    data.slugEn = (data.nameEn || data.sku || 'product')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || `prod-${Date.now()}`;
+  }
+  if (!data.slugAr) {
+    data.slugAr = data.slugEn;
+  }
+
   // Normalize images
   if (data.images && Array.isArray(data.images)) {
     data.images = data.images.map((img: any, idx: number) => {

@@ -171,3 +171,32 @@ export const setPrimaryImage = async (req: Request, res: Response): Promise<void
     res.status(500).json({ success: false, message: 'Failed to update primary image' });
   }
 };
+
+// POST /api/upload/direct
+// Upload single or multiple images directly from dashboard and return their URLs
+export const uploadDirect = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) {
+      res.status(400).json({ success: false, message: 'No files uploaded' });
+      return;
+    }
+
+    const uploaded = await Promise.all(
+      files.map(async (file, idx) => {
+        return resolveUploadedFile(req, file, 'Product Image', idx === 0, idx);
+      })
+    );
+
+    res.status(201).json({
+      success: true,
+      message: `${uploaded.length} image(s) uploaded successfully`,
+      data: uploaded,
+      urls: uploaded.map(u => u.url),
+    });
+  } catch (err) {
+    logError('uploadDirect error', err);
+    res.status(500).json({ success: false, message: 'Direct upload failed' });
+  }
+};
+

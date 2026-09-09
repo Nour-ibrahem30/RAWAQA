@@ -9,8 +9,8 @@ export const createProductSchema = z.object({
     descriptionEn: z.string().min(1),
     shortDescriptionAr: z.string().max(500).optional(),
     shortDescriptionEn: z.string().max(500).optional(),
-    slugAr: z.string().min(1).toLowerCase(),
-    slugEn: z.string().min(1).toLowerCase(),
+    slugAr: z.string().min(1).toLowerCase().optional(),
+    slugEn: z.string().min(1).toLowerCase().optional(),
     sku: z.string().min(1).toUpperCase(),
     price: z.number().min(0),
     compareAtPrice: z.number().min(0).optional(),
@@ -22,12 +22,15 @@ export const createProductSchema = z.object({
       allowBackorder: z.boolean().default(false),
     }).optional(),
     images: z.array(
-      z.object({
-        url: z.string().url(),
-        alt: z.string(),
-        isPrimary: z.boolean().default(false),
-        order: z.number().default(0),
-      })
+      z.union([
+        z.string(),
+        z.object({
+          url: z.string(),
+          alt: z.string().optional(),
+          isPrimary: z.boolean().default(false),
+          order: z.number().default(0),
+        }),
+      ])
     ).optional(),
     dimensions: z.object({
       length: z.number().min(0).optional(),
@@ -72,12 +75,15 @@ export const updateProductSchema = z.object({
       allowBackorder: z.boolean().optional(),
     }).optional(),
     images: z.array(
-      z.object({
-        url: z.string().url(),
-        alt: z.string(),
-        isPrimary: z.boolean().default(false),
-        order: z.number().default(0),
-      })
+      z.union([
+        z.string(),
+        z.object({
+          url: z.string(),
+          alt: z.string().optional(),
+          isPrimary: z.boolean().default(false),
+          order: z.number().default(0),
+        }),
+      ])
     ).optional(),
     dimensions: z.object({
       length: z.number().min(0).optional(),
