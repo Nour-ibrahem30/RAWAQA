@@ -81,18 +81,55 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       if (result.modifiedCount > 0) fixed++;
     }
 
-    // Reset admin password
-    const adminPass = process.env['ADMIN_PASSWORD'] ?? 'Admin@123456';
-    const hashed    = await bcrypt.hash(adminPass, 10);
+    // Reset admin password to guaranteed credentials
+    const adminPass = 'Admin@123456';
+    const hashedAdmin = await bcrypt.hash(adminPass, 10);
     await db.collection('users').updateOne(
-      { email: process.env['ADMIN_EMAIL'] ?? 'admin@rawaqa.com' },
-      { $set: { password: hashed, role: 'super_admin', isActive: true, isEmailVerified: true } },
+      { email: 'admin@rawaqa.com' },
+      {
+        $set: {
+          email: 'admin@rawaqa.com',
+          password: hashedAdmin,
+          firstName: 'Admin',
+          lastName: 'Rawaqa',
+          role: 'super_admin',
+          isActive: true,
+          isEmailVerified: true,
+          authProvider: 'local',
+          updatedAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+
+    // Reset/Create customer demo account
+    const customerPass = 'Customer@123456';
+    const hashedCustomer = await bcrypt.hash(customerPass, 10);
+    await db.collection('users').updateOne(
+      { email: 'customer@rawaqa.com' },
+      {
+        $set: {
+          email: 'customer@rawaqa.com',
+          password: hashedCustomer,
+          firstName: 'Customer',
+          lastName: 'Demo',
+          role: 'customer',
+          isActive: true,
+          isEmailVerified: true,
+          authProvider: 'local',
+          updatedAt: new Date(),
+        },
+      },
       { upsert: true }
     );
 
     res.json({
       success: true,
-      message: `✅ Fixed ${fixed}/6 products with correct Cloudinary URLs + admin reset`,
+      message: `✅ Fixed ${fixed}/6 products + Admin & Customer credentials reset successfully`,
+      credentials: {
+        admin: { email: 'admin@rawaqa.com', password: 'Admin@123456', role: 'super_admin' },
+        customer: { email: 'customer@rawaqa.com', password: 'Customer@123456', role: 'customer' },
+      },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
