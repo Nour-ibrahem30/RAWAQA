@@ -62,14 +62,26 @@ export const getOrders = async (
     Order.countDocuments(query),
   ]);
 
-  return { orders: orders as any[], total };
+  const mappedOrders = (orders as any[]).map((doc: any) => ({
+    ...doc,
+    id: doc._id?.toString() || doc.id,
+    _id: doc._id?.toString() || doc.id,
+  }));
+
+  return { orders: mappedOrders, total };
 };
 
 /**
- * Get single order by ID
+ * Get single order by ID or order number
  */
 export const getOrderById = async (orderId: string): Promise<IOrder | null> => {
-  return Order.findById(orderId)
+  if (mongoose.Types.ObjectId.isValid(orderId)) {
+    const order = await Order.findById(orderId)
+      .populate('userId', 'firstName lastName email phone')
+      .populate('items.product', 'nameEn nameAr images price');
+    if (order) return order;
+  }
+  return Order.findOne({ orderNumber: orderId })
     .populate('userId', 'firstName lastName email phone')
     .populate('items.product', 'nameEn nameAr images price');
 };
@@ -106,7 +118,13 @@ export const updateOrderStatus = async (
   session.startTransaction();
 
   try {
-    const order = await Order.findById(orderId).session(session);
+    let order: IOrder | null = null;
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId).session(session);
+    }
+    if (!order) {
+      order = await Order.findOne({ orderNumber: orderId }).session(session);
+    }
 
     if (!order) {
       throw new Error('Order not found');

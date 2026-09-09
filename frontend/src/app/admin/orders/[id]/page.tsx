@@ -35,7 +35,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     if (!order) return;
     setUpdating(true);
     try {
-      await ordersApi.updateStatus(order.id, newStatus, note || undefined);
+      const orderId = order.id || (order as any)._id || id;
+      await ordersApi.updateStatus(orderId, newStatus, note || undefined);
       showToast(`Status updated to ${newStatus}`, 'success');
       setNote('');
       load();
@@ -70,7 +71,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         {/* Items */}
         <div style={CARD} className="lg:col-span-2">
           <p className="text-sm font-semibold mb-4" style={{ color: '#D2B56A' }}>Order Items</p>
-          {order.items.map((item: any, i: number) => {
+          {(order.items || []).map((item: any, i: number) => {
             const nameAr = item.productSnapshot?.nameAr || item.product?.nameAr || '';
             const nameEn = item.productSnapshot?.nameEn || item.product?.nameEn || '';
             const sku = item.productSnapshot?.sku || item.product?.sku || '';

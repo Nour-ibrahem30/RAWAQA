@@ -71,7 +71,11 @@ export const getOrder = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check authorization (user can only see their own orders)
-    if (req.user?.role !== 'admin' && order.userId.toString() !== req.user?.userId) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    const orderUserId = (order.userId as any)?._id?.toString() || (order.userId as any)?.toString();
+    const isOwner = Boolean(orderUserId && req.user?.userId && orderUserId === req.user.userId);
+
+    if (!isAdmin && !isOwner) {
       res.status(403).json({
         success: false,
         error: 'Forbidden',
@@ -123,7 +127,10 @@ export const getOrderByNumberHandler = async (
     }
 
     // If not authenticated or not owner/admin, provide public tracking view
-    if (!req.user || (req.user.role !== 'admin' && order.userId.toString() !== req.user.userId)) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    const orderUserId = (order.userId as any)?._id?.toString() || (order.userId as any)?.toString();
+    const isOwner = Boolean(orderUserId && req.user?.userId && orderUserId === req.user.userId);
+    if (!req.user || (!isAdmin && !isOwner)) {
       res.status(200).json({
         success: true,
         data: {
@@ -304,7 +311,8 @@ export const addTracking = async (req: Request, res: Response): Promise<void> =>
 // Get order statistics
 export const getStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.role === 'admin' ? undefined : req.user?.userId;
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    const userId = isAdmin ? undefined : req.user?.userId;
     const stats = await getOrderStats(userId);
 
     res.status(200).json({
