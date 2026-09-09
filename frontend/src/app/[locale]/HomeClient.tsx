@@ -598,119 +598,105 @@ export default function HomeClient({ locale }: { locale: string }) {
       </section>
 
       {/* ═══════════════════════════════════════════════
-          REVIEWS — Single Row Luxury Slider
+          REVIEWS — Compact Luxury Row Slider
       ═══════════════════════════════════════════════ */}
       <section
         ref={reviewsRef}
-        style={{ padding:'6.5rem 0', background:'#0d0b08', position: 'relative', overflow:'hidden' }}
+        style={{ padding:'4.5rem 0', background:'#0d0b08', position: 'relative', overflow:'hidden' }}
         className={`section-reveal${reviewsVisible ? ' visible' : ''}`}
       >
         {/* Glow */}
         <div aria-hidden style={{
           position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)',
-          width: '60vw', height: '400px', minWidth: 320,
-          background: 'radial-gradient(ellipse at center, rgba(210,181,106,.07) 0%, transparent 70%)',
+          width: '50vw', height: '300px', minWidth: 260,
+          background: 'radial-gradient(ellipse at center, rgba(210,181,106,.06) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
-        <div className="wrap relative z-10 max-w-4xl mx-auto">
-          <div data-reveal="up" className="text-center mb-10 sm:mb-12">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full mb-3" style={{ background: 'rgba(210,181,106,.1)', border: '1px solid rgba(210,181,106,.2)' }}>
-              <span style={{ fontSize: '.68rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--gold-light)', fontWeight: 700 }}>
-                ⭐ {isAr ? 'آراء العملاء وتجاربهم' : 'VERIFIED REVIEWS'}
+        <div className="wrap relative z-10 max-w-2xl mx-auto">
+          <div data-reveal="up" className="text-center mb-8">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full mb-2.5" style={{ background: 'rgba(210,181,106,.08)', border: '1px solid rgba(210,181,106,.18)' }}>
+              <span style={{ fontSize: '.62rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--gold-light)', fontWeight: 700 }}>
+                ⭐ {isAr ? 'آراء العملاء' : 'CUSTOMER REVIEWS'}
               </span>
             </div>
-            <h2 className="display-3 mb-2" style={{ color:'var(--ivory)' }}>{t('reviews.title')}</h2>
-            <p style={{ color: 'rgba(247,244,236,.5)', fontSize: '.9rem' }}>
-              {isAr ? 'أكثر من ٥٠٠+ عميل يثقون في راحة وجودة منتجات رواقة' : 'Over 500+ happy customers trust RAWAQA quality and comfort'}
+            <h2 className="display-3 text-xl sm:text-2xl font-bold mb-1.5" style={{ color:'var(--ivory)' }}>{t('reviews.title')}</h2>
+            <p style={{ color: 'rgba(247,244,236,.45)', fontSize: '.82rem' }}>
+              {isAr ? 'تجارب حقيقية لعملاء رواقة في مختلف محافظات مصر' : 'Real experiences from happy RAWAQA customers'}
             </p>
           </div>
 
-          {/* Testimonial Row Slider Card */}
+          {/* Compact Testimonial Row Slider Card */}
           <div data-reveal="scale" className="relative">
             <div
-              className="relative p-6 sm:p-10 md:p-12 rounded-3xl transition-all duration-500"
+              className="relative p-5 sm:p-7 rounded-2xl transition-all duration-500"
               style={{
-                background: 'linear-gradient(165deg, rgba(30,27,21,.95) 0%, rgba(18,16,12,.98) 100%)',
-                border: '1px solid rgba(210,181,106,.2)',
-                boxShadow: '0 20px 50px rgba(0,0,0,.5), 0 0 40px rgba(210,181,106,.05)',
+                background: 'linear-gradient(165deg, rgba(28,25,20,.95) 0%, rgba(16,14,11,.98) 100%)',
+                border: '1px solid rgba(210,181,106,.15)',
+                boxShadow: '0 15px 35px rgba(0,0,0,.4)',
               }}
             >
-              {/* Giant quote watermark */}
-              <div
-                aria-hidden
-                style={{
-                  position: 'absolute', top: '1rem',
-                  [isAr ? 'left' : 'right']: '2rem',
-                  fontSize: '7rem', lineHeight: 1,
-                  color: 'rgba(210,181,106,.08)',
-                  fontFamily: 'Georgia, serif',
-                  pointerEvents: 'none',
-                }}
-              >
-                &ldquo;
-              </div>
-
               {/* Rating */}
-              <div className="flex items-center gap-1.5 mb-6">
-                {Array.from({ length: REVIEWS[activeReview].rating }).map((_, j) => (
-                  <span key={j} style={{ color: 'var(--gold-light)', fontSize: '1.25rem', filter: 'drop-shadow(0 0 8px rgba(210,181,106,.45))' }}>★</span>
-                ))}
-                <span className="text-sm font-bold text-ivory/70 ms-2">5.0 / 5.0</span>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: REVIEWS[activeReview].rating }).map((_, j) => (
+                    <span key={j} style={{ color: 'var(--gold-light)', fontSize: '.95rem' }}>★</span>
+                  ))}
+                  <span className="text-xs font-bold text-ivory/60 ms-1.5">5.0</span>
+                </div>
+                <span className="text-[.68rem] text-[#4ade80] font-semibold flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#4ade80]/10 border border-[#4ade80]/20">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                  </svg>
+                  <span>{isAr ? 'تجربة موثّقة' : 'Verified Review'}</span>
+                </span>
               </div>
 
               {/* Quote Text */}
               <p
                 key={activeReview}
-                className="text-base sm:text-xl md:text-2xl text-ivory/90 leading-relaxed sm:leading-relaxed mb-8 font-medium animate-fadeIn"
-                style={{ minHeight: '4.5rem' }}
+                className="text-sm sm:text-base text-ivory/85 leading-relaxed mb-6 font-normal"
               >
                 &ldquo;{isAr ? REVIEWS[activeReview].textAr : REVIEWS[activeReview].textEn}&rdquo;
               </p>
 
               {/* Author Row & Slider Controls */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-6 border-t border-white/10">
+              <div className="flex items-center justify-between pt-4 border-t border-white/5">
                 {/* Author Info */}
-                <div className="flex items-center gap-3.5">
+                <div className="flex items-center gap-2.5">
                   <div
                     style={{
-                      width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
+                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
                       background: 'linear-gradient(135deg, var(--gold-light), var(--dune))',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 800, color: '#15130F', fontSize: '1.1rem',
-                      boxShadow: '0 4px 16px rgba(210,181,106,.3)',
+                      fontWeight: 800, color: '#15130F', fontSize: '.85rem',
                     }}
                   >
                     {(isAr ? REVIEWS[activeReview].name : REVIEWS[activeReview].nameEn)[0]}
                   </div>
                   <div>
-                    <p className="text-sm sm:text-base font-bold text-ivory">
+                    <p className="text-xs sm:text-sm font-bold text-ivory leading-tight">
                       {isAr ? REVIEWS[activeReview].name : REVIEWS[activeReview].nameEn}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#4ade80">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                      </svg>
-                      <span className="text-xs text-[#4ade80] font-semibold">
-                        {isAr ? 'مشترٍ موثّق' : 'Verified Buyer'}
-                      </span>
-                    </div>
+                    <p className="text-[.68rem] text-ivory/40 mt-0.5">
+                      {isAr ? 'عميل لدى رواقة' : 'RAWAQA Customer'}
+                    </p>
                   </div>
                 </div>
 
                 {/* Slider Nav Buttons & Dots */}
-                <div className="flex items-center gap-4 self-end sm:self-center">
+                <div className="flex items-center gap-3">
                   {/* Dots */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     {REVIEWS.map((_, i) => (
                       <button
                         key={i}
                         onClick={() => setActiveReview(i)}
-                        className="transition-all duration-300 rounded-full"
+                        className="transition-all duration-300 rounded-full block !p-0 !m-0 !border-0"
                         style={{
-                          width: i === activeReview ? 24 : 8,
-                          height: 8,
-                          background: i === activeReview ? 'var(--gold-light)' : 'rgba(255,255,255,.2)',
+                          width: i === activeReview ? 14 : 5,
+                          height: 5,
+                          background: i === activeReview ? 'var(--gold-light)' : 'rgba(255,255,255,.25)',
                         }}
                         aria-label={`Go to slide ${i + 1}`}
                       />
@@ -718,17 +704,17 @@ export default function HomeClient({ locale }: { locale: string }) {
                   </div>
 
                   {/* Arrows */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setActiveReview(prev => (prev - 1 + REVIEWS.length) % REVIEWS.length)}
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-ivory/70 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all"
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-ivory/60 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-xs"
                       aria-label="Previous review"
                     >
                       {isAr ? '→' : '←'}
                     </button>
                     <button
                       onClick={() => setActiveReview(prev => (prev + 1) % REVIEWS.length)}
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-ivory/70 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all"
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-ivory/60 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-xs"
                       aria-label="Next review"
                     >
                       {isAr ? '←' : '→'}
