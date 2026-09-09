@@ -70,17 +70,18 @@ export default function AdminTable<T>({ columns, data, loading, keyField, emptyT
                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-              {columns.map(c => (
-                <div
-                  key={c.key}
-                  className="text-sm"
-                  style={{ color: '#F7F4EC', flex: c.width ?? 1, minWidth: 0, overflow: 'hidden' }}
-                >
-                  {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '')}
-                </div>
-              ))}
-            </div>
-          ))}
+                {columns.map(c => (
+                  <div
+                    key={c.key}
+                    className="text-sm"
+                    style={{ color: '#F7F4EC', flex: c.width ?? 1, minWidth: 0, overflow: 'hidden' }}
+                  >
+                    {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '')}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
