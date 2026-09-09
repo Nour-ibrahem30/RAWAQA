@@ -1146,10 +1146,10 @@ img, svg { display: block; max-width: 100%; }
   }
 }
 
-/* ─── TOUCH TARGETS — minimum 44px for accessibility ─────────── */
+/* ─── TOUCH TARGETS — min-height on mobile ───────────────────── */
 @media (max-width: 768px) {
-  button, a[href], [role="button"] {
-    min-height: 36px;
+  [role=button], a[href], button {
+    min-height: 5px;
   }
 }
 

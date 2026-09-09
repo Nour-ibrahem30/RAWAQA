@@ -54,18 +54,18 @@ export default function Footer() {
       }} />
 
       {/* ── Main footer body ── */}
-      <div className="wrap py-10 sm:py-12">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-start pb-8 border-b border-white/5">
+      <div className="wrap py-14 sm:py-16 md:py-20">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 text-center md:text-start pb-10 md:pb-12 border-b border-white/5">
 
           {/* Brand Info */}
           <div className="flex flex-col items-center md:items-start max-w-sm">
-            <Link href={`/${locale}`} className="inline-flex items-center gap-2.5 mb-2.5">
-              <Image src="/logo.png" alt="RAWAQA" width={36} height={36} style={{ objectFit: 'contain', borderRadius: 8 }} />
-              <span style={{ fontFamily: 'var(--font-fraunces, serif)', fontSize: '1.2rem', letterSpacing: '.14em', color: 'var(--ivory)', fontWeight: 600 }}>
+            <Link href={`/${locale}`} className="inline-flex items-center gap-3 mb-3">
+              <Image src="/logo.png" alt="RAWAQA" width={38} height={38} style={{ objectFit: 'contain', borderRadius: 8 }} />
+              <span style={{ fontFamily: 'var(--font-fraunces, serif)', fontSize: '1.25rem', letterSpacing: '.14em', color: 'var(--ivory)', fontWeight: 600 }}>
                 RAWAQA
               </span>
             </Link>
-            <p className="text-xs sm:text-sm text-ivory/55 leading-relaxed">
+            <p className="text-xs sm:text-sm text-ivory/60 leading-relaxed">
               {isAr
                 ? 'العلامة المصرية الرائدة في صناعة كراسي البين باج الفاخرة للراحة والأناقة.'
                 : 'Leading Egyptian brand crafting luxury bean bag chairs for comfort and elegance.'}
@@ -73,7 +73,7 @@ export default function Footer() {
           </div>
 
           {/* Social Channels: Facebook, Instagram, WhatsApp */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3.5">
             {socialChannels.map(({ name, href, ariaLabel, icon }) => (
               <a
                 key={ariaLabel}
@@ -81,7 +81,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={ariaLabel}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/[0.02] hover:bg-[var(--gold-light)]/10 hover:border-[var(--gold-light)]/40 hover:text-[var(--gold-light)] text-ivory/75 transition-all text-xs font-medium"
+                className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full border border-white/10 bg-white/[0.03] hover:bg-[var(--gold-light)]/10 hover:border-[var(--gold-light)]/40 hover:text-[var(--gold-light)] text-ivory/80 transition-all text-xs font-semibold shadow-sm hover:shadow-md"
               >
                 <span>{icon}</span>
                 <span>{name}</span>
@@ -92,12 +92,12 @@ export default function Footer() {
         </div>
 
         {/* ── Bottom bar ── */}
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-ivory/40">
+        <div className="pt-8 sm:pt-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-ivory/45">
           <p className="text-center sm:text-start">
             © {year} RAWAQA. {t('rights')}.
           </p>
 
-          <p className="text-[var(--gold-light)]/75 font-medium tracking-wider text-[.75rem] flex items-center gap-1">
+          <p className="text-[var(--gold-light)]/80 font-medium tracking-wider text-[.78rem] flex items-center gap-1.5">
             <span>Made in Egypt</span>
             <span>🇪🇬</span>
           </p>
