@@ -41,30 +41,6 @@ export default function Footer() {
         opacity: .3,
       }} />
 
-      {/* ── Trust features strip ── */}
-      <div className="border-b border-white/5 py-8" style={{ background: 'rgba(255,255,255,.015)' }}>
-        <div className="wrap">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-            {[
-              { icon: '🚚', titleAr: 'توصيل سريع', titleEn: 'Fast Delivery', subAr: 'لكل محافظات مصر', subEn: 'To all governorates' },
-              { icon: '🔒', titleAr: 'دفع عند الاستلام', titleEn: 'Cash on Delivery', subAr: 'تسوق بأمان تام', subEn: '100% Secure Shopping' },
-              { icon: '✨', titleAr: 'جودة متميزة', titleEn: 'Premium Quality', subAr: 'خامات تدوم طويلاً', subEn: 'Built to last' },
-              { icon: '🇪🇬', titleAr: 'صناعة مصرية', titleEn: 'Made in Egypt', subAr: 'بأيدي أمهر الحرفيين', subEn: 'Handcrafted with pride' },
-            ].map((f, i) => (
-              <div key={i} className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{ background: 'rgba(210,181,106,.08)', border: '1px solid rgba(210,181,106,.15)' }}>
-                  {f.icon}
-                </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-bold text-ivory/90">{isAr ? f.titleAr : f.titleEn}</p>
-                  <p className="text-[.7rem] sm:text-xs text-ivory/40 mt-0.5">{isAr ? f.subAr : f.subEn}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* ── Main footer body ── */}
       <div className="wrap py-12 sm:py-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-12 mb-12">

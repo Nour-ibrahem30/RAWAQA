@@ -472,11 +472,11 @@ export default function HomeClient({ locale }: { locale: string }) {
 
           {/* Grid */}
           {loading ? (
-            <SkeletonGrid count={4} />
+            <SkeletonGrid count={3} />
           ) : (
-            <div data-stagger className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 max-w-6xl mx-auto">
-              {featured.map(p => (
-                <div key={p.id} className="product-card-stagger transition-transform duration-300 hover:-translate-y-1">
+            <div data-stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
+              {featured.slice(0, 3).map(p => (
+                <div key={p.id} className="product-card-stagger max-w-[310px] sm:max-w-none mx-auto w-full transition-transform duration-300 hover:-translate-y-1">
                   <ProductCard product={p} />
                 </div>
               ))}

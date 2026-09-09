@@ -110,13 +110,21 @@ export default function ProductCard({ product }: { product: Product }) {
 
         {/* Image dots */}
         {images.length > 1 && (
-          <div style={{ position: 'absolute', bottom: '0.5rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '.3rem', zIndex: 2 }}>
+          <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-1.5 z-10 pointer-events-auto">
             {images.map((_, i) => (
               <button
                 key={i}
                 onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIdx(i); }}
                 onMouseEnter={e => { e.preventDefault(); e.stopPropagation(); setImgIdx(i); }}
-                style={{ width: i === imgIdx ? 12 : 5, height: 5, borderRadius: 999, border: 'none', background: i === imgIdx ? 'var(--gold-light)' : 'rgba(255,255,255,.5)', cursor: 'pointer', padding: 0, transition: 'all 300ms ease' }}
+                className="transition-all duration-300 rounded-full !p-0 !m-0 !border-0 block flex-shrink-0"
+                style={{
+                  width: i === imgIdx ? 14 : 5,
+                  height: 5,
+                  minHeight: 5,
+                  maxHeight: 5,
+                  background: i === imgIdx ? 'var(--gold-light)' : 'rgba(255,255,255,.4)',
+                  boxShadow: i === imgIdx ? '0 0 6px rgba(210,181,106,.6)' : 'none',
+                }}
                 aria-label={`Show image ${i + 1}`}
               />
             ))}
