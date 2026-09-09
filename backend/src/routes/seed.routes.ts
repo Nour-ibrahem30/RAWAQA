@@ -82,11 +82,12 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Reset admin password
-    const adminPass = process.env['ADMIN_PASSWORD'] ?? 'Rw#2026@Admin!9xQ$Secure';
+    const adminPass = process.env['ADMIN_PASSWORD'] ?? 'Admin@123456';
     const hashed    = await bcrypt.hash(adminPass, 10);
     await db.collection('users').updateOne(
       { email: process.env['ADMIN_EMAIL'] ?? 'admin@rawaqa.com' },
-      { $set: { password: hashed, role: 'super_admin', isActive: true, isEmailVerified: true } }
+      { $set: { password: hashed, role: 'super_admin', isActive: true, isEmailVerified: true } },
+      { upsert: true }
     );
 
     res.json({
