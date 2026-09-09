@@ -29,14 +29,7 @@ if (env.TRUST_PROXY) {
   app.set('trust proxy', 1);
 }
 
-// Security Headers
-app.use(
-  helmet({
-    contentSecurityPolicy: env.HELMET_CSP_ENABLED ? undefined : false,
-  })
-);
-
-// Universal CORS & Preflight Handler
+// Universal CORS & Preflight Handler (Must be FIRST before any other middleware)
 app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
   if (origin) {
@@ -46,10 +39,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Session-ID, sentry-trace, baggage'
-  );
+  
+  const requestedHeaders = req.headers['access-control-request-headers'];
+  if (requestedHeaders) {
+    res.setHeader('Access-Control-Allow-Headers', requestedHeaders);
+  } else {
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Session-ID, Idempotency-Key, idempotency-key, Accept-Language, accept-language, Cache-Control, Pragma, sentry-trace, baggage'
+    );
+  }
   res.setHeader('Access-Control-Max-Age', '86400');
 
   if (req.method === 'OPTIONS') {
@@ -58,6 +57,13 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   }
   next();
 });
+
+// Security Headers
+app.use(
+  helmet({
+    contentSecurityPolicy: env.HELMET_CSP_ENABLED ? undefined : false,
+  })
+);
 
 // Body Parser
 app.use(express.json({ limit: '10mb' }));
