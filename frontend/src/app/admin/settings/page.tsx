@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DEFAULT_COLORS, type SiteColors } from '@/lib/types';
+import { DEFAULT_COLORS, THEME_PRESETS, type SiteColors, type ThemePreset } from '@/lib/types';
 import { applyColors } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { adminApi } from '@/lib/api';
@@ -162,6 +162,68 @@ export default function AdminSettingsPage() {
           >
             {saved ? (serverSynced ? '✓ Saved to Server' : '✓ Saved Locally') : 'Save Changes'}
           </button>
+        </div>
+      </div>
+
+      {/* Preset Themes Selector */}
+      <div style={CARD}>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-sm font-semibold" style={{ color: '#D2B56A' }}>
+              🎨 Ready-to-Use Theme Presets
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(247,244,236,.4)' }}>
+              Choose a professionally curated theme palette or customize individual colors below.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+          {THEME_PRESETS.map((preset: ThemePreset) => {
+            const isCurrent = JSON.stringify(colors) === JSON.stringify(preset.colors);
+            return (
+              <div
+                key={preset.id}
+                onClick={() => {
+                  setColors(preset.colors);
+                  applyColors(preset.colors as unknown as Record<string, string>);
+                  setSaved(false);
+                  showToast(`Applied "${preset.name}". Click "Save Changes" to publish!`, 'default');
+                }}
+                className="p-3.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between"
+                style={{
+                  background: isCurrent ? 'rgba(210,181,106,.1)' : '#1B1813',
+                  border: isCurrent ? '2px solid #D2B56A' : '1px solid rgba(210,181,106,.15)',
+                  boxShadow: isCurrent ? '0 0 16px rgba(210,181,106,.15)' : 'none',
+                }}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold" style={{ color: isCurrent ? '#D2B56A' : '#F7F4EC' }}>
+                      {preset.name}
+                    </p>
+                    {isCurrent && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: '#D2B56A', color: '#15130F' }}>
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] mt-1 leading-snug" style={{ color: 'rgba(247,244,236,.45)' }}>
+                    {preset.description}
+                  </p>
+                </div>
+
+                {/* Color swatch preview bar */}
+                <div className="flex gap-1.5 mt-3 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                  <div className="w-5 h-5 rounded-md" style={{ background: preset.colors.charcoal }} title="Dark BG" />
+                  <div className="w-5 h-5 rounded-md" style={{ background: preset.colors.ivory }} title="Light BG" />
+                  <div className="w-5 h-5 rounded-md" style={{ background: preset.colors.gold }} title="Accent Gold" />
+                  <div className="w-5 h-5 rounded-md" style={{ background: preset.colors.goldLight }} title="Accent Light" />
+                  <div className="w-5 h-5 rounded-md" style={{ background: preset.colors.ink }} title="Text Ink" />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

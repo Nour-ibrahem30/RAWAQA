@@ -197,3 +197,114 @@ export const DEFAULT_COLORS: SiteColors = {
   forest: '#4B5B45',
   dune: '#C9A876',
 };
+
+export interface ThemePreset {
+  id: string;
+  name: string;
+  nameAr: string;
+  description: string;
+  colors: SiteColors;
+}
+
+export const THEME_PRESETS: ThemePreset[] = [
+  {
+    id: 'luxury-gold',
+    name: 'Classic Luxury Gold (Default)',
+    nameAr: 'الفخامة الذهبية الكلاسيكية (الافتراضي)',
+    description: 'Deep warm charcoal paired with rich royal gold & soft warm ivory.',
+    colors: { ...DEFAULT_COLORS },
+  },
+  {
+    id: 'emerald-velvet',
+    name: 'Emerald Velvet & Sand',
+    nameAr: 'الزمرد المخملي والرمل',
+    description: 'Deep forest greens, soft sand, and warm muted brass accents.',
+    colors: {
+      charcoal: '#0F1A14',
+      charcoalSoft: '#18261E',
+      ivory: '#F4F7F4',
+      ivory2: '#FAFDFB',
+      sand: '#D9E2D8',
+      gold: '#7D9D72',
+      goldLight: '#9FBF94',
+      goldPale: '#DCE8D7',
+      ink: '#14211A',
+      inkSoft: '#506759',
+      clay: '#965239',
+      indigo: '#2A4365',
+      ochre: '#B08838',
+      forest: '#2C5E3B',
+      dune: '#B8A484',
+    },
+  },
+  {
+    id: 'royal-midnight',
+    name: 'Royal Midnight & Pale Gold',
+    nameAr: 'منتصف الليل الملكي والذهب الهادئ',
+    description: 'Deep navy midnight blue with brilliant champagne gold accents.',
+    colors: {
+      charcoal: '#0D131F',
+      charcoalSoft: '#161F33',
+      ivory: '#F3F6FB',
+      ivory2: '#FAFBFD',
+      sand: '#D4DEED',
+      gold: '#C5A866',
+      goldLight: '#DFCA8F',
+      goldPale: '#EFE5C8',
+      ink: '#111B2C',
+      inkSoft: '#56667F',
+      clay: '#B85D43',
+      indigo: '#4A69BD',
+      ochre: '#C8963E',
+      forest: '#3B6E52',
+      dune: '#B5A07E',
+    },
+  },
+  {
+    id: 'desert-terracotta',
+    name: 'Desert Terracotta & Dune',
+    nameAr: 'التيراكوتا الصحراوية والكثبان',
+    description: 'Warm earth terracotta, clay, and sunlit dunes.',
+    colors: {
+      charcoal: '#1C130E',
+      charcoalSoft: '#291C15',
+      ivory: '#F9F5F0',
+      ivory2: '#FDFBF8',
+      sand: '#EBDCCE',
+      gold: '#BD6F4E',
+      goldLight: '#DB8D6D',
+      goldPale: '#F5DACD',
+      ink: '#2D1B13',
+      inkSoft: '#785A4D',
+      clay: '#BF4E30',
+      indigo: '#3D5A80',
+      ochre: '#C4822B',
+      forest: '#4F634A',
+      dune: '#C99E75',
+    },
+  },
+  {
+    id: 'minimalist-monochrome',
+    name: 'Modern Minimalist Monochrome',
+    nameAr: 'المينيماليزم العصري الأحادي',
+    description: 'Ultra-clean dark slate with crisp warm white and subtle bronze highlights.',
+    colors: {
+      charcoal: '#121214',
+      charcoalSoft: '#1B1C20',
+      ivory: '#F5F5F7',
+      ivory2: '#FFFFFF',
+      sand: '#E3E3E8',
+      gold: '#8E8E93',
+      goldLight: '#B0B0B8',
+      goldPale: '#E2E2E8',
+      ink: '#1C1C1E',
+      inkSoft: '#636366',
+      clay: '#8C4A3E',
+      indigo: '#475569',
+      ochre: '#94723C',
+      forest: '#3F5145',
+      dune: '#9E9282',
+    },
+  },
+];
+

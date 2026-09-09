@@ -368,97 +368,111 @@ const startServer = async () => {
       nodeVersion: process.version,
       pid: process.pid,
     });
+    console.log(`RAWAQA Backend is live on port ${port} (0.0.0.0:${port})`);
   });
 
-  try {
-    // 2. Connect to Database
-    await database.connect();
+  // 2. Connect to Database asynchronously with background retry
+  const initDbAndWorkers = async (retries = 5, delay = 3000) => {
+    try {
+      await database.connect();
+      logInfo('Database successfully initialized');
 
-    // 3. Start background workers AFTER DB is confirmed connected
+      // 3. Start background workers AFTER DB is confirmed connected
+      if (env.ENABLE_WORKERS) {
+        logInfo('Starting background workers');
+        outboxWorker.start();
+        inventoryReconciliationWorker.start();
+        autoCancelWorker.start();
+
+        // Restart workers on MongoDB reconnect
+        mongoose.connection.on('reconnected', () => {
+          logInfo('MongoDB reconnected — restarting workers');
+          outboxWorker.stop();
+          inventoryReconciliationWorker.stop();
+          autoCancelWorker.stop();
+          setTimeout(() => {
+            outboxWorker.start();
+            inventoryReconciliationWorker.start();
+            autoCancelWorker.start();
+          }, 2000);
+        });
+
+        // Stop workers on MongoDB disconnect (prevent MongoNotConnectedError)
+        mongoose.connection.on('disconnected', () => {
+          logInfo('MongoDB disconnected — pausing workers');
+          outboxWorker.stop();
+          inventoryReconciliationWorker.stop();
+          autoCancelWorker.stop();
+        });
+      }
+    } catch (error) {
+      logError(`Database connection attempt failed (${retries} retries left):`, error);
+      if (retries > 0) {
+        setTimeout(() => initDbAndWorkers(retries - 1, delay * 1.5), delay);
+      } else {
+        logError('All database connection retries exhausted. Running server in degraded mode to allow port inspection.', error);
+      }
+    }
+  };
+
+  // Launch DB connection in background without blocking port listener
+  initDbAndWorkers();
+
+  // Graceful Shutdown Handlers
+  const gracefulShutdown = async (signal: string) => {
+    logInfo(`${signal} received, starting graceful shutdown`);
+
+    // Stop workers
     if (env.ENABLE_WORKERS) {
-      logInfo('Starting background workers');
-      outboxWorker.start();
-      inventoryReconciliationWorker.start();
-      autoCancelWorker.start();
-
-      // Restart workers on MongoDB reconnect
-      mongoose.connection.on('reconnected', () => {
-        logInfo('MongoDB reconnected — restarting workers');
+      logInfo('Stopping background workers');
+      try {
         outboxWorker.stop();
         inventoryReconciliationWorker.stop();
         autoCancelWorker.stop();
-        setTimeout(() => {
-          outboxWorker.start();
-          inventoryReconciliationWorker.start();
-          autoCancelWorker.start();
-        }, 2000);
-      });
-
-      // Stop workers on MongoDB disconnect (prevent MongoNotConnectedError)
-      mongoose.connection.on('disconnected', () => {
-        logInfo('MongoDB disconnected — pausing workers');
-        outboxWorker.stop();
-        inventoryReconciliationWorker.stop();
-        autoCancelWorker.stop();
-      });
+      } catch (err) {
+        logError('Error stopping workers', err);
+      }
     }
 
-    // Graceful Shutdown Handlers
-    const gracefulShutdown = async (signal: string) => {
-      logInfo(`${signal} received, starting graceful shutdown`);
+    // Stop accepting new connections
+    server.close(async () => {
+      logInfo('HTTP server closed');
 
-      // Stop workers
-      if (env.ENABLE_WORKERS) {
-        logInfo('Stopping background workers');
-        outboxWorker.stop();
-        inventoryReconciliationWorker.stop();
-        autoCancelWorker.stop();
-      }
-
-      // Stop accepting new connections
-      server.close(async () => {
-        logInfo('HTTP server closed');
-
-        try {
-          // Close database connection
+      try {
+        // Close database connection if open
+        if (database.isConnected()) {
           await database.disconnect();
-
-          logInfo('Graceful shutdown completed');
-          process.exit(0);
-        } catch (error) {
-          logError('Error during shutdown', error);
-          process.exit(1);
         }
-      });
-
-      // Force shutdown after 30 seconds
-      setTimeout(() => {
-        logger.error('Forced shutdown after timeout');
+        logInfo('Graceful shutdown completed');
+        process.exit(0);
+      } catch (error) {
+        logError('Error during shutdown', error);
         process.exit(1);
-      }, 30000);
-    };
-
-    // Handle shutdown signals
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-    // Handle uncaught exceptions
-    process.on('uncaughtException', (error: Error) => {
-      logError('Uncaught Exception', error);
-      captureException(error, { source: 'uncaughtException' });
-      gracefulShutdown('uncaughtException');
+      }
     });
 
-    // Handle unhandled promise rejections
-    process.on('unhandledRejection', (reason: any) => {
-      logError('Unhandled Rejection', reason);
-      captureException(reason, { source: 'unhandledRejection' });
-      gracefulShutdown('unhandledRejection');
-    });
-  } catch (error) {
-    logError('Failed to start server', error);
-    process.exit(1);
-  }
+    // Force shutdown after 30 seconds
+    setTimeout(() => {
+      logger.error('Forced shutdown after timeout');
+      process.exit(1);
+    }, 30000);
+  };
+
+  // Handle shutdown signals
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error: Error) => {
+    logError('Uncaught Exception', error);
+    captureException(error, { source: 'uncaughtException' });
+  });
+
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (reason: any) => {
+    logError('Unhandled Rejection', reason);
+    captureException(reason, { source: 'unhandledRejection' });
+  });
 };
 
 // Start the server
