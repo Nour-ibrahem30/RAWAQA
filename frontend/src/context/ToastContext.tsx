@@ -16,20 +16,39 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showToast = useCallback((msg: string, t: ToastType = 'default', duration = 2800) => {
+  const hideToast = useCallback(() => {
+    setVisible(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setTimeout(() => setMessage(''), 350);
+  }, []);
+
+  const showToast = useCallback((msg: string, t: ToastType = 'default', duration = 3000) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setMessage(msg);
     setType(t);
-    setVisible(true);
-    timerRef.current = setTimeout(() => setVisible(false), duration);
-  }, []);
+    // Trigger visible on next tick to ensure CSS transition fires
+    requestAnimationFrame(() => {
+      setVisible(true);
+    });
+
+    timerRef.current = setTimeout(() => {
+      hideToast();
+    }, duration);
+  }, [hideToast]);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className={`toast ${type !== 'default' ? type : ''} ${visible ? 'show' : ''}`}>
-        {message}
-      </div>
+      {message && (
+        <div
+          onClick={hideToast}
+          className={`toast ${type !== 'default' ? type : ''} ${visible ? 'show' : ''}`}
+          role="alert"
+          style={{ cursor: 'pointer' }}
+        >
+          <span>{message}</span>
+        </div>
+      )}
     </ToastContext.Provider>
   );
 }

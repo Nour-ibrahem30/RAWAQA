@@ -29,15 +29,44 @@ if (env.TRUST_PROXY) {
   app.set('trust proxy', 1);
 }
 
-// Universal CORS & Preflight Handler (Must be FIRST before any other middleware)
+// Universal Strict CORS & Preflight Handler (Enterprise Security Whitelist)
+const configuredOrigins = env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map((o) => o.trim()) : [];
+
+const isAllowedOrigin = (origin: string): boolean => {
+  if (!origin) return true;
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname;
+
+    // 1. Allow production & preview Vercel domains
+    if (hostname.endsWith('.vercel.app')) return true;
+
+    // 2. Allow official brand domain & subdomains
+    if (hostname === 'rawaqa.com' || hostname.endsWith('.rawaqa.com')) return true;
+
+    // 3. Allow local development
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+
+    // 4. Allow any explicitly configured origins in ENV
+    if (configuredOrigins.some((allowed) => allowed.includes(hostname))) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
-  if (origin) {
+
+  if (origin && isAllowedOrigin(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (!origin) {
+    // Mobile apps, server-to-server, curl
     res.setHeader('Access-Control-Allow-Origin', '*');
   }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
   
   const requestedHeaders = req.headers['access-control-request-headers'];
