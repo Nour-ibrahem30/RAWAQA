@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import express, { Application, Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
-import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
