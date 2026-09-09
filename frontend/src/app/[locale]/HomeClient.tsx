@@ -134,11 +134,12 @@ export default function HomeClient({ locale }: { locale: string }) {
   const { data: ctaContent }   = useSiteContent('cta');
   const { data: statsContent } = useSiteContent('stats');
   const [featured, setFeatured] = useState<Product[]>(
-    STATIC_PRODUCTS.filter(p => p.featured).slice(0, 3)
+    STATIC_PRODUCTS.filter(p => p.featured).slice(0, 4)
   );
   const [loading, setLoading]   = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [statsVisible, setStats] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
+  const [activeReview, setActiveReview] = useState(0);
 
   // Section reveal refs
   const categoriesRef = useRef<HTMLElement>(null);
@@ -154,9 +155,16 @@ export default function HomeClient({ locale }: { locale: string }) {
 
   useEffect(() => {
     productsApi.featured(locale)
-      .then(r => { if (r.data?.length) setFeatured(r.data.slice(0, 3)); })
+      .then(r => { if (r.data?.length) setFeatured(r.data.slice(0, 4)); })
       .catch(() => {/* keep static fallback */});
   }, [locale]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveReview(prev => (prev + 1) % REVIEWS.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!statsRef.current) return;
@@ -464,11 +472,11 @@ export default function HomeClient({ locale }: { locale: string }) {
 
           {/* Grid */}
           {loading ? (
-            <SkeletonGrid count={3} />
+            <SkeletonGrid count={4} />
           ) : (
-            <div data-stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div data-stagger className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 max-w-6xl mx-auto">
               {featured.map(p => (
-                <div key={p.id} className="product-card-stagger transition-transform duration-300 hover:-translate-y-1.5">
+                <div key={p.id} className="product-card-stagger transition-transform duration-300 hover:-translate-y-1">
                   <ProductCard product={p} />
                 </div>
               ))}
@@ -523,7 +531,7 @@ export default function HomeClient({ locale }: { locale: string }) {
                 {/* Overlay */}
                 <div aria-hidden style={{
                   position:'absolute',inset:0,
-                  background:'linear-gradient(135deg, rgba(21,19,15,.3) 0%, transparent 60%)',
+                  background:'linear-gradient(135deg, rgba(210,181,106,.1) 0%, transparent 60%)',
                 }} />
                 <span style={{
                   position:'absolute',bottom:'1.25rem',right:'1.25rem',
@@ -590,7 +598,7 @@ export default function HomeClient({ locale }: { locale: string }) {
       </section>
 
       {/* ═══════════════════════════════════════════════
-          REVIEWS
+          REVIEWS — Single Row Luxury Slider
       ═══════════════════════════════════════════════ */}
       <section
         ref={reviewsRef}
@@ -601,82 +609,134 @@ export default function HomeClient({ locale }: { locale: string }) {
         <div aria-hidden style={{
           position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)',
           width: '60vw', height: '400px', minWidth: 320,
-          background: 'radial-gradient(ellipse at center, rgba(210,181,106,.06) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at center, rgba(210,181,106,.07) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
-        <div className="wrap relative z-10">
-          <div data-reveal="up" className="text-center max-w-xl mx-auto mb-12 sm:mb-16">
+        <div className="wrap relative z-10 max-w-4xl mx-auto">
+          <div data-reveal="up" className="text-center mb-10 sm:mb-12">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full mb-3" style={{ background: 'rgba(210,181,106,.1)', border: '1px solid rgba(210,181,106,.2)' }}>
               <span style={{ fontSize: '.68rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--gold-light)', fontWeight: 700 }}>
                 ⭐ {isAr ? 'آراء العملاء وتجاربهم' : 'VERIFIED REVIEWS'}
               </span>
             </div>
-            <h2 className="display-3 mb-3" style={{ color:'var(--ivory)' }}>{t('reviews.title')}</h2>
+            <h2 className="display-3 mb-2" style={{ color:'var(--ivory)' }}>{t('reviews.title')}</h2>
             <p style={{ color: 'rgba(247,244,236,.5)', fontSize: '.9rem' }}>
               {isAr ? 'أكثر من ٥٠٠+ عميل يثقون في راحة وجودة منتجات رواقة' : 'Over 500+ happy customers trust RAWAQA quality and comfort'}
             </p>
           </div>
 
-          <div data-stagger className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
-            {REVIEWS.map((r) => (
-              <Tilt3D key={r.name}>
-                <div className="review-card h-full flex flex-col justify-between" style={{
-                  background:'linear-gradient(180deg, rgba(30,27,21,.9) 0%, rgba(20,18,14,.95) 100%)',
-                  borderRadius:22,
-                  padding:'2rem 1.75rem',
-                  border:'1px solid rgba(210,181,106,.15)',
-                  position:'relative',overflow:'hidden',
-                  boxShadow: '0 15px 35px rgba(0,0,0,.3)',
-                  transition: 'all 350ms ease',
-                }}>
-                  {/* Decorative quote */}
-                  <div aria-hidden style={{
-                    position:'absolute',top:'.5rem',
-                    [isAr?'left':'right']:'1.25rem',
-                    fontSize:'4.5rem',lineHeight:1,
-                    color:'rgba(210,181,106,.1)',fontFamily:'Georgia,serif',pointerEvents:'none',
-                  }}>
-                    &ldquo;
-                  </div>
+          {/* Testimonial Row Slider Card */}
+          <div data-reveal="scale" className="relative">
+            <div
+              className="relative p-6 sm:p-10 md:p-12 rounded-3xl transition-all duration-500"
+              style={{
+                background: 'linear-gradient(165deg, rgba(30,27,21,.95) 0%, rgba(18,16,12,.98) 100%)',
+                border: '1px solid rgba(210,181,106,.2)',
+                boxShadow: '0 20px 50px rgba(0,0,0,.5), 0 0 40px rgba(210,181,106,.05)',
+              }}
+            >
+              {/* Giant quote watermark */}
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute', top: '1rem',
+                  [isAr ? 'left' : 'right']: '2rem',
+                  fontSize: '7rem', lineHeight: 1,
+                  color: 'rgba(210,181,106,.08)',
+                  fontFamily: 'Georgia, serif',
+                  pointerEvents: 'none',
+                }}
+              >
+                &ldquo;
+              </div>
 
-                  {/* Rating & text */}
+              {/* Rating */}
+              <div className="flex items-center gap-1.5 mb-6">
+                {Array.from({ length: REVIEWS[activeReview].rating }).map((_, j) => (
+                  <span key={j} style={{ color: 'var(--gold-light)', fontSize: '1.25rem', filter: 'drop-shadow(0 0 8px rgba(210,181,106,.45))' }}>★</span>
+                ))}
+                <span className="text-sm font-bold text-ivory/70 ms-2">5.0 / 5.0</span>
+              </div>
+
+              {/* Quote Text */}
+              <p
+                key={activeReview}
+                className="text-base sm:text-xl md:text-2xl text-ivory/90 leading-relaxed sm:leading-relaxed mb-8 font-medium animate-fadeIn"
+                style={{ minHeight: '4.5rem' }}
+              >
+                &ldquo;{isAr ? REVIEWS[activeReview].textAr : REVIEWS[activeReview].textEn}&rdquo;
+              </p>
+
+              {/* Author Row & Slider Controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-6 border-t border-white/10">
+                {/* Author Info */}
+                <div className="flex items-center gap-3.5">
+                  <div
+                    style={{
+                      width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, var(--gold-light), var(--dune))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 800, color: '#15130F', fontSize: '1.1rem',
+                      boxShadow: '0 4px 16px rgba(210,181,106,.3)',
+                    }}
+                  >
+                    {(isAr ? REVIEWS[activeReview].name : REVIEWS[activeReview].nameEn)[0]}
+                  </div>
                   <div>
-                    <div className="flex items-center gap-1 mb-4">
-                      {Array.from({length:r.rating}).map((_,j)=>(
-                        <span key={j} style={{ color:'var(--gold-light)', fontSize:'1.05rem', filter: 'drop-shadow(0 0 6px rgba(210,181,106,.4))' }}>★</span>
-                      ))}
-                      <span className="text-xs font-bold text-ivory/60 ms-2">5.0</span>
-                    </div>
-                    <p style={{ fontSize:'.925rem', color:'rgba(247,244,236,.85)', lineHeight:1.8, marginBottom:'1.75rem' }}>
-                      &ldquo;{isAr ? r.textAr : r.textEn}&rdquo;
+                    <p className="text-sm sm:text-base font-bold text-ivory">
+                      {isAr ? REVIEWS[activeReview].name : REVIEWS[activeReview].nameEn}
                     </p>
-                  </div>
-
-                  {/* Author footer */}
-                  <div className="flex items-center gap-3 pt-4 border-t border-white/5">
-                    <div style={{
-                      width:42, height:42, borderRadius:'50%', flexShrink:0,
-                      background:'linear-gradient(135deg, var(--gold-light), var(--dune))',
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                      fontWeight:800, color:'#15130F', fontSize:'.95rem',
-                      boxShadow: '0 4px 12px rgba(210,181,106,.25)',
-                    }}>
-                      {(isAr?r.name:r.nameEn)[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p style={{ fontSize:'.9rem', fontWeight:700, color:'var(--ivory)' }}>{isAr?r.name:r.nameEn}</p>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#4ade80">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                        </svg>
-                        <p style={{ fontSize:'.72rem', color:'#4ade80', fontWeight: 600 }}>{isAr?'مشترٍ موثّق':'Verified Buyer'}</p>
-                      </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#4ade80">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                      </svg>
+                      <span className="text-xs text-[#4ade80] font-semibold">
+                        {isAr ? 'مشترٍ موثّق' : 'Verified Buyer'}
+                      </span>
                     </div>
                   </div>
                 </div>
-              </Tilt3D>
-            ))}
+
+                {/* Slider Nav Buttons & Dots */}
+                <div className="flex items-center gap-4 self-end sm:self-center">
+                  {/* Dots */}
+                  <div className="flex items-center gap-1.5">
+                    {REVIEWS.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setActiveReview(i)}
+                        className="transition-all duration-300 rounded-full"
+                        style={{
+                          width: i === activeReview ? 24 : 8,
+                          height: 8,
+                          background: i === activeReview ? 'var(--gold-light)' : 'rgba(255,255,255,.2)',
+                        }}
+                        aria-label={`Go to slide ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Arrows */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveReview(prev => (prev - 1 + REVIEWS.length) % REVIEWS.length)}
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-ivory/70 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all"
+                      aria-label="Previous review"
+                    >
+                      {isAr ? '→' : '←'}
+                    </button>
+                    <button
+                      onClick={() => setActiveReview(prev => (prev + 1) % REVIEWS.length)}
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-ivory/70 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all"
+                      aria-label="Next review"
+                    >
+                      {isAr ? '←' : '→'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

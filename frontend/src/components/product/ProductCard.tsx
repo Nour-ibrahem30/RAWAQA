@@ -101,7 +101,7 @@ export default function ProductCard({ product }: { product: Product }) {
         className="img-zoom"
         style={{
           position: 'relative',
-          aspectRatio: '4/5',
+          aspectRatio: '1/1',
           background: 'rgba(21,19,15,.6)',
           overflow: 'hidden',
         }}
@@ -110,13 +110,13 @@ export default function ProductCard({ product }: { product: Product }) {
 
         {/* Image dots */}
         {images.length > 1 && (
-          <div style={{ position: 'absolute', bottom: '0.6rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '.35rem', zIndex: 2 }}>
+          <div style={{ position: 'absolute', bottom: '0.5rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '.3rem', zIndex: 2 }}>
             {images.map((_, i) => (
               <button
                 key={i}
                 onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIdx(i); }}
                 onMouseEnter={e => { e.preventDefault(); e.stopPropagation(); setImgIdx(i); }}
-                style={{ width: i === imgIdx ? 14 : 6, height: 6, borderRadius: 999, border: 'none', background: i === imgIdx ? 'var(--gold-light)' : 'rgba(255,255,255,.5)', cursor: 'pointer', padding: 0, transition: 'all 300ms ease' }}
+                style={{ width: i === imgIdx ? 12 : 5, height: 5, borderRadius: 999, border: 'none', background: i === imgIdx ? 'var(--gold-light)' : 'rgba(255,255,255,.5)', cursor: 'pointer', padding: 0, transition: 'all 300ms ease' }}
                 aria-label={`Show image ${i + 1}`}
               />
             ))}
@@ -127,36 +127,36 @@ export default function ProductCard({ product }: { product: Product }) {
         {product.featured && (
           <span style={{
             position: 'absolute',
-            top: '0.875rem',
-            [isAr ? 'right' : 'left']: '0.875rem',
+            top: '0.65rem',
+            [isAr ? 'right' : 'left']: '0.65rem',
             background: 'var(--gold-light)',
             color: 'var(--charcoal)',
-            fontSize: '.62rem',
+            fontSize: '.58rem',
             fontWeight: 800,
-            letterSpacing: '.08em',
+            letterSpacing: '.06em',
             textTransform: 'uppercase',
-            padding: '.3rem .8rem',
+            padding: '.25rem .65rem',
             borderRadius: 999,
-            boxShadow: '0 2px 12px rgba(210,181,106,.4)',
+            boxShadow: '0 2px 10px rgba(210,181,106,.35)',
           }}>
             {isAr ? 'مميز' : 'Featured'}
           </span>
         )}
 
         {/* Wishlist button */}
-        <div style={{ position: 'absolute', top: '0.875rem', [isAr ? 'left' : 'right']: '0.875rem', zIndex: 2 }}
+        <div style={{ position: 'absolute', top: '0.65rem', [isAr ? 'left' : 'right']: '0.65rem', zIndex: 2 }}
           onClick={e => e.preventDefault()}>
-          <WishlistButton productId={product.id} variant="icon" size={16} />
+          <WishlistButton productId={product.id} variant="icon" size={15} />
         </div>
 
         {/* Out of stock overlay */}
         {!available && (
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'rgba(21,19,15,.55)',
+            background: 'rgba(21,19,15,.6)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{ color: 'rgba(247,244,236,.85)', fontSize: '.875rem', fontWeight: 600, letterSpacing: '.04em' }}>
+            <span style={{ color: 'rgba(247,244,236,.85)', fontSize: '.78rem', fontWeight: 600, letterSpacing: '.04em' }}>
               {t('out_of_stock')}
             </span>
           </div>
@@ -168,11 +168,11 @@ export default function ProductCard({ product }: { product: Product }) {
             onClick={handleAdd}
             style={{
               position: 'absolute',
-              bottom: '0.875rem',
-              left: '0.875rem',
-              right: '0.875rem',
+              bottom: '0.65rem',
+              left: '0.65rem',
+              right: '0.65rem',
             }}
-            className="btn btn-gold btn-sm opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300"
+            className="btn btn-gold btn-sm opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 text-xs py-1.5"
           >
             {t('add_to_cart')}
           </button>
@@ -181,16 +181,16 @@ export default function ProductCard({ product }: { product: Product }) {
 
       {/* ── Info ──────────────────────────────────────────── */}
       <div style={{
-        padding: '1.25rem 1.25rem 1.5rem',
+        padding: '0.875rem 1rem 1.1rem',
         display: 'flex',
         flexDirection: 'column',
-        gap: '0.5rem',
+        gap: '0.35rem',
         flexGrow: 1,
       }}>
         {/* Category */}
         <p style={{
-          fontSize: '.65rem',
-          letterSpacing: '.14em',
+          fontSize: '.6rem',
+          letterSpacing: '.12em',
           textTransform: 'uppercase',
           color: 'var(--gold)',
           fontWeight: 600,
@@ -201,8 +201,8 @@ export default function ProductCard({ product }: { product: Product }) {
         {/* Name */}
         <h3 style={{
           fontWeight: 700,
-          fontSize: '.975rem',
-          lineHeight: 1.35,
+          fontSize: '.875rem',
+          lineHeight: 1.3,
           color: 'var(--ivory)',
           display: '-webkit-box',
           WebkitLineClamp: 2,
@@ -213,33 +213,19 @@ export default function ProductCard({ product }: { product: Product }) {
           {name}
         </h3>
 
-        {/* Description */}
-        <p style={{
-          fontSize: '.82rem',
-          color: 'rgba(247,244,236,.45)',
-          lineHeight: 1.55,
-          overflow: 'hidden',
-          display: '-webkit-box',
-          WebkitLineClamp: 1,
-          WebkitBoxOrient: 'vertical',
-          marginBottom: '0.25rem',
-        }}>
-          {description}
-        </p>
-
         {/* Price row */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           marginTop: 'auto',
-          paddingTop: '0.75rem',
-          borderTop: '1px solid rgba(210,181,106,.1)',
+          paddingTop: '0.5rem',
+          borderTop: '1px solid rgba(210,181,106,.08)',
         }}>
           <div>
             <span className="price-3d" style={{
               fontWeight: 800,
-              fontSize: '1.05rem',
+              fontSize: '.95rem',
               color: 'var(--gold-light)',
               display: 'inline-block',
             }}>
@@ -247,10 +233,10 @@ export default function ProductCard({ product }: { product: Product }) {
             </span>
             {product.compareAtPrice && product.compareAtPrice > product.price && (
               <span style={{
-                fontSize: '.72rem',
+                fontSize: '.68rem',
                 color: 'rgba(247,244,236,.3)',
                 textDecoration: 'line-through',
-                marginInlineStart: '.5rem',
+                marginInlineStart: '.4rem',
               }}>
                 {formatPrice(product.compareAtPrice, locale)}
               </span>
@@ -259,11 +245,11 @@ export default function ProductCard({ product }: { product: Product }) {
 
           {isLow && (
             <span style={{
-              fontSize: '.62rem',
+              fontSize: '.58rem',
               color: '#c2410c',
               fontWeight: 700,
               background: '#fff7ed',
-              padding: '.2rem .6rem',
+              padding: '.15rem .5rem',
               borderRadius: 999,
             }}>
               {t('low_stock')}
@@ -275,8 +261,8 @@ export default function ProductCard({ product }: { product: Product }) {
         {available && (
           <button
             onClick={handleAdd}
-            className="btn btn-gold btn-sm md:hidden"
-            style={{ marginTop: '0.75rem', width: '100%' }}
+            className="btn btn-gold btn-sm md:hidden text-xs py-1.5 mt-1"
+            style={{ width: '100%' }}
           >
             {t('add_to_cart')}
           </button>
