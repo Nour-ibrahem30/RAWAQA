@@ -217,18 +217,9 @@ export default function HomeClient({ locale }: { locale: string }) {
         }} />
         <Particles />
 
-        <div className="wrap" style={{
-          position: 'relative',
-          zIndex: 1,
-          paddingTop: '7.5rem',
-          paddingBottom: '6rem',
-          display: 'grid',
-          /* Arabic: bag left, text right | English: text left, bag right */
-          gridTemplateColumns: 'minmax(0,1fr) minmax(0,42%)',
-          gap: 'clamp(1.5rem, 3vw, 3rem)',
-          alignItems: 'center',
-        }}>          {/* ── Text block ── */}
-          <div style={{ order: isAr ? 2 : 1 }}>
+        <div className="wrap relative z-10 pt-24 pb-12 sm:pt-32 sm:pb-20 md:pt-40 md:pb-24 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          {/* ── Text block ── */}
+          <div className="lg:col-span-7">
             {/* Eyebrow */}
             <p style={{
               fontSize: '.7rem',
@@ -333,12 +324,8 @@ export default function HomeClient({ locale }: { locale: string }) {
 
           {/* ── Slideshow ── */}
           <div
-            className="hero-slideshow-wrap"
+            className="hero-slideshow-wrap lg:col-span-5 relative w-full aspect-[4/5] sm:aspect-square max-w-sm sm:max-w-md mx-auto lg:max-w-none rounded-[28px] overflow-hidden shadow-2xl"
             style={{
-              order: isAr ? 1 : 2,
-              position: 'relative',
-              borderRadius: 28,
-              overflow: 'hidden',
               opacity: 0,
               animation: 'fadeIn 900ms 300ms forwards',
               boxShadow: '0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(210,181,106,.1)',

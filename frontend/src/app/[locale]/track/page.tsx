@@ -52,11 +52,11 @@ export default function TrackPage() {
         background: 'radial-gradient(ellipse 50% 40% at 50% 20%, rgba(173,138,76,.08) 0%, transparent 70%)',
       }} />
 
-      <div className="wrap" style={{ paddingTop: '8rem', paddingBottom: '5rem' }}>
+      <div className="wrap pt-24 sm:pt-28 pb-12 sm:pb-20">
         <div style={{ maxWidth: 680, margin: '0 auto' }}>
 
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
             <p style={{ fontSize: '.68rem', letterSpacing: '.2em', textTransform: 'uppercase', color: GOLD, marginBottom: '.75rem' }}>
               {isAr ? 'تتبع طلبك' : 'Order Tracking'}
             </p>
@@ -65,7 +65,7 @@ export default function TrackPage() {
           </div>
 
           {/* Search form */}
-          <form onSubmit={handleTrack} style={{ display: 'flex', gap: '.75rem', marginBottom: '3rem' }}>
+          <form onSubmit={handleTrack} className="flex flex-col sm:flex-row gap-3 mb-10">
             <input
               type="text"
               value={input}
@@ -112,7 +112,7 @@ export default function TrackPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
               {/* Meta cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 {[
                   { label: t('order_number'), value: order.orderNumber, mono: true },
                   { label: t('status'), value: (

@@ -277,7 +277,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── Charts row ────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* Revenue last 7 days */}
         <div style={{ ...CARD, padding: '1.25rem' }}>
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── Top Products + Low Stock ───────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* Top selling products */}
         <div style={{ ...CARD, padding: '1.25rem' }}>

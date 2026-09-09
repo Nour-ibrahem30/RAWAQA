@@ -41,10 +41,10 @@ export default function Navbar() {
   return (
     <>
       <nav
-        className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-[6vw] transition-all duration-300 ${
+        className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 sm:px-[6vw] transition-all duration-300 ${
           solid
-            ? 'py-4 bg-charcoal/90 backdrop-blur-md border-b border-[var(--charcoal-line)]'
-            : 'py-6'
+            ? 'py-3 sm:py-4 bg-charcoal/95 backdrop-blur-md border-b border-[var(--charcoal-line)] shadow-lg'
+            : 'py-3.5 sm:py-6 bg-gradient-to-b from-[#15130F]/90 via-[#15130F]/50 to-transparent backdrop-blur-[2px]'
         }`}
         style={{ color: 'var(--ivory)' }}
       >

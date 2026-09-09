@@ -72,10 +72,10 @@ export default function WishlistPage() {
 
   return (
     <div style={{ background: DARK, minHeight: '100vh', color: IVORY }}>
-      <div className="wrap" style={{ paddingTop: '7rem', paddingBottom: '5rem' }}>
+      <div className="wrap pt-24 sm:pt-28 pb-12 sm:pb-20">
 
         {/* Header */}
-        <div style={{ marginBottom: '2.5rem' }}>
+        <div className="mb-8 sm:mb-10">
           <p style={{ fontSize: '.62rem', letterSpacing: '.18em', textTransform: 'uppercase', color: GOLD, marginBottom: '.5rem' }}>
             {isAr ? 'قائمتك' : 'Your List'}
           </p>
@@ -85,7 +85,7 @@ export default function WishlistPage() {
         </div>
 
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: '1.5rem' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {[1,2,3,4].map(i => (
               <div key={i} style={{ background: CARD, borderRadius: 20, overflow: 'hidden', border: `1px solid ${BORDER}` }}>
                 <div className="skeleton" style={{ aspectRatio: '4/5', background: 'rgba(255,255,255,.04)' }} />
@@ -114,7 +114,7 @@ export default function WishlistPage() {
             </Link>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: '1.5rem' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {products.map(product => {
               const name     = loc(product.nameAr, product.nameEn, locale);
               const image    = product.images?.[0];

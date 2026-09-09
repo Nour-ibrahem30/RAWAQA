@@ -106,11 +106,11 @@ export default function ShopPage() {
     <div style={{ background: '#12100c', minHeight: '100vh', color: 'var(--ivory)' }}>
       {/* Header bar */}
       <div
-        className="pt-28 pb-8 border-b"
+        className="pt-24 sm:pt-28 pb-6 sm:pb-8 border-b"
         style={{ borderColor: 'rgba(210,181,106,.1)', background: '#0f0e0a' }}
       >
         <div className="wrap">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 shop-header-row">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shop-header-row">
             <div>
               <p style={{ fontSize: '.68rem', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '.4rem' }}>
                 RAWAQA
@@ -124,9 +124,9 @@ export default function ShopPage() {
             </div>
 
             {/* Search + sort toolbar */}
-            <div className="flex items-center gap-3 flex-wrap shop-toolbar">
+            <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap shop-toolbar w-full md:w-auto">
               {/* Search */}
-              <div className="relative shop-search">
+              <div className="relative flex-1 sm:flex-initial min-w-[140px] shop-search">
                 <svg
                   className="absolute top-1/2 -translate-y-1/2"
                   style={{ [isAr ? 'right' : 'left']: '0.75rem', color: 'rgba(247,244,236,.35)' }}
@@ -140,6 +140,7 @@ export default function ShopPage() {
                   placeholder={t('search_placeholder')}
                   defaultValue={search}
                   onChange={e => handleSearch(e.target.value)}
+                  className="w-full sm:w-auto"
                   style={{
                     border: '1px solid rgba(210,181,106,.15)',
                     borderRadius: 999,
@@ -148,7 +149,7 @@ export default function ShopPage() {
                     background: 'rgba(255,255,255,.05)',
                     color: 'var(--ivory)',
                     outline: 'none',
-                    minWidth: 200,
+                    minWidth: 160,
                     [isAr ? 'paddingRight' : 'paddingLeft']: '2.2rem',
                     transition: 'border-color 250ms ease',
                   }}
@@ -196,11 +197,12 @@ export default function ShopPage() {
       </div>
 
       {/* Body */}
-      <div className="wrap py-10">
-        <div className="flex gap-8">
-          {/* Sidebar Filters — desktop */}
+      <div className="wrap py-8 sm:py-10">
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+          {/* Sidebar Filters — desktop & collapsible mobile */}
           <aside
-            className={`w-60 flex-shrink-0 shop-filter-in ${filtersOpen ? 'block' : 'hidden'} md:block`}
+            className={`w-full md:w-60 flex-shrink-0 shop-filter-in ${filtersOpen ? 'block' : 'hidden'} md:block mb-6 md:mb-0 p-4 md:p-0 rounded-2xl md:rounded-none`}
+            style={filtersOpen ? { background: 'rgba(255,255,255,.03)', border: '1px solid rgba(210,181,106,.15)' } : {}}
           >
             <div className="sticky top-28 flex flex-col gap-6">
               {/* Categories */}

@@ -139,10 +139,10 @@ export default function ProductDetailPage() {
 
   return (
     <div style={{ background: DARK, minHeight: '100vh', color: IVORY }}>
-      <div className="wrap" style={{ paddingTop: '7rem', paddingBottom: '5rem' }}>
+      <div className="wrap pt-24 sm:pt-28 pb-12 sm:pb-20">
 
         {/* Breadcrumb */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.78rem', color: 'rgba(247,244,236,.38)', marginBottom: '2.5rem' }}>
+        <nav className="flex items-center gap-2 text-xs mb-6 sm:mb-10 overflow-x-auto whitespace-nowrap" style={{ color: 'rgba(247,244,236,.38)' }}>
           {[
             { label: isAr ? 'الرئيسية' : 'Home', href: `/${locale}` },
             { label: isAr ? 'المتجر' : 'Shop', href: `/${locale}/shop` },
@@ -160,12 +160,7 @@ export default function ProductDetailPage() {
         </nav>
 
         {/* Main grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: 'clamp(2rem, 4vw, 4rem)',
-          alignItems: 'start',
-        }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 items-start">
 
           {/* ── Gallery ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -244,7 +239,7 @@ export default function ProductDetailPage() {
           </div>
 
           {/* ── Info panel ── */}
-          <div style={{ position: 'sticky', top: '6.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="lg:sticky lg:top-28 flex flex-col gap-6">
 
             <div>
               <p style={{ fontSize: '.62rem', letterSpacing: '.18em', textTransform: 'uppercase', color: GOLD, marginBottom: '.6rem' }}>

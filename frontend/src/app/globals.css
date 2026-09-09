@@ -73,12 +73,23 @@ body {
   word-spacing: 0.04em;
 }
 
-[dir="rtl"] .display-1,
-[dir="rtl"] .display-2,
+[dir="rtl"] .display-1 {
+  font-family: var(--font-cairo), 'Cairo', serif;
+  font-weight: 800;
+  font-size: clamp(1.85rem, 5vw, 4.5rem);
+  line-height: 1.25;
+}
+[dir="rtl"] .display-2 {
+  font-family: var(--font-cairo), 'Cairo', serif;
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3.8vw, 3.2rem);
+  line-height: 1.3;
+}
 [dir="rtl"] .display-3 {
   font-family: var(--font-cairo), 'Cairo', serif;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: clamp(1.3rem, 2.6vw, 2.2rem);
+  line-height: 1.35;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -104,23 +115,23 @@ img, svg { display: block; max-width: 100%; }
 /* ─── TYPE SCALE ────────────────────────────────────────────── */
 .display-1 {
   font-family: var(--font-fraunces), serif;
-  font-weight: 340;
-  font-size: clamp(2.8rem, 6.5vw, 5.8rem);
-  line-height: 1.0;
+  font-weight: 400;
+  font-size: clamp(2rem, 5.5vw, 5.2rem);
+  line-height: 1.12;
   letter-spacing: -0.02em;
 }
 .display-2 {
   font-family: var(--font-fraunces), serif;
-  font-weight: 340;
-  font-size: clamp(2.2rem, 4.6vw, 3.8rem);
-  line-height: 1.05;
+  font-weight: 400;
+  font-size: clamp(1.65rem, 4vw, 3.6rem);
+  line-height: 1.18;
   letter-spacing: -0.015em;
 }
 .display-3 {
   font-family: var(--font-fraunces), serif;
   font-weight: 400;
-  font-size: clamp(1.7rem, 2.8vw, 2.5rem);
-  line-height: 1.14;
+  font-size: clamp(1.35rem, 2.6vw, 2.4rem);
+  line-height: 1.25;
 }
 .lede {
   font-size: clamp(1.05rem, 1.35vw, 1.2rem);

@@ -250,7 +250,7 @@ export default function AccountPage() {
 
   return (
     <div style={{ background: DARK, minHeight: '100vh', color: IVORY }}>
-      <div className="wrap" style={{ paddingTop: '7rem', paddingBottom: '5rem' }}>
+      <div className="wrap pt-24 sm:pt-28 pb-12 sm:pb-20">
 
         {/* Header */}
         <h1 className="display-3" style={{ color: IVORY, marginBottom: '.5rem' }}>{t('title')}</h1>
@@ -285,10 +285,11 @@ export default function AccountPage() {
               <Link href={`/${locale}/shop`} className="btn btn-gold btn-sm">{isAr ? 'تسوق الآن' : 'Shop Now'}</Link>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
+            <div className="flex flex-col gap-3">
               {orders.map(order => (
                 <Link key={order.id} href={`/${locale}/track?order=${order.orderNumber}`}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderRadius: 16, border: `1px solid ${BORDER}`, background: CARD, textDecoration: 'none', transition: 'border-color 250ms' }}
+                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl transition-all"
+                  style={{ border: `1px solid ${BORDER}`, background: CARD, textDecoration: 'none' }}
                   onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(210,181,106,.3)')}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = BORDER)}>
                   <div>
@@ -297,7 +298,7 @@ export default function AccountPage() {
                       {new Date(order.createdAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-EG')}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '.875rem' }}>
+                  <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-pill ${orderStatusColor(order.status)}`}>
                       {orderStatusLabel(order.status, locale)}
                     </span>
@@ -374,7 +375,7 @@ export default function AccountPage() {
 
                 {/* Add/Edit form */}
                 {showAddrForm ? (
-                  <form onSubmit={handleSaveAddress} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 20, padding: '1.5rem', marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <form onSubmit={handleSaveAddress} className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 sm:p-6 rounded-2xl mt-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
                     <h3 style={{ gridColumn: '1/-1', fontSize: '.9rem', fontWeight: 700, color: IVORY }}>
                       {editingAddr ? (isAr ? 'تعديل العنوان' : 'Edit Address') : t('add_address')}
                     </h3>

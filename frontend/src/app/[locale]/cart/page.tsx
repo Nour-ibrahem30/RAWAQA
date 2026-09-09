@@ -92,20 +92,18 @@ export default function CartPage() {
             <Link href={`/${locale}/shop`} className="btn btn-gold">{t('shop_now')}</Link>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr min(340px, 100%)', gap: '2.5rem', alignItems: 'start' }}
-            className="max-md:grid-cols-1">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
             {/* ── Cart items ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="lg:col-span-8 flex flex-col gap-4">
               {cart!.items.map((item, idx) => {
                 const name = loc(item.product.nameAr, item.product.nameEn, locale);
                 return (
                   <div
                     key={item.product.id}
-                    className="cart-item-in"
+                    className="cart-item-in flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 sm:p-5"
                     style={{
                       animationDelay: `${idx * 80}ms`,
-                      display: 'flex', gap: '1rem', padding: '1.25rem',
                       background: CARD, borderRadius: 18, border: `1px solid ${BORDER}`,
                       transition: 'border-color 300ms ease',
                     }}
@@ -131,7 +129,7 @@ export default function CartPage() {
                     </div>
 
                     {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="flex-1 min-w-0 w-full sm:w-auto">
                       <Link
                         href={`/${locale}/product/${item.product.id}`}
                         style={{ fontWeight: 600, fontSize: '.95rem', color: IVORY, display: 'block', marginBottom: '.25rem', transition: 'color 250ms ease' }}
@@ -149,7 +147,7 @@ export default function CartPage() {
                     </div>
 
                     {/* Qty + remove */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', gap: '.5rem' }}>
+                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
                       {/* Quantity controls */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
                         {[
@@ -213,7 +211,7 @@ export default function CartPage() {
             </div>
 
             {/* ── Order summary ── */}
-            <div style={{ position: 'sticky', top: '6.5rem' }}>
+            <div className="lg:col-span-4 lg:sticky lg:top-28">
               <div style={{ background: CARD, borderRadius: 20, padding: '1.75rem', border: `1px solid ${BORDER}` }}>
                 <h2 style={{ fontWeight: 700, color: IVORY, fontSize: '1.05rem', marginBottom: '1.75rem' }}>
                   {isAr ? 'ملخص الطلب' : 'Order Summary'}

@@ -42,41 +42,45 @@ export default function AdminTable<T>({ columns, data, loading, keyField, emptyT
 
   return (
     <div className="rounded-2xl overflow-hidden" style={ADMIN_DARK}>
-      {/* Header */}
-      <div
-        className="flex gap-4 px-5 py-3 border-b"
-        style={{ borderColor: 'rgba(210,181,106,.1)', background: 'rgba(255,255,255,.03)' }}
-      >
-        {columns.map(c => (
+      <div className="overflow-x-auto w-full">
+        <div className="min-w-[640px]">
+          {/* Header */}
           <div
-            key={c.key}
-            className="text-[.65rem] tracking-widest uppercase font-semibold"
-            style={{ color: 'rgba(247,244,236,.35)', flex: c.width ?? 1, minWidth: 0 }}
+            className="flex gap-4 px-5 py-3 border-b"
+            style={{ borderColor: 'rgba(210,181,106,.1)', background: 'rgba(255,255,255,.03)' }}
           >
-            {c.label}
+            {columns.map(c => (
+              <div
+                key={c.key}
+                className="text-[.65rem] tracking-widest uppercase font-semibold"
+                style={{ color: 'rgba(247,244,236,.35)', flex: c.width ?? 1, minWidth: 0 }}
+              >
+                {c.label}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      {/* Rows */}
-      {data.map(row => (
-        <div
-          key={String(row[keyField])}
-          className="flex gap-4 px-5 py-3.5 border-b transition-colors"
-          style={{ borderColor: 'rgba(210,181,106,.06)' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-        >
-          {columns.map(c => (
+          {/* Rows */}
+          {data.map(row => (
             <div
-              key={c.key}
-              className="text-sm"
-              style={{ color: '#F7F4EC', flex: c.width ?? 1, minWidth: 0, overflow: 'hidden' }}
+              key={String(row[keyField])}
+              className="flex gap-4 px-5 py-3.5 border-b transition-colors"
+              style={{ borderColor: 'rgba(210,181,106,.06)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
-              {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '')}
+              {columns.map(c => (
+                <div
+                  key={c.key}
+                  className="text-sm"
+                  style={{ color: '#F7F4EC', flex: c.width ?? 1, minWidth: 0, overflow: 'hidden' }}
+                >
+                  {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '')}
+                </div>
+              ))}
             </div>
           ))}
         </div>
-      ))}
+      </div>
     </div>
   );
 }
