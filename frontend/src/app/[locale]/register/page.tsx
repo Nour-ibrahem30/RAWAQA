@@ -189,7 +189,7 @@ export default function RegisterPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'radial-gradient(ellipse 80% 70% at 50% 0%, rgba(173,138,76,.09) 0%, transparent 60%), #0d0b08',
+      background: 'radial-gradient(ellipse 80% 70% at 50% 0%, color-mix(in srgb, var(--gold) 10%, transparent) 0%, transparent 60%), var(--charcoal)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '2rem 1.25rem', position: 'relative', overflow: 'hidden',
     }}>
@@ -198,7 +198,7 @@ export default function RegisterPage() {
       <div aria-hidden style={{
         position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)',
         width: 700, height: 700, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(173,138,76,.07) 0%, transparent 65%)',
+        background: 'radial-gradient(circle, color-mix(in srgb, var(--gold) 8%, transparent) 0%, transparent 65%)',
         pointerEvents: 'none',
       }} />
 
@@ -210,8 +210,8 @@ export default function RegisterPage() {
         transition: 'opacity 600ms cubic-bezier(.22,.61,.36,1), transform 600ms cubic-bezier(.22,.61,.36,1)',
       }}>
         <div style={{
-          background: 'rgba(22,19,14,.88)', backdropFilter: 'blur(24px)',
-          border: '1px solid rgba(210,181,106,.13)', borderRadius: 28,
+          background: 'color-mix(in srgb, var(--charcoal-soft) 92%, transparent)', backdropFilter: 'blur(24px)',
+          border: '1px solid var(--charcoal-line)', borderRadius: 28,
           padding: 'clamp(2rem, 5vw, 2.75rem)',
           boxShadow: '0 32px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(210,181,106,.06) inset',
           position: 'relative', overflow: 'hidden',

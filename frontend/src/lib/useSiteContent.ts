@@ -20,27 +20,45 @@ export function broadcastContentUpdate(section: string) {
 }
 
 export function useSiteContent(section: string) {
-  const [data, setData] = useState<Record<string, any>>(cache[section] || {});
-  const [loaded, setLoaded] = useState(!!cache[section]);
+  const getInitial = () => {
+    if (cache[section] && Object.keys(cache[section]).length > 0) {
+      return cache[section];
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`rawaqa_content_${section}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          cache[section] = parsed;
+          return parsed;
+        }
+      } catch { /* ignore */ }
+    }
+    return {};
+  };
+
+  const [data, setData] = useState<Record<string, any>>(getInitial);
+  const [loaded, setLoaded] = useState(() => Object.keys(getInitial()).length > 0);
 
   const refetch = useCallback(() => {
     contentApi.get(section)
       .then(r => {
         const d = r.data ?? {};
-        cache[section] = d;
-        setData(d);
+        if (d && Object.keys(d).length > 0) {
+          cache[section] = d;
+          try {
+            localStorage.setItem(`rawaqa_content_${section}`, JSON.stringify(d));
+          } catch { /* ignore */ }
+          setData(d);
+        }
       })
       .catch(() => { /* keep current */ })
       .finally(() => setLoaded(true));
   }, [section]);
 
-  // Initial fetch
+  // Initial fetch / background revalidation
   useEffect(() => {
-    if (cache[section]) {
-      setData(cache[section]);
-      setLoaded(true);
-      return;
-    }
+    // If we already have stored data, still revalidate once in background
     refetch();
   }, [section, refetch]);
 

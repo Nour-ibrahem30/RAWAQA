@@ -103,11 +103,11 @@ export default function ShopPage() {
   const hasActiveFilters = !!(search || category || sort || inStock || minPrice || maxPrice);
 
   return (
-    <div style={{ background: '#12100c', minHeight: '100vh', color: 'var(--ivory)' }}>
+    <div style={{ background: 'var(--charcoal)', minHeight: '100vh', color: 'var(--ivory)' }}>
       {/* Header bar */}
       <div
         className="pt-24 sm:pt-28 pb-6 sm:pb-8 border-b"
-        style={{ borderColor: 'rgba(210,181,106,.1)', background: '#0f0e0a' }}
+        style={{ borderColor: 'var(--charcoal-line)', background: 'var(--charcoal-soft)' }}
       >
         <div className="wrap">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shop-header-row">
@@ -174,7 +174,7 @@ export default function ShopPage() {
                 }}
               >
                 {sortOptions.map(o => (
-                  <option key={o.value} value={o.value} style={{ background: '#1a1710', color: 'var(--ivory)' }}>{o.label}</option>
+                  <option key={o.value} value={o.value} style={{ background: 'var(--charcoal-soft)', color: 'var(--ivory)' }}>{o.label}</option>
                 ))}
               </select>
 

@@ -100,6 +100,9 @@ export default function AdminContentPage() {
     try {
       await contentApi.update(activeSection, form);
       setAllContent(prev => ({ ...prev, [activeSection]: form }));
+      try {
+        localStorage.setItem(`rawaqa_content_${activeSection}`, JSON.stringify(form));
+      } catch { /* ignore */ }
       broadcastContentUpdate(activeSection); // notify all open tabs instantly
       showToast('Content saved — site updated live!', 'success');
     } catch {

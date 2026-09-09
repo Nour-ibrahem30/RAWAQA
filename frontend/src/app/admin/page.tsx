@@ -340,19 +340,22 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-              {lowStock.map(p => (
-                <Link key={p.id} href={`/admin/products/${p.id}`}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.6rem .75rem', borderRadius: 10, background: 'rgba(168,84,58,.08)', textDecoration: 'none' }}>
-                  <p style={{ fontSize: '.8rem', color: IVORY }}>{p.nameEn}</p>
-                  <span style={{
-                    fontSize: '.72rem', fontWeight: 800, padding: '.2rem .6rem', borderRadius: 999,
-                    background: p.inventory.availableQuantity === 0 ? 'rgba(248,113,113,.15)' : 'rgba(251,191,36,.1)',
-                    color: p.inventory.availableQuantity === 0 ? '#f87171' : '#fbbf24',
-                  }}>
-                    {p.inventory.availableQuantity === 0 ? t.out_of_stock : `${p.inventory.availableQuantity} ${t.left}`}
-                  </span>
-                </Link>
-              ))}
+              {lowStock.map(p => {
+                const prodId = p.id || (p as any)._id;
+                return (
+                  <Link key={prodId} href={`/admin/products/${prodId}`}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.6rem .75rem', borderRadius: 10, background: 'rgba(168,84,58,.08)', textDecoration: 'none' }}>
+                    <p style={{ fontSize: '.8rem', color: IVORY }}>{p.nameEn}</p>
+                    <span style={{
+                      fontSize: '.72rem', fontWeight: 800, padding: '.2rem .6rem', borderRadius: 999,
+                      background: p.inventory?.availableQuantity === 0 ? 'rgba(248,113,113,.15)' : 'rgba(251,191,36,.1)',
+                      color: p.inventory?.availableQuantity === 0 ? '#f87171' : '#fbbf24',
+                    }}>
+                      {p.inventory?.availableQuantity === 0 ? t.out_of_stock : `${p.inventory?.availableQuantity ?? 0} ${t.left}`}
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

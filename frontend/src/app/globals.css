@@ -11,7 +11,7 @@
 :root {
   --charcoal:       #15130F;
   --charcoal-soft:  #1E1B15;
-  --charcoal-line:  rgba(210, 181, 106, 0.16);
+  --charcoal-line:  color-mix(in srgb, var(--gold-light) 18%, transparent);
   --ink:            #262117;
   --ink-soft:       #6E6656;
   --ivory:          #F7F4EC;

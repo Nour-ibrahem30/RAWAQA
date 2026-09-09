@@ -306,5 +306,28 @@ export const THEME_PRESETS: ThemePreset[] = [
       dune: '#9E9282',
     },
   },
+  {
+    id: 'imperial-plum',
+    name: 'Imperial Plum & Rose Champagne',
+    nameAr: 'العقيق الملكي وشمبانيا الورد',
+    description: 'Deep velvet plum with luminous rose champagne accents.',
+    colors: {
+      charcoal: '#160C18',
+      charcoalSoft: '#241427',
+      ivory: '#FBF4F8',
+      ivory2: '#FFFBFD',
+      sand: '#EADBE4',
+      gold: '#D48BA8',
+      goldLight: '#E8A9C1',
+      goldPale: '#F5D9E5',
+      ink: '#230E20',
+      inkSoft: '#6E4962',
+      clay: '#A84B68',
+      indigo: '#3A2E59',
+      ochre: '#C28456',
+      forest: '#443350',
+      dune: '#BA94A2',
+    },
+  },
 ];
 

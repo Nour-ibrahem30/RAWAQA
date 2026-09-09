@@ -16,9 +16,9 @@ import { useAuth } from '@/context/AuthContext';
 import { loc, formatPrice } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 
-const DARK   = '#12100c';
-const CARD   = 'rgba(30,27,21,.9)';
-const BORDER = 'rgba(210,181,106,.1)';
+const DARK   = 'var(--charcoal)';
+const CARD   = 'var(--charcoal-soft)';
+const BORDER = 'var(--charcoal-line)';
 const IVORY  = 'var(--ivory)';
 const GOLD   = 'var(--gold-light)';
 

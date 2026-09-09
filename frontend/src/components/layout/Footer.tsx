@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useSiteContent, locContent } from '@/lib/useSiteContent';
 
 export default function Footer() {
   const t      = useTranslations('footer');
@@ -11,6 +12,7 @@ export default function Footer() {
   const locale = (params?.locale as string) || 'ar';
   const isAr   = locale === 'ar';
   const year   = new Date().getFullYear();
+  const { data: footerContent } = useSiteContent('footer');
 
   const socialChannels = [
     {
@@ -35,7 +37,7 @@ export default function Footer() {
     },
     {
       name: isAr ? 'واتساب' : 'WhatsApp',
-      href: 'https://wa.me/201000000000',
+      href: footerContent?.phone ? `https://wa.me/${footerContent.phone.replace(/\\D/g, '')}` : 'https://wa.me/201000000000',
       ariaLabel: 'WhatsApp',
       icon: (
         <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
@@ -46,11 +48,11 @@ export default function Footer() {
   ];
 
   return (
-    <footer style={{ background: '#0a0907', color: 'var(--ivory)' }}>
+    <footer style={{ background: 'var(--charcoal-soft)', color: 'var(--ivory)' }}>
       {/* ── Top subtle gold divider line ── */}
       <div style={{
         height: 1,
-        background: 'linear-gradient(90deg, transparent, rgba(210,181,106,.3), transparent)',
+        background: 'linear-gradient(90deg, transparent, var(--charcoal-line), transparent)',
       }} />
 
       {/* ── Main footer body ── */}
@@ -69,9 +71,9 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-xs sm:text-sm text-ivory/60 leading-relaxed">
-              {isAr
+              {locContent(footerContent, 'tagline', locale) || (isAr
                 ? 'العلامة المصرية الرائدة في صناعة كراسي البين باج الفاخرة للراحة والأناقة.'
-                : 'Leading Egyptian brand crafting luxury bean bag chairs for comfort and elegance.'}
+                : 'Leading Egyptian brand crafting luxury bean bag chairs for comfort and elegance.')}
             </p>
           </div>
 

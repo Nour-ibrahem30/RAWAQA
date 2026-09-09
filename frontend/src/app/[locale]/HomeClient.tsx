@@ -356,7 +356,7 @@ export default function HomeClient({ locale }: { locale: string }) {
         ref={categoriesRef}
         style={{
           padding: '5.5rem 0',
-          background: '#1a1710',
+          background: 'var(--charcoal-soft)',
           overflow: 'hidden',
         }}
         className={`section-reveal${catsVisible ? ' visible' : ''}`}
@@ -439,7 +439,7 @@ export default function HomeClient({ locale }: { locale: string }) {
       ═══════════════════════════════════════════════ */}
       <section
         ref={featuredRef}
-        style={{ padding: '6.5rem 0', background: '#12100c', position: 'relative', overflow: 'hidden' }}
+        style={{ padding: '6.5rem 0', background: 'var(--charcoal)', position: 'relative', overflow: 'hidden' }}
         className={`section-reveal${featuredVisible ? ' visible' : ''}`}
       >
         {/* Ambient background glow */}
@@ -554,25 +554,36 @@ export default function HomeClient({ locale }: { locale: string }) {
       <section
         ref={whyRef}
         id="why"
-        style={{ padding:'5.5rem 0', background:'#1a1710', overflow:'hidden' }}
+        style={{ padding:'5.5rem 0', background:'var(--charcoal-soft)', overflow:'hidden' }}
         className={`section-reveal${whyVisible ? ' visible' : ''}`}
       >
         <div className="wrap">
           <div data-reveal="up" style={{ textAlign:'center',marginBottom:'3.5rem' }}>
-            <p style={{ fontSize:'.7rem',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--gold)',marginBottom:'.6rem' }}>
+            <p style={{ fontSize:'.7rem',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--gold-light)',marginBottom:'.6rem' }}>
               {isAr ? 'لماذا نحن' : 'Why Us'}
             </p>
-            <h2 className="display-3" style={{ color:'var(--ivory)' }}>{t('why.title')}</h2>
+            <h2 className="display-3" style={{ color:'var(--ivory)' }}>
+              {locContent(whyContent, 'title', locale) || t('why.title')}
+            </h2>
           </div>
 
-          {/* Unified 6-card Why RAWAQA grid */}
+          {/* Unified Why RAWAQA grid — dynamic from CMS or fallback */}
           <div className="why-grid" data-reveal="up">
-            {[1, 2, 3, 4, 5, 6].map(n => {
-              const title = n <= 5 ? t(`why.q${n}` as 'why.q1') : (isAr ? 'توصيل سريع' : 'Fast Delivery');
-              const desc = n <= 5 ? t(`why.d${n}` as 'why.d1') : (isAr ? 'توصيل خلال ٣-٥ أيام عمل لجميع محافظات مصر.' : 'Delivery in 3–5 business days to all Egyptian governorates.');
+            {(Array.isArray(whyContent?.points) && whyContent.points.length > 0
+              ? whyContent.points
+              : [1, 2, 3, 4, 5, 6].map(n => ({
+                  titleAr: n <= 5 ? t(`why.q${n}` as any) : 'توصيل سريع',
+                  titleEn: n <= 5 ? t(`why.q${n}` as any) : 'Fast Delivery',
+                  bodyAr: n <= 5 ? t(`why.d${n}` as any) : 'توصيل خلال ٣-٥ أيام عمل لجميع محافظات مصر.',
+                  bodyEn: n <= 5 ? t(`why.d${n}` as any) : 'Delivery in 3–5 business days to all Egyptian governorates.',
+                }))
+            ).map((point: any, idx: number) => {
+              const n = idx + 1;
+              const title = locContent(point, 'title', locale) || point.titleAr || point.titleEn || '';
+              const desc = locContent(point, 'body', locale) || point.bodyAr || point.bodyEn || '';
               return (
                 <div
-                  key={n}
+                  key={idx}
                   className="why-card flex flex-col items-start p-5 sm:p-7 rounded-2xl transition-all duration-300"
                   style={{
                     background: 'rgba(255,255,255,.04)',
@@ -615,7 +626,7 @@ export default function HomeClient({ locale }: { locale: string }) {
       ═══════════════════════════════════════════════ */}
       <section
         ref={reviewsRef}
-        style={{ padding:'4.5rem 0', background:'#0d0b08', position: 'relative', overflow:'hidden' }}
+        style={{ padding:'4.5rem 0', background:'var(--charcoal)', position: 'relative', overflow:'hidden' }}
         className={`section-reveal${reviewsVisible ? ' visible' : ''}`}
       >
         {/* Glow */}
@@ -644,7 +655,7 @@ export default function HomeClient({ locale }: { locale: string }) {
             <div
               className="relative p-5 sm:p-7 rounded-2xl transition-all duration-500"
               style={{
-                background: 'linear-gradient(165deg, rgba(28,25,20,.95) 0%, rgba(16,14,11,.98) 100%)',
+                background: 'linear-gradient(165deg, color-mix(in srgb, var(--charcoal-soft) 92%, var(--gold-light) 8%) 0%, var(--charcoal-soft) 100%)',
                 border: '1px solid rgba(210,181,106,.15)',
                 boxShadow: '0 15px 35px rgba(0,0,0,.4)',
               }}
@@ -682,7 +693,7 @@ export default function HomeClient({ locale }: { locale: string }) {
                       width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
                       background: 'linear-gradient(135deg, var(--gold-light), var(--dune))',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 800, color: '#15130F', fontSize: '.85rem',
+                      fontWeight: 800, color: 'var(--charcoal)', fontSize: '.85rem',
                     }}
                   >
                     {(isAr ? REVIEWS[activeReview].name : REVIEWS[activeReview].nameEn)[0]}
@@ -745,7 +756,7 @@ export default function HomeClient({ locale }: { locale: string }) {
       ═══════════════════════════════════════════════ */}
       <section style={{
         padding:'3.5rem 0',
-        background:'linear-gradient(160deg, var(--charcoal) 0%, #0d0b08 100%)',
+        background:'linear-gradient(160deg, var(--charcoal-soft) 0%, var(--charcoal) 100%)',
         color:'var(--ivory)',textAlign:'center',
         position:'relative',overflow:'hidden',
       }}>

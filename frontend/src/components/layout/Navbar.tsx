@@ -43,10 +43,15 @@ export default function Navbar() {
       <nav
         className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 sm:px-[6vw] transition-all duration-300 ${
           solid
-            ? 'py-3 sm:py-4 bg-charcoal/95 backdrop-blur-md border-b border-[var(--charcoal-line)] shadow-lg'
-            : 'py-3.5 sm:py-6 bg-gradient-to-b from-[#15130F]/90 via-[#15130F]/50 to-transparent backdrop-blur-[2px]'
+            ? 'py-3 sm:py-4 backdrop-blur-md border-b border-[var(--charcoal-line)] shadow-lg'
+            : 'py-3.5 sm:py-6 backdrop-blur-[2px]'
         }`}
-        style={{ color: 'var(--ivory)' }}
+        style={{
+          color: 'var(--ivory)',
+          background: solid
+            ? 'color-mix(in srgb, var(--charcoal) 95%, transparent)'
+            : 'linear-gradient(to bottom, color-mix(in srgb, var(--charcoal) 90%, transparent) 0%, color-mix(in srgb, var(--charcoal) 40%, transparent) 65%, transparent 100%)',
+        }}
       >
         {/* Logo — real image */}
         <Link href={`/${locale}`} style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
@@ -107,7 +112,7 @@ export default function Navbar() {
               <path d="M9 8V6a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.6" />
             </svg>
             {itemCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 min-w-[17px] h-[17px] px-1 text-[.6rem] font-bold bg-[var(--gold-light)] text-[#15130F] rounded-full flex items-center justify-center shadow-md leading-none">
+              <span className="absolute top-1.5 right-1.5 min-w-[17px] h-[17px] px-1 text-[.6rem] font-bold bg-[var(--gold-light)] text-[var(--charcoal)] rounded-full flex items-center justify-center shadow-md leading-none">
                 {itemCount > 99 ? '99+' : itemCount}
               </span>
             )}
@@ -136,7 +141,7 @@ export default function Navbar() {
               </Link>
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center justify-center h-9 px-2.5 text-[.75rem] text-ivory/50 hover:text-ivory/90 hover:bg-white/5 rounded-full transition-all"
+                className="inline-flex items-center justify-center h-9 px-3 text-[.78rem] font-medium text-ivory/60 hover:text-ivory hover:bg-white/5 rounded-full transition-all"
               >
                 {t('logout')}
               </button>
@@ -144,13 +149,9 @@ export default function Navbar() {
           ) : (
             <Link
               href={`/${locale}/login`}
-              className="hidden md:inline-flex items-center justify-center h-9 px-4 text-[.78rem] font-semibold text-ivory/90 hover:text-[var(--gold-light)] border border-white/20 hover:border-[var(--gold-light)] rounded-full hover:bg-white/5 transition-all gap-1.5"
+              className="hidden md:inline-flex items-center justify-center h-9 px-4 text-[.78rem] font-medium text-ivory/90 hover:text-ivory bg-white/5 hover:bg-white/10 rounded-full border border-white/10 transition-all"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              <span>{t('login')}</span>
+              {t('login')}
             </Link>
           )}
 
@@ -169,7 +170,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Overlay */}
       {menuOpen && (
-        <div className="fixed inset-0 z-[200] bg-charcoal flex flex-col" style={{ color: 'var(--ivory)' }}>
+        <div className="fixed inset-0 z-[200] flex flex-col" style={{ background: 'var(--charcoal)', color: 'var(--ivory)' }}>
           <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--charcoal-line)]">
             <Link href={`/${locale}`} onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
               <Image src="/logo.png" alt="RAWAQA" width={36} height={36} style={{ objectFit: 'contain', borderRadius: 8 }} />

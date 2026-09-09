@@ -79,4 +79,10 @@ export function applyColors(colors: Record<string, string>) {
   Object.entries(colors).forEach(([key, val]) => {
     if (map[key]) document.documentElement.style.setProperty(map[key], val);
   });
+  if (colors.goldLight || colors.gold) {
+    document.documentElement.style.setProperty(
+      '--charcoal-line',
+      'color-mix(in srgb, var(--gold-light) 18%, transparent)'
+    );
+  }
 }
