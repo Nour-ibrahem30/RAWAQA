@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import {
   registerUser,
   loginUser,
+  googleAuth,
   refreshTokens,
   logoutCurrentDevice,
   logoutAllDevices,
@@ -160,6 +161,63 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       success: false,
       error: 'Internal Server Error',
       message: 'Failed to login',
+    });
+  }
+};
+
+/**
+ * POST /api/auth/google
+ * Authenticate with Google credential token
+ */
+export const googleLogin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Google credential token is required',
+      });
+      return;
+    }
+
+    const deviceInfo = getDeviceInfo(req);
+    const result = await googleAuth(credential, deviceInfo);
+
+    // Set cookies
+    setTokenCookies(res, result.accessToken, result.refreshToken);
+
+    res.status(200).json({
+      success: true,
+      message: 'Google login successful',
+      data: {
+        user: result.user,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      },
+    });
+  } catch (error) {
+    logError('Google login error', error);
+
+    if (
+      error instanceof Error &&
+      (error.message.includes('Invalid') ||
+        error.message.includes('expired') ||
+        error.message.includes('deactivated'))
+    ) {
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+        message: error.message,
+      });
+      return;
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to authenticate with Google',
     });
   }
 };

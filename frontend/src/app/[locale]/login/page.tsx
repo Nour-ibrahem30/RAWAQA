@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/lib/api';
 import AdminLoadingScreen from '@/components/ui/AdminLoadingScreen';
+import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 
 /* ── tiny particle canvas ─────────────────────────────────── */
 function ParticleCanvas() {
@@ -457,15 +458,31 @@ export default function LoginPage() {
           {/* Divider */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: '.875rem',
-            margin: '1.6rem 0',
+            margin: '1.4rem 0',
             opacity: cardIn ? 1 : 0,
             transition: 'opacity 500ms 650ms ease',
           }}>
             <div style={{ flex: 1, height: 1, background: 'rgba(210,181,106,.1)' }} />
-            <span style={{ fontSize: '.65rem', color: 'rgba(247,244,236,.2)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '.65rem', color: 'rgba(247,244,236,.25)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
               {isAr ? 'أو' : 'or'}
             </span>
             <div style={{ flex: 1, height: 1, background: 'rgba(210,181,106,.1)' }} />
+          </div>
+
+          {/* Google Auth Button */}
+          <div style={{
+            marginBottom: '1.4rem',
+            opacity: cardIn ? 1 : 0,
+            transition: 'opacity 500ms 680ms ease',
+          }}>
+            <GoogleAuthButton
+              locale={locale}
+              onSuccess={() => {
+                setSuccess(true);
+                setTimeout(() => router.push(`/${locale}`), 700);
+              }}
+              onError={(err) => setError(err)}
+            />
           </div>
 
           {/* Register + back */}

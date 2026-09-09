@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { User, IUser, UserRole } from '../models/User';
 import { RefreshSession, IRefreshSession } from '../models/RefreshSession';
@@ -29,6 +30,7 @@ export interface IAuthResponse {
     firstName: string;
     lastName: string;
     role: UserRole;
+    avatar?: string;
   };
   accessToken: string;
   refreshToken: string;
@@ -139,6 +141,117 @@ export const loginUser = async (
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
+      avatar: user.avatar,
+    },
+    ...tokens,
+  };
+};
+
+/**
+ * Authenticate with Google ID token / credential
+ * Verifies with Google OAuth2 API, finds or creates user, and issues JWT tokens
+ */
+export const googleAuth = async (
+  credential: string,
+  deviceInfo?: IDeviceInfo
+): Promise<IAuthResponse> => {
+  if (!credential) {
+    throw new Error('Google credential token is required');
+  }
+
+  // 1. Verify token with Google's official endpoint
+  let googlePayload: {
+    sub: string;
+    email: string;
+    email_verified?: string | boolean;
+    name?: string;
+    given_name?: string;
+    family_name?: string;
+    picture?: string;
+    aud?: string;
+  };
+
+  try {
+    const res = await axios.get(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
+      { timeout: 10000 }
+    );
+    googlePayload = res.data;
+  } catch (err: any) {
+    logError('Google token verification failed', err?.response?.data || err.message);
+    throw new Error('Invalid or expired Google token');
+  }
+
+  if (!googlePayload?.email) {
+    throw new Error('Google account does not have an email address');
+  }
+
+  const email = googlePayload.email.toLowerCase().trim();
+  const googleId = googlePayload.sub;
+  const firstName =
+    googlePayload.given_name || (googlePayload.name ? googlePayload.name.split(' ')[0] : 'User');
+  const lastName =
+    googlePayload.family_name ||
+    (googlePayload.name && googlePayload.name.split(' ').slice(1).join(' ')) ||
+    'Customer';
+  const avatar = googlePayload.picture;
+
+  // 2. Find or create user
+  let user = await User.findOne({
+    $or: [{ googleId }, { email }],
+  });
+
+  if (user) {
+    if (!user.isActive) {
+      throw new Error('Account is deactivated');
+    }
+    // Update fields if missing
+    if (!user.googleId) {
+      user.googleId = googleId;
+      user.authProvider = 'google';
+    }
+    if (avatar && !user.avatar) {
+      user.avatar = avatar;
+    }
+    if (!user.isEmailVerified) {
+      user.isEmailVerified = true;
+    }
+    user.lastLoginAt = new Date();
+    await user.save();
+  } else {
+    // Create new customer user
+    user = new User({
+      email,
+      googleId,
+      authProvider: 'google',
+      firstName,
+      lastName,
+      avatar,
+      isEmailVerified: true,
+      role: UserRole.CUSTOMER,
+      isActive: true,
+      lastLoginAt: new Date(),
+    });
+    await user.save();
+    logInfo('New user registered via Google Auth', { userId: user._id, email });
+  }
+
+  // 3. Generate session & tokens
+  const tokens = await generateUserTokens(user, deviceInfo);
+
+  logInfo('User logged in via Google Auth', {
+    userId: user._id,
+    email: user.email,
+  });
+
+  return {
+    user: {
+      id: user._id.toString(),
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      avatar: user.avatar,
     },
     ...tokens,
   };

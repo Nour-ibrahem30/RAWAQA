@@ -81,6 +81,12 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     }),
 
+  googleAuth: (credential: string) =>
+    apiFetch<{ user: User; accessToken: string; refreshToken: string }>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    }),
+
   logout: (refreshToken: string) =>
     apiFetch('/auth/logout', {
       method: 'POST',

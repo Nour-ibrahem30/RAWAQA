@@ -12,7 +12,10 @@ export enum UserRole {
 // User interface
 export interface IUser extends Document {
   email: string;
-  password: string;
+  password?: string;
+  googleId?: string;
+  authProvider?: 'local' | 'google';
+  avatar?: string;
   role: UserRole;
   firstName: string;
   lastName: string;
@@ -46,9 +49,26 @@ const userSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: function (this: IUser) {
+        return !this.googleId && (!this.authProvider || this.authProvider === 'local');
+      },
       minlength: [8, 'Password must be at least 8 characters'],
       select: false, // Don't include password in queries by default
+    },
+    googleId: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+      index: true,
+    },
+    avatar: {
+      type: String,
+      trim: true,
     },
     role: {
       type: String,
@@ -67,7 +87,7 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: [true, 'Last name is required'],
       trim: true,
-      minlength: [2, 'Last name must be at least 2 characters'],
+      minlength: [1, 'Last name must be at least 1 character'],
       maxlength: [50, 'Last name cannot exceed 50 characters'],
     },
     phone: {
@@ -107,10 +127,11 @@ const userSchema = new Schema<IUser>(
 // Indexes for performance
 userSchema.index({ email: 1, isActive: 1 });
 userSchema.index({ role: 1, isActive: 1 });
+userSchema.index({ googleId: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+  if (!this.password || !this.isModified('password')) {
     return next();
   }
 
@@ -127,12 +148,13 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 
 // Get full name method
 userSchema.methods.getFullName = function (): string {
-  return `${this.firstName} ${this.lastName}`;
+  return `${this.firstName} ${this.lastName}`.trim();
 };
 
 // Virtual for full name

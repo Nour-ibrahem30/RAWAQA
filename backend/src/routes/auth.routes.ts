@@ -3,6 +3,7 @@ import { rateLimit } from 'express-rate-limit';
 import {
   register,
   login,
+  googleLogin,
   refresh,
   logout,
   logoutAll,
@@ -50,6 +51,13 @@ router.post('/register', authLimiter, validate(registerSchema), register);
  * @access  Public
  */
 router.post('/login', authLimiter, validate(loginSchema), login);
+
+/**
+ * @route   POST /api/auth/google
+ * @desc    Login/register with Google ID token
+ * @access  Public
+ */
+router.post('/google', authLimiter, googleLogin);
 
 /**
  * @route   POST /api/auth/refresh
