@@ -54,8 +54,11 @@ export default function Footer() {
       }} />
 
       {/* ── Main footer body ── */}
-      <div className="wrap py-14 sm:py-16 md:py-20">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 text-center md:text-start pb-10 md:pb-12 border-b border-white/5">
+      <div className="wrap">
+        <div
+          className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 text-center md:text-start border-b border-white/5"
+          style={{ paddingTop: '2rem', paddingBottom: '2rem' }}
+        >
 
           {/* Brand Info */}
           <div className="flex flex-col items-center md:items-start max-w-sm">
@@ -92,7 +95,7 @@ export default function Footer() {
         </div>
 
         {/* ── Bottom bar ── */}
-        <div className="pt-8 sm:pt-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-ivory/45">
+        <div className="py-4 sm:py-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-ivory/45">
           <p className="text-center sm:text-start">
             © {year} RAWAQA. {t('rights')}.
           </p>
