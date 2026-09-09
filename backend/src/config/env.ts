@@ -8,15 +8,15 @@ dotenv.config();
 const envSchema = z.object({
   // Node Environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.string().transform(Number).pipe(z.number().min(1).max(65535)).default('5000'),
+  PORT: z.coerce.number().min(1).max(65535).default(5000),
 
   // Database
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/rawaqa'),
   MONGODB_URI_TEST: z.string().optional(),
-  MONGODB_MAX_POOL_SIZE: z.string().transform(Number).pipe(z.number().positive()).default('10'),
-  MONGODB_MIN_POOL_SIZE: z.string().transform(Number).pipe(z.number().positive()).default('2'),
-  MONGODB_SOCKET_TIMEOUT: z.string().transform(Number).pipe(z.number().positive()).default('45000'),
-  MONGODB_SERVER_SELECTION_TIMEOUT: z.string().transform(Number).pipe(z.number().positive()).default('5000'),
+  MONGODB_MAX_POOL_SIZE: z.coerce.number().positive().default(10),
+  MONGODB_MIN_POOL_SIZE: z.coerce.number().positive().default(2),
+  MONGODB_SOCKET_TIMEOUT: z.coerce.number().positive().default(45000),
+  MONGODB_SERVER_SELECTION_TIMEOUT: z.coerce.number().positive().default(5000),
 
   // JWT
   JWT_ACCESS_SECRET: z.string().min(16).default('rawaqa-jwt-access-secret-default-key-32-chars-minimum'),
@@ -25,10 +25,10 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
   // Bcrypt
-  BCRYPT_ROUNDS: z.string().transform(Number).pipe(z.number().min(8).max(15)).default('10'),
+  BCRYPT_ROUNDS: z.coerce.number().min(8).max(15).default(10),
 
   // Session
-  MAX_ACTIVE_SESSIONS_PER_USER: z.string().transform(Number).pipe(z.number().positive()).default('5'),
+  MAX_ACTIVE_SESSIONS_PER_USER: z.coerce.number().positive().default(5),
   SESSION_INACTIVITY_TIMEOUT: z.string().default('30d'),
 
   // Cookies
@@ -41,14 +41,14 @@ const envSchema = z.object({
   CORS_CREDENTIALS: z.string().transform((val) => val === 'true').default('true'),
 
   // Rate Limiting
-  RATE_LIMIT_WINDOW_MS: z.string().transform(Number).pipe(z.number().positive()).default('900000'),
-  RATE_LIMIT_MAX_REQUESTS: z.string().transform(Number).pipe(z.number().positive()).default('100'),
-  AUTH_RATE_LIMIT_WINDOW_MS: z.string().transform(Number).pipe(z.number().positive()).default('900000'),
-  AUTH_RATE_LIMIT_MAX_REQUESTS: z.string().transform(Number).pipe(z.number().positive()).default('5'),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().positive().default(900000),
+  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().positive().default(100),
+  AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().positive().default(900000),
+  AUTH_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().positive().default(5),
 
   // Email (SMTP)
   SMTP_HOST:   z.string().optional(),
-  SMTP_PORT:   z.string().transform(Number).pipe(z.number().min(1)).default('587'),
+  SMTP_PORT:   z.coerce.number().min(1).default(587),
   SMTP_SECURE: z.string().transform((v) => v === 'true').default('false'),
   SMTP_USER:   z.string().optional(),
   SMTP_PASS:   z.string().optional(),
@@ -56,8 +56,8 @@ const envSchema = z.object({
 
   // Paymob Payment Gateway
   PAYMOB_API_KEY:               z.string().optional(),
-  PAYMOB_INTEGRATION_ID_CARD:   z.string().transform(Number).pipe(z.number().min(0)).default('0'),
-  PAYMOB_INTEGRATION_ID_WALLET: z.string().transform(Number).pipe(z.number().min(0)).default('0'),
+  PAYMOB_INTEGRATION_ID_CARD:   z.coerce.number().min(0).default(0),
+  PAYMOB_INTEGRATION_ID_WALLET: z.coerce.number().min(0).default(0),
   PAYMOB_IFRAME_ID:             z.string().optional(),
   PAYMOB_HMAC_SECRET:           z.string().optional(),
 
@@ -66,11 +66,11 @@ const envSchema = z.object({
   ODOO_DB: z.string().optional(),
   ODOO_USERNAME: z.string().optional(),
   ODOO_PASSWORD: z.string().optional(),
-  ODOO_TIMEOUT: z.string().transform(Number).pipe(z.number().positive()).default('30000'),
-  ODOO_MAX_RETRIES: z.string().transform(Number).pipe(z.number().positive()).default('3'),
-  ODOO_RETRY_DELAY: z.string().transform(Number).pipe(z.number().positive()).default('1000'),
+  ODOO_TIMEOUT: z.coerce.number().positive().default(30000),
+  ODOO_MAX_RETRIES: z.coerce.number().positive().default(3),
+  ODOO_RETRY_DELAY: z.coerce.number().positive().default(1000),
   ODOO_SYNC_ENABLED: z.string().transform((val) => val === 'true').default('false'),
-  ODOO_SYNC_INTERVAL_HOURS: z.string().transform(Number).pipe(z.number().positive()).default('6'),
+  ODOO_SYNC_INTERVAL_HOURS: z.coerce.number().positive().default(6),
 
   // SMS
   SMS_PROVIDER: z.enum(['twilio', 'victorylink', 'vonage', 'mock']).default('mock'),
