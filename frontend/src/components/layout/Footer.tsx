@@ -43,15 +43,10 @@ export default function Footer() {
 
       {/* ── Main footer body ── */}
       <div className="wrap" style={{ padding: '3.5rem 0 2.5rem' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: '2rem',
-          marginBottom: '3rem',
-        }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 mb-12">
 
           {/* Brand column */}
-          <div style={{ gridColumn: 'span 2', minWidth: 0 }}>
+          <div className="sm:col-span-2 min-w-0">
             {/* Logo mark */}
             <Link href={`/${locale}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', marginBottom: '1rem' }}>
               <Image src="/logo.png" alt="RAWAQA" width={38} height={38} style={{ objectFit: 'contain', borderRadius: 9 }} />

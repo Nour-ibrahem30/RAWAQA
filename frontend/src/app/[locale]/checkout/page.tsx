@@ -202,24 +202,24 @@ export default function CheckoutPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
               {/* Customer info */}
-              <section style={{ background: CARD, borderRadius: 20, padding: '1.75rem', border: `1px solid ${BORDER}` }}>
+              <section style={{ background: CARD, borderRadius: 20, padding: 'clamp(1rem, 3vw, 1.75rem)', border: `1px solid ${BORDER}` }}>
                 <h2 style={{ fontWeight: 700, color: IVORY, marginBottom: '1.25rem', fontSize: '.95rem', letterSpacing: '.04em' }}>
                   {t('customer_info')}
                 </h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div style={{ gridColumn: 'span 1' }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-1">
                     <label style={labelStyle}>{t('full_name')} *</label>
                     <input value={form.recipientName} onChange={set('recipientName')} style={inputStyle('recipientName')}
                       onFocus={e=>(e.currentTarget.style.borderColor=GOLD)} onBlur={e=>(e.currentTarget.style.borderColor=errors.recipientName?'#f87171':BORDER)} />
                     {errors.recipientName && <p style={{ fontSize:'.72rem',color:'#f87171',marginTop:'.25rem' }}>{errors.recipientName}</p>}
                   </div>
-                  <div>
+                  <div className="sm:col-span-1">
                     <label style={labelStyle}>{t('phone')} *</label>
                     <input value={form.phone} onChange={set('phone')} dir="ltr" placeholder="01xxxxxxxxx" style={inputStyle('phone')}
                       onFocus={e=>(e.currentTarget.style.borderColor=GOLD)} onBlur={e=>(e.currentTarget.style.borderColor=errors.phone?'#f87171':BORDER)} />
                     {errors.phone && <p style={{ fontSize:'.72rem',color:'#f87171',marginTop:'.25rem' }}>{errors.phone}</p>}
                   </div>
-                  <div style={{ gridColumn: 'span 2' }}>
+                  <div className="sm:col-span-2">
                     <label style={labelStyle}>{t('email')}</label>
                     <input value={form.email} onChange={set('email')} type="email" dir="ltr" style={inputStyle()}
                       onFocus={e=>(e.currentTarget.style.borderColor=GOLD)} onBlur={e=>(e.currentTarget.style.borderColor=BORDER)} />
@@ -228,12 +228,12 @@ export default function CheckoutPage() {
               </section>
 
               {/* Delivery address */}
-              <section style={{ background: CARD, borderRadius: 20, padding: '1.75rem', border: `1px solid ${BORDER}` }}>
+              <section style={{ background: CARD, borderRadius: 20, padding: 'clamp(1rem, 3vw, 1.75rem)', border: `1px solid ${BORDER}` }}>
                 <h2 style={{ fontWeight: 700, color: IVORY, marginBottom: '1.25rem', fontSize: '.95rem', letterSpacing: '.04em' }}>
                   {t('delivery')}
                 </h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-1">
                     <label style={labelStyle}>{t('governorate')} *</label>
                     <select value={form.governorate} onChange={set('governorate')}
                       style={{ ...inputStyle('governorate'), appearance: 'none', cursor: 'pointer' }}
@@ -247,19 +247,19 @@ export default function CheckoutPage() {
                     </select>
                     {errors.governorate && <p style={{ fontSize:'.72rem',color:'#f87171',marginTop:'.25rem' }}>{errors.governorate}</p>}
                   </div>
-                  <div>
+                  <div className="sm:col-span-1">
                     <label style={labelStyle}>{t('city')} *</label>
                     <input value={form.city} onChange={set('city')} style={inputStyle('city')}
                       onFocus={e=>(e.currentTarget.style.borderColor=GOLD)} onBlur={e=>(e.currentTarget.style.borderColor=errors.city?'#f87171':BORDER)} />
                     {errors.city && <p style={{ fontSize:'.72rem',color:'#f87171',marginTop:'.25rem' }}>{errors.city}</p>}
                   </div>
-                  <div style={{ gridColumn: 'span 2' }}>
+                  <div className="sm:col-span-2">
                     <label style={labelStyle}>{t('street')} *</label>
                     <input value={form.streetAddress} onChange={set('streetAddress')} style={inputStyle('streetAddress')}
                       onFocus={e=>(e.currentTarget.style.borderColor=GOLD)} onBlur={e=>(e.currentTarget.style.borderColor=errors.streetAddress?'#f87171':BORDER)} />
                     {errors.streetAddress && <p style={{ fontSize:'.72rem',color:'#f87171',marginTop:'.25rem' }}>{errors.streetAddress}</p>}
                   </div>
-                  <div style={{ gridColumn: 'span 2' }}>
+                  <div className="sm:col-span-2">
                     <label style={labelStyle}>{t('notes')}</label>
                     <textarea value={form.notes} onChange={set('notes')} rows={2}
                       style={{ ...inputStyle(), resize: 'none' as const }}
