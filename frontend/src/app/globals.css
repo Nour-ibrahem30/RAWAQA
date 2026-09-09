@@ -1208,7 +1208,7 @@ img, svg { display: block; max-width: 100%; }
 
 /* ─── CATEGORY GRID — 2 cols on mobile ──────────────────────── */
 @media (max-width: 640px) {
-  [data-stagger] {
+  [data-stagger]:has(.category-tile) {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: .75rem !important;
   }
@@ -1222,11 +1222,24 @@ img, svg { display: block; max-width: 100%; }
 }
 
 /* ─── WHY CARDS — full width on mobile ──────────────────────── */
+.why-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+@media (max-width: 1024px) {
+  .why-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
 @media (max-width: 640px) {
-  [style*="calc(50% - .75rem)"] {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: unset !important;
+  .why-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  .why-card {
+    padding: 1.25rem 1.5rem !important;
+    text-align: start !important;
   }
 }
 

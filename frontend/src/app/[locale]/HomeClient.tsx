@@ -565,30 +565,43 @@ export default function HomeClient({ locale }: { locale: string }) {
             <h2 className="display-3" style={{ color:'var(--ivory)' }}>{t('why.title')}</h2>
           </div>
 
-          {/* First 4 in a 4-col grid */}
-          <div data-stagger style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:'1.5rem',marginBottom:'1.5rem' }}>
-            {([1,2,3,4] as const).map(n => (
-              <div key={n} className="why-card" style={{ padding:'1.75rem',background:'rgba(255,255,255,.04)',borderRadius:18,border:'1px solid rgba(210,181,106,.1)' }}>
-                <div style={{ width:40,height:40,borderRadius:'50%',background:'var(--gold-pale)',color:'var(--gold)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:'.88rem',marginBottom:'1rem',boxShadow:'0 3px 12px rgba(173,138,76,.18)' }}>{n}</div>
-                <h3 style={{ fontWeight:700,color:'var(--ivory)',marginBottom:'.5rem',fontSize:'.975rem' }}>{t(`why.q${n}` as 'why.q1')}</h3>
-                <p style={{ fontSize:'.85rem',color:'rgba(247,244,236,.55)',lineHeight:1.7 }}>{t(`why.d${n}` as 'why.d1')}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Last 2 centered */}
-          <div style={{ display:'flex',justifyContent:'center',gap:'1.5rem',flexWrap:'wrap' }}>
-            {([5,'6extra'] as const).map((n, idx) => {
-              const num = idx + 5;
-              const isReal = idx === 0;
+          {/* Unified 6-card Why RAWAQA grid */}
+          <div className="why-grid" data-reveal="up">
+            {[1, 2, 3, 4, 5, 6].map(n => {
+              const title = n <= 5 ? t(`why.q${n}` as 'why.q1') : (isAr ? 'توصيل سريع' : 'Fast Delivery');
+              const desc = n <= 5 ? t(`why.d${n}` as 'why.d1') : (isAr ? 'توصيل خلال ٣-٥ أيام عمل لجميع محافظات مصر.' : 'Delivery in 3–5 business days to all Egyptian governorates.');
               return (
-                <div key={n} className="why-card" style={{ padding:'1.75rem',background:'rgba(255,255,255,.04)',borderRadius:18,border:'1px solid rgba(210,181,106,.1)',width:'calc(50% - .75rem)',maxWidth:360,minWidth:240 }}>
-                  <div style={{ width:40,height:40,borderRadius:'50%',background:'var(--gold-pale)',color:'var(--gold)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:'.88rem',marginBottom:'1rem',boxShadow:'0 3px 12px rgba(173,138,76,.18)' }}>{num}</div>
-                  <h3 style={{ fontWeight:700,color:'var(--ivory)',marginBottom:'.5rem',fontSize:'.975rem' }}>
-                    {isReal ? t('why.q5') : (isAr ? 'توصيل سريع' : 'Fast Delivery')}
+                <div
+                  key={n}
+                  className="why-card flex flex-col items-start p-5 sm:p-7 rounded-2xl transition-all duration-300"
+                  style={{
+                    background: 'rgba(255,255,255,.04)',
+                    border: '1px solid rgba(210,181,106,.12)',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: 'var(--gold-pale)',
+                      color: 'var(--gold)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 800,
+                      fontSize: '.85rem',
+                      marginBottom: '.85rem',
+                      boxShadow: '0 3px 12px rgba(173,138,76,.18)',
+                    }}
+                  >
+                    {n}
+                  </div>
+                  <h3 style={{ fontWeight: 700, color: 'var(--ivory)', marginBottom: '.45rem', fontSize: '1rem' }}>
+                    {title}
                   </h3>
-                  <p style={{ fontSize:'.85rem',color:'rgba(247,244,236,.55)',lineHeight:1.7 }}>
-                    {isReal ? t('why.d5') : (isAr ? 'توصيل خلال ٣-٥ أيام عمل لجميع محافظات مصر.' : 'Delivery in 3–5 business days to all Egyptian governorates.')}
+                  <p style={{ fontSize: '.85rem', color: 'rgba(247,244,236,.6)', lineHeight: 1.65 }}>
+                    {desc}
                   </p>
                 </div>
               );
