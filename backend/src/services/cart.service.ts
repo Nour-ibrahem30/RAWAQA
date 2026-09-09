@@ -1,6 +1,18 @@
+import mongoose from 'mongoose';
 import { Cart, ICart } from '../models/Cart';
 import { Product } from '../models/Product';
 import { env } from '../config/env';
+
+// Helper to resolve product by ID, slug, or SKU safely
+const findProductSafely = async (identifier: string) => {
+  if (mongoose.Types.ObjectId.isValid(identifier)) {
+    const prod = await Product.findById(identifier);
+    if (prod) return prod;
+  }
+  return Product.findOne({
+    $or: [{ slugAr: identifier }, { slugEn: identifier }, { sku: identifier }],
+  });
+};
 
 // Get or create cart
 export const getOrCreateCart = async (
@@ -41,8 +53,8 @@ export const addItemToCart = async (
     throw new Error('Cart not found');
   }
 
-  // Validate product
-  const product = await Product.findById(productId);
+  // Validate product safely
+  const product = await findProductSafely(productId);
   if (!product) {
     throw new Error('Product not found');
   }
@@ -51,9 +63,11 @@ export const addItemToCart = async (
     throw new Error('Product is out of stock');
   }
 
+  const prodIdStr = product._id.toString();
+
   // Check if already in cart
   const existingItem = cart.items.find(
-    (item) => item.product.toString() === productId
+    (item) => item.product.toString() === prodIdStr || item.product.toString() === productId
   );
 
   if (existingItem) {
@@ -91,14 +105,17 @@ export const updateCartItem = async (
     throw new Error('Cart not found');
   }
 
-  const item = cart.items.find((item) => item.product.toString() === productId);
+  const product = await findProductSafely(productId);
+  const targetId = product ? product._id.toString() : productId;
+
+  const item = cart.items.find((i) => i.product.toString() === targetId || i.product.toString() === productId);
   if (!item) {
     throw new Error('Item not found in cart');
   }
 
   if (quantity <= 0) {
     // Remove item
-    cart.items = cart.items.filter((item) => item.product.toString() !== productId);
+    cart.items = cart.items.filter((i) => i.product.toString() !== targetId && i.product.toString() !== productId);
   } else {
     // Update quantity
     if (quantity > env.CART_ITEM_MAX_QUANTITY) {
@@ -123,7 +140,10 @@ export const removeCartItem = async (
     throw new Error('Cart not found');
   }
 
-  cart.items = cart.items.filter((item) => item.product.toString() !== productId);
+  const product = await findProductSafely(productId);
+  const targetId = product ? product._id.toString() : productId;
+
+  cart.items = cart.items.filter((i) => i.product.toString() !== targetId && i.product.toString() !== productId);
 
   await cart.save();
   await cart.populate('items.product');

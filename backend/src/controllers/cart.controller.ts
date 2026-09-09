@@ -48,7 +48,7 @@ export const addItem = async (req: Request, res: Response): Promise<void> => {
   try {
     const { productId, quantity = 1 } = req.body;
     const userId = req.user?.userId;
-    const sessionId = req.cookies.cartSessionId || req.headers['x-cart-session-id'];
+    const sessionId = req.cookies?.cartSessionId || req.headers['x-cart-session-id'];
 
     const cart = await getOrCreateCart(userId, sessionId as string);
     const updatedCart = await addItemToCart(cart._id.toString(), productId, quantity);
@@ -94,7 +94,7 @@ export const updateItem = async (req: Request, res: Response): Promise<void> => 
     }
     
     const userId = req.user?.userId;
-    const sessionId = req.cookies.cartSessionId || req.headers['x-cart-session-id'];
+    const sessionId = req.cookies?.cartSessionId || req.headers['x-cart-session-id'];
 
     const cart = await getOrCreateCart(userId, sessionId as string);
     const updatedCart = await updateCartItem(cart._id.toString(), productId, quantity);
@@ -139,7 +139,7 @@ export const removeItem = async (req: Request, res: Response): Promise<void> => 
     }
     
     const userId = req.user?.userId;
-    const sessionId = req.cookies.cartSessionId || req.headers['x-cart-session-id'];
+    const sessionId = req.cookies?.cartSessionId || req.headers['x-cart-session-id'];
 
     const cart = await getOrCreateCart(userId, sessionId as string);
     const updatedCart = await removeCartItem(cart._id.toString(), productId);
@@ -163,7 +163,7 @@ export const removeItem = async (req: Request, res: Response): Promise<void> => 
 export const clear = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const sessionId = req.cookies.cartSessionId || req.headers['x-cart-session-id'];
+    const sessionId = req.cookies?.cartSessionId || req.headers['x-cart-session-id'];
 
     const cart = await getOrCreateCart(userId, sessionId as string);
     const clearedCart = await clearCart(cart._id.toString());
@@ -227,7 +227,7 @@ export const merge = async (req: Request, res: Response): Promise<void> => {
 export const validate = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const sessionId = req.cookies.cartSessionId || req.headers['x-cart-session-id'];
+    const sessionId = req.cookies?.cartSessionId || req.headers['x-cart-session-id'];
 
     const cart = await getOrCreateCart(userId, sessionId as string);
     const validation = await validateCart(cart._id.toString());
