@@ -9,12 +9,15 @@ import { formatPrice, loc, orderStatusColor, orderStatusLabel } from '@/lib/util
 import type { Order } from '@/lib/types';
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
-  pending: ['confirmed', 'cancelled'],
-  confirmed: ['preparing', 'cancelled'],
-  preparing: ['shipped'],
-  shipped: ['delivered'],
-  delivered: [],
+  pending: ['confirmed', 'processing', 'cancelled'],
+  pending_odoo: ['confirmed', 'processing', 'cancelled'],
+  confirmed: ['processing', 'shipped', 'cancelled'],
+  processing: ['shipped', 'cancelled'],
+  shipped: ['delivered', 'cancelled'],
+  delivered: ['refunded'],
   cancelled: [],
+  refunded: [],
+  failed: ['cancelled'],
 };
 
 export default function AdminOrderDetailPage() {

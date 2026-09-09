@@ -48,11 +48,15 @@ export default function AdminProductsPage() {
     { key: 'price', label: 'Price', render: (p: Product) => formatPrice(p.price, 'en') },
     {
       key: 'inventory', label: 'Stock',
-      render: (p: Product) => (
-        <span style={{ color: p.inventory.availableQuantity <= p.inventory.lowStockThreshold ? '#A8543A' : '#4B5B45', fontWeight: 600 }}>
-          {p.inventory.availableQuantity}
-        </span>
-      ),
+      render: (p: Product) => {
+        const avail = p.inventory?.availableQuantity ?? 0;
+        const low = p.inventory?.lowStockThreshold ?? 5;
+        return (
+          <span style={{ color: avail <= low ? '#A8543A' : '#4B5B45', fontWeight: 600 }}>
+            {avail}
+          </span>
+        );
+      },
     },
     {
       key: 'status', label: 'Status',
@@ -61,18 +65,21 @@ export default function AdminProductsPage() {
           background: p.status === 'active' ? 'rgba(75,91,69,.3)' : 'rgba(168,84,58,.2)',
           color: p.status === 'active' ? '#a3c49a' : '#e07a5f',
         }}>
-          {p.status}
+          {p.status || 'active'}
         </span>
       ),
     },
     {
       key: 'actions', label: 'Actions',
-      render: (p: Product) => (
-        <div className="flex items-center gap-3">
-          <Link href={`/admin/products/${p.id}`} className="text-xs hover:underline" style={{ color: '#D2B56A' }}>Edit</Link>
-          <button onClick={() => handleDelete(p.id, p.nameEn)} className="text-xs hover:underline" style={{ color: '#A8543A' }}>Delete</button>
-        </div>
-      ),
+      render: (p: Product) => {
+        const prodId = p.id || (p as any)._id;
+        return (
+          <div className="flex items-center gap-3">
+            <Link href={`/admin/products/${prodId}`} className="text-xs hover:underline" style={{ color: '#D2B56A' }}>Edit</Link>
+            <button onClick={() => handleDelete(prodId, p.nameEn)} className="text-xs hover:underline" style={{ color: '#A8543A' }}>Delete</button>
+          </div>
+        );
+      },
     },
   ];
 

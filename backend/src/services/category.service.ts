@@ -50,7 +50,20 @@ export const getCategoryWithProducts = async (
 };
 
 // Create category
-export const createCategory = async (data: Partial<ICategory>): Promise<ICategory> => {
+export const createCategory = async (data: any): Promise<ICategory> => {
+  if (data.slug) {
+    if (!data.slugEn) data.slugEn = data.slug.toLowerCase().trim();
+    if (!data.slugAr) data.slugAr = data.slug.toLowerCase().trim();
+  }
+  if (data.slugEn && !data.slugAr) data.slugAr = data.slugEn;
+  if (data.slugAr && !data.slugEn) data.slugEn = data.slugAr;
+
+  if (!data.slugEn) {
+    const gen = (data.nameEn || 'category').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    data.slugEn = gen;
+    data.slugAr = gen;
+  }
+
   // Check slug uniqueness (both AR and EN)
   if (data.slugAr) {
     const existingAr = await Category.findOne({ slugAr: data.slugAr });
@@ -75,11 +88,16 @@ export const createCategory = async (data: Partial<ICategory>): Promise<ICategor
 // Update category
 export const updateCategory = async (
   id: string,
-  data: Partial<ICategory>
+  data: any
 ): Promise<ICategory | null> => {
   const existingCategory = await Category.findById(id);
   if (!existingCategory) {
     throw new Error('Category not found');
+  }
+
+  if (data.slug) {
+    if (!data.slugEn) data.slugEn = data.slug.toLowerCase().trim();
+    if (!data.slugAr) data.slugAr = data.slug.toLowerCase().trim();
   }
 
   // Check slug uniqueness if changed

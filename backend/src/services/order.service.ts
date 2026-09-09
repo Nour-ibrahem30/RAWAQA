@@ -114,16 +114,29 @@ export const updateOrderStatus = async (
   status: OrderStatus,
   notes?: string
 ): Promise<IOrder> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  let session: mongoose.ClientSession | null = null;
+  let useTransaction = false;
+
+  try {
+    session = await mongoose.startSession();
+    session.startTransaction();
+    useTransaction = true;
+  } catch {
+    session = null;
+    useTransaction = false;
+  }
 
   try {
     let order: IOrder | null = null;
     if (mongoose.Types.ObjectId.isValid(orderId)) {
-      order = await Order.findById(orderId).session(session);
+      order = session
+        ? await Order.findById(orderId).session(session)
+        : await Order.findById(orderId);
     }
     if (!order) {
-      order = await Order.findOne({ orderNumber: orderId }).session(session);
+      order = session
+        ? await Order.findOne({ orderNumber: orderId }).session(session)
+        : await Order.findOne({ orderNumber: orderId });
     }
 
     if (!order) {
@@ -138,6 +151,9 @@ export const updateOrderStatus = async (
 
     // Update timestamps based on status
     switch (status) {
+      case OrderStatus.CONFIRMED:
+        order.confirmedAt = new Date();
+        break;
       case OrderStatus.PROCESSING:
         // No extra field needed
         break;
@@ -154,11 +170,29 @@ export const updateOrderStatus = async (
         break;
     }
 
-    await order.save({ session });
-
-    // Create outbox event
-    await OutboxEvent.create(
-      [
+    if (session && useTransaction) {
+      await order.save({ session });
+      await OutboxEvent.create(
+        [
+          {
+            aggregateType: 'Order',
+            aggregateId: order._id,
+            eventType: 'OrderStatusChanged',
+            payload: {
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              previousStatus,
+              newStatus: status,
+              notes,
+            },
+          },
+        ],
+        { session }
+      );
+      await session.commitTransaction();
+    } else {
+      await order.save();
+      await OutboxEvent.create([
         {
           aggregateType: 'Order',
           aggregateId: order._id,
@@ -171,17 +205,21 @@ export const updateOrderStatus = async (
             notes,
           },
         },
-      ],
-      { session }
-    );
+      ]);
+    }
 
-    await session.commitTransaction();
     return order;
   } catch (error) {
-    await session.abortTransaction();
+    if (session && useTransaction) {
+      try {
+        await session.abortTransaction();
+      } catch {}
+    }
     throw error;
   } finally {
-    session.endSession();
+    if (session) {
+      session.endSession();
+    }
   }
 };
 
@@ -308,18 +346,46 @@ export const getOrderStats = async (userId?: string): Promise<any> => {
 // Helper function to validate status transitions
 function validateStatusTransition(currentStatus: OrderStatus, newStatus: OrderStatus): void {
   const validTransitions: Record<OrderStatus, OrderStatus[]> = {
-    [OrderStatus.PENDING]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
-    [OrderStatus.PENDING_ODOO]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-    [OrderStatus.CONFIRMED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
-    [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
-    [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
-    [OrderStatus.DELIVERED]: [], // Final state
+    [OrderStatus.PENDING]: [
+      OrderStatus.CONFIRMED,
+      OrderStatus.PROCESSING,
+      OrderStatus.PENDING_ODOO,
+      OrderStatus.SHIPPED,
+      OrderStatus.CANCELLED,
+    ],
+    [OrderStatus.PENDING_ODOO]: [
+      OrderStatus.CONFIRMED,
+      OrderStatus.PROCESSING,
+      OrderStatus.CANCELLED,
+    ],
+    [OrderStatus.CONFIRMED]: [
+      OrderStatus.PROCESSING,
+      OrderStatus.SHIPPED,
+      OrderStatus.DELIVERED,
+      OrderStatus.CANCELLED,
+    ],
+    [OrderStatus.PROCESSING]: [
+      OrderStatus.CONFIRMED,
+      OrderStatus.SHIPPED,
+      OrderStatus.DELIVERED,
+      OrderStatus.CANCELLED,
+    ],
+    [OrderStatus.SHIPPED]: [
+      OrderStatus.DELIVERED,
+      OrderStatus.CANCELLED,
+    ],
+    [OrderStatus.DELIVERED]: [
+      OrderStatus.REFUNDED,
+    ],
     [OrderStatus.CANCELLED]: [], // Final state
     [OrderStatus.REFUNDED]: [], // Final state
-    [OrderStatus.FAILED]: [OrderStatus.CANCELLED], // Can be cancelled
+    [OrderStatus.FAILED]: [
+      OrderStatus.PENDING,
+      OrderStatus.CANCELLED,
+    ],
   };
 
-  const allowed = validTransitions[currentStatus];
+  const allowed = validTransitions[currentStatus] || [];
 
   if (!allowed.includes(newStatus)) {
     throw new Error(`Cannot transition from ${currentStatus} to ${newStatus}`);

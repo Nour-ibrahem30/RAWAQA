@@ -11,6 +11,7 @@ import {
   updateSettings,
   getReconciliationReports,
 } from '../controllers/admin.controller';
+import { exportOrders } from '../controllers/order.controller';
 
 const router = Router();
 
@@ -25,41 +26,45 @@ router.use(authenticate, requireAdmin);
 router.get('/stats', dashboardStats);
 
 /**
- * @route  GET /api/admin/users
- * @desc   List all users with filters & pagination
+ * @route  GET /api/admin/users & /api/admin/customers
+ * @desc   List all users/customers with filters & pagination
  * @access Admin
- * @query  page, limit, role, isActive, search
  */
 router.get('/users', getUsers);
+router.get('/customers', getUsers);
 
 /**
- * @route  GET /api/admin/users/:id
- * @desc   Get single user by ID
+ * @route  GET /api/admin/users/:id & /api/admin/customers/:id
+ * @desc   Get single user/customer by ID
  * @access Admin
  */
 router.get('/users/:id', getUser);
+router.get('/customers/:id', getUser);
 
 /**
- * @route  PUT /api/admin/users/:id/role
+ * @route  PUT /api/admin/users/:id/role & /api/admin/customers/:id/role
  * @desc   Change user role (promote/demote)
  * @access Super Admin
- * @body   { role: 'customer' | 'admin' | 'super_admin' }
  */
 router.put('/users/:id/role', requireSuperAdmin, changeRole);
+router.put('/customers/:id/role', requireSuperAdmin, changeRole);
 
 /**
- * @route  PUT /api/admin/users/:id/toggle-status
+ * @route  PUT /api/admin/users/:id/toggle-status & /api/admin/customers/:id/toggle-status
  * @desc   Ban / Unban a user
  * @access Admin
  */
 router.put('/users/:id/toggle-status', toggleStatus);
+router.put('/customers/:id/toggle-status', toggleStatus);
+router.put('/customers/:id/ban', toggleStatus);
 
 /**
- * @route  DELETE /api/admin/users/:id
+ * @route  DELETE /api/admin/users/:id & /api/admin/customers/:id
  * @desc   Soft-delete (deactivate) a user
  * @access Super Admin
  */
 router.delete('/users/:id', requireSuperAdmin, removeUser);
+router.delete('/customers/:id', requireSuperAdmin, removeUser);
 
 /**
  * @route  GET /api/admin/settings
@@ -82,4 +87,12 @@ router.put('/settings', updateSettings);
  */
 router.get('/reconciliation-reports', getReconciliationReports);
 
+/**
+ * @route  GET /api/admin/export/orders
+ * @desc   Export orders CSV
+ * @access Admin
+ */
+router.get('/export/orders', exportOrders);
+
 export default router;
+

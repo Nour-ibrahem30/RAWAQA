@@ -32,11 +32,18 @@ export default function AdminCategoriesPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const cleanSlug = form.slug.trim().toLowerCase() || form.nameEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const payload = {
+        ...form,
+        slug: cleanSlug,
+        slugAr: cleanSlug,
+        slugEn: cleanSlug,
+      };
       if (editId) {
-        await categoriesApi.update(editId, form);
+        await categoriesApi.update(editId, payload);
         showToast('Category updated!', 'success');
       } else {
-        await categoriesApi.create(form);
+        await categoriesApi.create(payload);
         showToast('Category created!', 'success');
       }
       setShowForm(false);

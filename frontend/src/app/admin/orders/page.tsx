@@ -7,7 +7,7 @@ import { formatPrice, orderStatusColor, orderStatusLabel } from '@/lib/utils';
 import AdminTable from '@/components/admin/AdminTable';
 import type { Order } from '@/lib/types';
 
-const STATUSES = ['', 'pending', 'confirmed', 'preparing', 'shipped', 'delivered', 'cancelled'];
+const STATUSES = ['', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);

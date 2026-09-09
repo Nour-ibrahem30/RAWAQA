@@ -11,7 +11,11 @@ export default function AdminCustomersPage() {
 
   useEffect(() => {
     adminApi.customers(1)
-      .then(r => setCustomers((r.data as { users: User[] }).users ?? []))
+      .then(r => {
+        const raw: any = r.data;
+        const list = Array.isArray(raw) ? raw : (raw?.users || []);
+        setCustomers(list);
+      })
       .catch(() => setCustomers([]))
       .finally(() => setLoading(false));
   }, []);
@@ -19,23 +23,26 @@ export default function AdminCustomersPage() {
   const columns = [
     {
       key: 'name', label: 'Customer',
-      render: (u: User) => (
-        <div>
-          <p style={{ color: '#F7F4EC', fontWeight: 500 }}>{u.name}</p>
-          <p style={{ color: 'rgba(247,244,236,.35)', fontSize: '.7rem' }}>{u.email}</p>
-        </div>
-      ),
+      render: (u: any) => {
+        const displayName = u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Customer';
+        return (
+          <div>
+            <p style={{ color: '#F7F4EC', fontWeight: 500 }}>{displayName}</p>
+            <p style={{ color: 'rgba(247,244,236,.35)', fontSize: '.7rem' }}>{u.email}</p>
+          </div>
+        );
+      },
     },
     {
       key: 'phone', label: 'Phone',
-      render: (u: User) => <span dir="ltr" style={{ fontFamily: 'monospace', fontSize: '.8rem', color: 'rgba(247,244,236,.6)' }}>{u.phone}</span>,
+      render: (u: any) => <span dir="ltr" style={{ fontFamily: 'monospace', fontSize: '.8rem', color: 'rgba(247,244,236,.6)' }}>{u.phone || '—'}</span>,
     },
     {
       key: 'role', label: 'Role',
-      render: (u: User) => (
+      render: (u: any) => (
         <span className="text-xs px-2 py-0.5 rounded-pill" style={{
-          background: u.role === 'admin' ? 'rgba(210,181,106,.2)' : 'rgba(255,255,255,.06)',
-          color: u.role === 'admin' ? '#D2B56A' : 'rgba(247,244,236,.5)',
+          background: u.role === 'admin' || u.role === 'super_admin' ? 'rgba(210,181,106,.2)' : 'rgba(255,255,255,.06)',
+          color: u.role === 'admin' || u.role === 'super_admin' ? '#D2B56A' : 'rgba(247,244,236,.5)',
         }}>
           {u.role}
         </span>
