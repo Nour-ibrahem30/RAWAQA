@@ -102,11 +102,9 @@ export default function ProductCard({ product }: { product: Product }) {
         style={{
           position: 'relative',
           aspectRatio: '4/5',
-          background: 'var(--sand)',
+          background: 'rgba(21,19,15,.6)',
           overflow: 'hidden',
         }}
-        onMouseEnter={() => images.length > 1 && setImgIdx(1)}
-        onMouseLeave={() => setImgIdx(0)}
       >
         <ProductImage src={images[imgIdx] ?? images[0]} name={name} product={product} />
 
@@ -117,7 +115,9 @@ export default function ProductCard({ product }: { product: Product }) {
               <button
                 key={i}
                 onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIdx(i); }}
+                onMouseEnter={e => { e.preventDefault(); e.stopPropagation(); setImgIdx(i); }}
                 style={{ width: i === imgIdx ? 14 : 6, height: 6, borderRadius: 999, border: 'none', background: i === imgIdx ? 'var(--gold-light)' : 'rgba(255,255,255,.5)', cursor: 'pointer', padding: 0, transition: 'all 300ms ease' }}
+                aria-label={`Show image ${i + 1}`}
               />
             ))}
           </div>

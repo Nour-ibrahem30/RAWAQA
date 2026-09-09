@@ -17,10 +17,10 @@ import type { Product } from '@/lib/types';
 
 /* ─── Category config ─────────────────────────────────────── */
 const CATS = [
-  { key: 'relax',   color: '#A8543A', icon: '🛋️', image: '/products/chair-lounge-new/img-1.jpg' },
-  { key: 'game',    color: '#3B5578', icon: '🎮', image: '/products/8ball-new/img-1.jpg' },
-  { key: 'kids',    color: '#BE8F2E', icon: '🧸', image: '/products/football-new/img-1.jpg' },
-  { key: 'outdoor', color: '#4B5B45', icon: '🌿', image: '/products/football-new/img-5.jpg' },
+  { key: 'relax',   color: '#A8543A', icon: '🛋️', image: 'https://res.cloudinary.com/dr5welrvq/image/upload/v1788812671/rawaqa/products/chair-lounge-new/img-1.jpg' },
+  { key: 'game',    color: '#3B5578', icon: '🎮', image: 'https://res.cloudinary.com/dr5welrvq/image/upload/v1788812686/rawaqa/products/8ball-new/img-1.jpg' },
+  { key: 'kids',    color: '#BE8F2E', icon: '🧸', image: 'https://res.cloudinary.com/dr5welrvq/image/upload/v1788812750/rawaqa/products/football-new/img-1.jpg' },
+  { key: 'outdoor', color: '#4B5B45', icon: '🌿', image: 'https://res.cloudinary.com/dr5welrvq/image/upload/v1788812766/rawaqa/products/football-new/img-5.jpg' },
 ];
 
 /* ─── Reviews ─────────────────────────────────────────────── */
