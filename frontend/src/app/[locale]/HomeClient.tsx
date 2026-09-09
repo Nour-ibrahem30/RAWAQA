@@ -707,14 +707,14 @@ export default function HomeClient({ locale }: { locale: string }) {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setActiveReview(prev => (prev - 1 + REVIEWS.length) % REVIEWS.length)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-ivory/60 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-xs"
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-ivory/60 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-[10px]"
                       aria-label="Previous review"
                     >
                       {isAr ? '→' : '←'}
                     </button>
                     <button
                       onClick={() => setActiveReview(prev => (prev + 1) % REVIEWS.length)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-ivory/60 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-xs"
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-ivory/60 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-[10px]"
                       aria-label="Next review"
                     >
                       {isAr ? '←' : '→'}
@@ -731,7 +731,7 @@ export default function HomeClient({ locale }: { locale: string }) {
           CTA FINAL — compact
       ═══════════════════════════════════════════════ */}
       <section style={{
-        padding:'4rem 0',
+        padding:'3.5rem 0',
         background:'linear-gradient(160deg, var(--charcoal) 0%, #0d0b08 100%)',
         color:'var(--ivory)',textAlign:'center',
         position:'relative',overflow:'hidden',
@@ -742,13 +742,13 @@ export default function HomeClient({ locale }: { locale: string }) {
         }} />
         <Particles />
         <div className="wrap" style={{ position:'relative',zIndex:1 }} data-reveal="scale">
-          <h2 className="display-3" style={{ color:'var(--ivory)',marginBottom:'1rem' }}>
+          <h2 className="display-3" style={{ color:'var(--ivory)',marginBottom:'0.75rem' }}>
             {locContent(ctaContent, 'title', locale) || t('cta.title')}
           </h2>
-          <p style={{ fontSize:'1rem',lineHeight:1.65,color:'rgba(247,244,236,.52)',maxWidth:'42ch',margin:'0 auto 2rem' }}>
+          <p style={{ fontSize:'.9rem',lineHeight:1.6,color:'rgba(247,244,236,.52)',maxWidth:'40ch',margin:'0 auto 1.5rem' }}>
             {locContent(ctaContent, 'sub', locale) || t('cta.sub')}
           </p>
-          <Link href={`/${locale}/shop`} className="btn btn-gold" style={{ fontSize:'.85rem',padding:'.9rem 2.4rem' }}>
+          <Link href={`/${locale}/shop`} className="btn btn-gold" style={{ fontSize:'.8rem', padding:'.45rem 1.6rem', height:'38px', minHeight:'auto', display:'inline-flex', alignItems:'center' }}>
             {locContent(ctaContent, 'btn', locale) || t('cta.btn')}
           </Link>
         </div>
