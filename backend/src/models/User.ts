@@ -127,7 +127,6 @@ const userSchema = new Schema<IUser>(
 // Indexes for performance
 userSchema.index({ email: 1, isActive: 1 });
 userSchema.index({ role: 1, isActive: 1 });
-userSchema.index({ googleId: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {
