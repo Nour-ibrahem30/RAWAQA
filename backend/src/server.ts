@@ -325,11 +325,22 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
 // =============================================================================
 
 const startServer = async () => {
+  // 1. Start HTTP Server immediately on 0.0.0.0 so platform port inspection succeeds instantly
+  const port = Number(process.env.PORT) || env.PORT || 5000;
+  const server = app.listen(port, '0.0.0.0', () => {
+    logInfo(`🚀 RAWAQA 2.0 Backend listening on 0.0.0.0:${port}`, {
+      environment: env.NODE_ENV,
+      port,
+      nodeVersion: process.version,
+      pid: process.pid,
+    });
+  });
+
   try {
-    // Connect to Database
+    // 2. Connect to Database
     await database.connect();
 
-    // Start background workers AFTER DB is confirmed connected
+    // 3. Start background workers AFTER DB is confirmed connected
     if (env.ENABLE_WORKERS) {
       logInfo('Starting background workers');
       outboxWorker.start();
@@ -357,16 +368,6 @@ const startServer = async () => {
         autoCancelWorker.stop();
       });
     }
-
-    // Start HTTP Server
-    const server = app.listen(env.PORT, () => {
-      logInfo(`🚀 RAWAQA 2.0 Backend started`, {
-        environment: env.NODE_ENV,
-        port: env.PORT,
-        nodeVersion: process.version,
-        pid: process.pid,
-      });
-    });
 
     // Graceful Shutdown Handlers
     const gracefulShutdown = async (signal: string) => {
