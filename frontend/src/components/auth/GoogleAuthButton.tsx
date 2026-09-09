@@ -76,7 +76,6 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
             size: 'large',
             text: 'continue_with',
             shape: 'pill',
-            width: '100%',
             locale: isAr ? 'ar' : 'en',
           });
         }

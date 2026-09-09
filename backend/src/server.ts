@@ -37,28 +37,28 @@ app.use(
   })
 );
 
-// CORS
-const configuredOrigins = env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map((o) => o.trim()) : [];
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, server-to-server, curl)
-      if (!origin) return callback(null, true);
-      
-      const isAllowed =
-        configuredOrigins.includes(origin) ||
-        origin.endsWith('.vercel.app') ||
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1');
+// Universal CORS & Preflight Handler
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Session-ID, sentry-trace, baggage'
+  );
+  res.setHeader('Access-Control-Max-Age', '86400');
 
-      if (isAllowed) {
-        return callback(null, true);
-      }
-      return callback(null, true); // Fallback allow in production to prevent blocking
-    },
-    credentials: env.CORS_CREDENTIALS,
-  })
-);
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
 
 // Body Parser
 app.use(express.json({ limit: '10mb' }));
