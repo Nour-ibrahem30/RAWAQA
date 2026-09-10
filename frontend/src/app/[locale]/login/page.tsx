@@ -228,8 +228,13 @@ export default function LoginPage() {
           router.push(`/${locale}`);
         }, 700);
       }
-    } catch {
-      setError(t('error_invalid'));
+    } catch (err: unknown) {
+      const errMsg = (err as Error)?.message || '';
+      if (errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('connect')) {
+        setError(isAr ? 'تعذر الاتصال بالخادم، يرجى التأكد من تشغيل السيرفر' : 'Unable to connect to backend server');
+      } else {
+        setError(errMsg || t('error_invalid'));
+      }
       setLoading(false);
     }
   };
