@@ -188,38 +188,41 @@ export default function AdminSettingsPage() {
                   setColors(preset.colors);
                   applyColors(preset.colors as unknown as Record<string, string>);
                   setSaved(false);
-                  showToast(`Applied "${preset.name}". Click "Save Changes" to publish!`, 'default');
+                  showToast(`Applied "${preset.nameAr || preset.name}". Click "Save Changes" to publish!`, 'default');
                 }}
-                className="p-3.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between"
+                className="p-3.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between hover:border-[#D2B56A]/50"
                 style={{
-                  background: isCurrent ? 'rgba(210,181,106,.1)' : '#1B1813',
+                  background: isCurrent ? 'rgba(210,181,106,.12)' : '#1B1813',
                   border: isCurrent ? '2px solid #D2B56A' : '1px solid rgba(210,181,106,.15)',
-                  boxShadow: isCurrent ? '0 0 16px rgba(210,181,106,.15)' : 'none',
+                  boxShadow: isCurrent ? '0 0 20px rgba(210,181,106,.2)' : 'none',
                 }}
               >
                 <div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold" style={{ color: isCurrent ? '#D2B56A' : '#F7F4EC' }}>
-                      {preset.name}
+                      {preset.nameAr ? `${preset.nameAr}` : preset.name}
                     </p>
                     {isCurrent && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: '#D2B56A', color: '#15130F' }}>
-                        Active
+                      <span className="text-[10px] px-2 py-0.5 rounded font-bold whitespace-nowrap" style={{ background: '#D2B56A', color: '#15130F' }}>
+                        ✓ نشط
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] mt-1 leading-snug" style={{ color: 'rgba(247,244,236,.45)' }}>
+                  <p className="text-[10px] mt-0.5 opacity-60 font-mono">
+                    {preset.name}
+                  </p>
+                  <p className="text-[11px] mt-1.5 leading-snug" style={{ color: 'rgba(247,244,236,.55)' }}>
                     {preset.description}
                   </p>
                 </div>
 
                 {/* Color swatch preview bar */}
                 <div className="flex gap-1.5 mt-3 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,.06)' }}>
-                  <div className="w-5 h-5 rounded-md" style={{ background: preset.colors.charcoal }} title="Dark BG" />
-                  <div className="w-5 h-5 rounded-md" style={{ background: preset.colors.ivory }} title="Light BG" />
-                  <div className="w-5 h-5 rounded-md" style={{ background: preset.colors.gold }} title="Accent Gold" />
-                  <div className="w-5 h-5 rounded-md" style={{ background: preset.colors.goldLight }} title="Accent Light" />
-                  <div className="w-5 h-5 rounded-md" style={{ background: preset.colors.ink }} title="Text Ink" />
+                  <div className="w-5 h-5 rounded-md shadow-sm border border-white/10" style={{ background: preset.colors.charcoal }} title="الخلفية الداكنة" />
+                  <div className="w-5 h-5 rounded-md shadow-sm border border-white/10" style={{ background: preset.colors.ivory }} title="الخلفية الفاتحة" />
+                  <div className="w-5 h-5 rounded-md shadow-sm border border-white/10" style={{ background: preset.colors.gold }} title="اللون المميز (Accent)" />
+                  <div className="w-5 h-5 rounded-md shadow-sm border border-white/10" style={{ background: preset.colors.goldLight }} title="الأزرار النشطة (CTA)" />
+                  <div className="w-5 h-5 rounded-md shadow-sm border border-white/10" style={{ background: preset.colors.ink }} title="لون النصوص" />
                 </div>
               </div>
             );

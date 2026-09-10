@@ -214,14 +214,14 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
         display: 'flex',
         alignItems: 'center',
       }}>
-        {/* Background glows */}
+        {/* Background glows - dynamically responsive to current theme */}
         <div aria-hidden style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 55% 65% at 30% 50%, rgba(173,138,76,.16) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse 55% 65% at 30% 50%, color-mix(in srgb, var(--gold) 20%, transparent) 0%, transparent 70%)',
         }} />
         <div aria-hidden style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 40% 40% at 80% 70%, rgba(168,84,58,.1) 0%, transparent 65%)',
+          background: 'radial-gradient(ellipse 40% 40% at 80% 70%, color-mix(in srgb, var(--clay) 18%, transparent) 0%, transparent 65%)',
         }} />
         <Particles />
 
@@ -442,11 +442,11 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
         style={{ padding: '6.5rem 0', background: 'var(--charcoal)', position: 'relative', overflow: 'hidden' }}
         className={`section-reveal${featuredVisible ? ' visible' : ''}`}
       >
-        {/* Ambient background glow */}
+        {/* Ambient background glow - dynamic */}
         <div aria-hidden style={{
           position: 'absolute', top: '20%', [isAr ? 'right' : 'left']: '5%',
           width: '35vw', height: '35vw', minWidth: 280,
-          background: 'radial-gradient(circle, rgba(210,181,106,.07) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, color-mix(in srgb, var(--gold-light) 12%, transparent) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
@@ -629,11 +629,11 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
         style={{ padding:'4.5rem 0', background:'var(--charcoal)', position: 'relative', overflow:'hidden' }}
         className={`section-reveal${reviewsVisible ? ' visible' : ''}`}
       >
-        {/* Glow */}
+        {/* Glow - dynamic */}
         <div aria-hidden style={{
           position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)',
           width: '50vw', height: '300px', minWidth: 260,
-          background: 'radial-gradient(ellipse at center, rgba(210,181,106,.06) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at center, color-mix(in srgb, var(--gold-light) 12%, transparent) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
@@ -762,7 +762,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
       }}>
         <div aria-hidden style={{
           position:'absolute',inset:0,
-          background:'radial-gradient(ellipse 55% 55% at 50% 50%, rgba(173,138,76,.14) 0%, transparent 70%)',
+          background:'radial-gradient(ellipse 55% 55% at 50% 50%, color-mix(in srgb, var(--gold) 20%, transparent) 0%, transparent 70%)',
         }} />
         <Particles />
         <div className="wrap" style={{ position:'relative',zIndex:1 }} data-reveal="scale">

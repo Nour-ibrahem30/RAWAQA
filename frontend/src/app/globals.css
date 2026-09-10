@@ -194,12 +194,12 @@ img, svg { display: block; max-width: 100%; }
 .btn-gold {
   background: var(--gold-light);
   color: var(--charcoal);
-  box-shadow: 0 4px 20px rgba(210,181,106,.35);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--gold-light) 40%, transparent);
 }
 .btn-gold:hover {
   background: var(--gold-pale);
   transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 8px 32px rgba(210,181,106,.50);
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--gold-light) 60%, transparent);
 }
 .btn-gold:active { transform: translateY(-1px); }
 
@@ -434,8 +434,8 @@ img, svg { display: block; max-width: 100%; }
 .product-card-3d:hover {
   transform: translateY(-10px) rotateX(4deg) rotateY(-3deg);
   box-shadow:
-    0 24px 60px rgba(21,19,15,.18),
-    0 8px 20px rgba(173,138,76,.12);
+    0 24px 60px color-mix(in srgb, var(--charcoal) 60%, black),
+    0 8px 24px color-mix(in srgb, var(--gold-light) 25%, transparent);
 }
 .product-card-3d .card-img {
   transition: transform var(--dur-mid) var(--ease-brand);
@@ -447,8 +447,8 @@ img, svg { display: block; max-width: 100%; }
 /* ─── 3D HERO ELEMENT ───────────────────────────────────────── */
 .hero-3d-object {
   filter:
-    drop-shadow(0 40px 80px rgba(173,138,76,.25))
-    drop-shadow(0 10px 20px rgba(21,19,15,.5));
+    drop-shadow(0 40px 80px color-mix(in srgb, var(--gold) 35%, transparent))
+    drop-shadow(0 10px 20px color-mix(in srgb, var(--charcoal) 70%, transparent));
   animation: float 7s ease-in-out infinite;
   transform-style: preserve-3d;
 }
@@ -456,15 +456,15 @@ img, svg { display: block; max-width: 100%; }
 /* ─── GLOW EFFECTS ──────────────────────────────────────────── */
 .glow-gold {
   box-shadow:
-    0 0 20px rgba(210,181,106,.2),
-    0 0 60px rgba(210,181,106,.1),
+    0 0 20px color-mix(in srgb, var(--gold-light) 30%, transparent),
+    0 0 60px color-mix(in srgb, var(--gold-light) 15%, transparent),
     inset 0 1px 0 rgba(255,255,255,.1);
 }
 .glow-gold:hover {
   box-shadow:
-    0 0 30px rgba(210,181,106,.35),
-    0 0 80px rgba(210,181,106,.18),
-    inset 0 1px 0 rgba(255,255,255,.12);
+    0 0 30px color-mix(in srgb, var(--gold-light) 50%, transparent),
+    0 0 80px color-mix(in srgb, var(--gold-light) 25%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.15);
 }
 
 /* ─── GRADIENT TEXT ─────────────────────────────────────────── */
@@ -519,14 +519,14 @@ img, svg { display: block; max-width: 100%; }
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--gold-light), var(--dune));
+  background: linear-gradient(90deg, var(--gold-light), var(--gold));
   transform: scaleX(0);
   transform-origin: left;
   transition: transform var(--dur-mid) var(--ease-brand);
 }
 .why-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 16px 40px rgba(0,0,0,.3), 0 0 0 1px rgba(210,181,106,.15);
+  box-shadow: 0 16px 40px rgba(0,0,0,.3), 0 0 0 1px color-mix(in srgb, var(--gold-light) 30%, transparent);
   background: rgba(255,255,255,.07) !important;
 }
 .why-card:hover::after { transform: scaleX(1); }
@@ -566,10 +566,10 @@ img, svg { display: block; max-width: 100%; }
   top: 0;
   left: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--gold-light), var(--dune));
+  background: linear-gradient(90deg, var(--gold-light), var(--gold));
   z-index: 200;
   transition: width 100ms linear;
-  box-shadow: 0 0 10px rgba(210,181,106,.6);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--gold-light) 75%, transparent);
 }
 
 /* ─── IMAGE HOVER ZOOM ──────────────────────────────────────── */
@@ -780,11 +780,11 @@ img, svg { display: block; max-width: 100%; }
   will-change: transform, opacity;
 }
 .particle-v2.gold {
-  background: radial-gradient(circle at 35% 35%, rgba(255,235,140,.9), rgba(210,181,106,.5) 60%, transparent);
-  box-shadow: 0 0 6px 2px rgba(210,181,106,.4);
+  background: radial-gradient(circle at 35% 35%, var(--gold-pale), var(--gold-light) 60%, transparent);
+  box-shadow: 0 0 6px 2px color-mix(in srgb, var(--gold-light) 50%, transparent);
 }
 .particle-v2.white {
-  background: rgba(247,244,236,.7);
+  background: color-mix(in srgb, var(--ivory) 80%, white);
 }
 .particle-v2.rise {
   animation: particleRise linear infinite;
@@ -797,7 +797,7 @@ img, svg { display: block; max-width: 100%; }
 .streak {
   position: absolute;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(210,181,106,.6), rgba(255,235,140,.8), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gold-light) 60%, transparent), var(--gold-pale), transparent);
   pointer-events: none;
   border-radius: 999px;
   animation: streakSlide linear infinite;
