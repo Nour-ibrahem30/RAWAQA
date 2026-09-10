@@ -7,6 +7,7 @@ import { ordersApi } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { formatPrice, loc, orderStatusColor, orderStatusLabel } from '@/lib/utils';
 import type { Order } from '@/lib/types';
+import OrderInvoiceModal from '@/components/admin/OrderInvoiceModal';
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
   pending: ['confirmed', 'processing', 'cancelled'],
@@ -28,6 +29,7 @@ export default function AdminOrderDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [note, setNote] = useState('');
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const { showToast } = useToast();
 
   const load = () => {
@@ -130,9 +132,27 @@ export default function AdminOrderDetailPage() {
             {order.orderNumber || order.id || (order as any)._id}
           </h1>
         </div>
-        <span className={`text-xs font-semibold px-3 py-1.5 rounded-pill ${orderStatusColor(orderStatus)}`}>
-          {orderStatusLabel(orderStatus, 'en')}
-        </span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowInvoiceModal(true)}
+            className="btn btn-gold btn-sm"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '.4rem',
+              padding: '.45rem 1.1rem',
+              fontSize: '.8rem',
+              fontWeight: 700,
+              borderRadius: 10,
+            }}
+          >
+            <span>🖨️</span>
+            <span>طباعة الفاتورة / البوليصة</span>
+          </button>
+          <span className={`text-xs font-semibold px-3 py-1.5 rounded-pill ${orderStatusColor(orderStatus)}`}>
+            {orderStatusLabel(orderStatus, 'en')}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -228,6 +248,13 @@ export default function AdminOrderDetailPage() {
           </div>
         </div>
       </div>
+
+      {showInvoiceModal && (
+        <OrderInvoiceModal
+          order={order}
+          onClose={() => setShowInvoiceModal(false)}
+        />
+      )}
     </div>
   );
 }

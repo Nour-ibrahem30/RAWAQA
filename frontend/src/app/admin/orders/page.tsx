@@ -6,6 +6,7 @@ import { ordersApi } from '@/lib/api';
 import { formatPrice, orderStatusColor, orderStatusLabel } from '@/lib/utils';
 import AdminTable from '@/components/admin/AdminTable';
 import type { Order } from '@/lib/types';
+import OrderInvoiceModal from '@/components/admin/OrderInvoiceModal';
 
 const STATUSES = ['', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 
@@ -15,6 +16,7 @@ export default function AdminOrdersPage() {
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<Order | null>(null);
 
   const load = (p = 1, s = status) => {
     setLoading(true);
@@ -56,9 +58,19 @@ export default function AdminOrdersPage() {
     { key: 'actions', label: '', render: (o: Order) => {
       const orderId = o.id || (o as any)._id || o.orderNumber;
       return (
-        <Link href={`/admin/orders/${orderId}`} className="text-xs hover:underline" style={{ color: '#D2B56A' }}>
-          View →
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSelectedOrderForInvoice(o)}
+            title="طباعة الفاتورة / بوليصة الشحن"
+            className="p-1 px-2 rounded-lg hover:bg-white/10 text-xs transition-colors"
+            style={{ color: '#D2B56A', border: '1px solid rgba(210,181,106,.25)', background: 'rgba(210,181,106,.06)' }}
+          >
+            🖨️
+          </button>
+          <Link href={`/admin/orders/${orderId}`} className="text-xs hover:underline" style={{ color: '#D2B56A' }}>
+            View →
+          </Link>
+        </div>
       );
     }},
   ];
@@ -106,6 +118,13 @@ export default function AdminOrdersPage() {
             →
           </button>
         </div>
+      )}
+
+      {selectedOrderForInvoice && (
+        <OrderInvoiceModal
+          order={selectedOrderForInvoice}
+          onClose={() => setSelectedOrderForInvoice(null)}
+        />
       )}
     </div>
   );
