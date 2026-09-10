@@ -165,9 +165,9 @@ export const createCouponSchema = z.object({
     type:          z.enum(['percentage', 'fixed'], { errorMap: () => ({ message: 'Type must be percentage or fixed' }) }),
     value:         z.number().positive('Value must be positive'),
     minOrderValue: z.number().min(0).optional(),
-    maxDiscount:   z.number().positive().optional(),
-    usageLimit:    z.number().int().positive().optional(),
-    expiresAt:     z.string().datetime({ message: 'Invalid date format' }).optional(),
+    maxDiscount:   z.number().min(0).optional(),
+    usageLimit:    z.number().int().min(0).optional(),
+    expiresAt:     z.union([z.string(), z.date(), z.null()]).optional(),
     isActive:      z.boolean().optional(),
   }),
 });

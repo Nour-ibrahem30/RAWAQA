@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 // ─── Validate & calculate discount ───────────────────────────────────────────
 export const applyCoupon = async (params: {
   code:       string;
-  userId:     string;
+  userId?:    string;
   cartTotal:  number;
   productIds?: string[];
 }): Promise<{ coupon: ICoupon; discountAmount: number; finalTotal: number }> => {
@@ -27,7 +27,7 @@ export const applyCoupon = async (params: {
   }
 
   // 4. Check per-user limit
-  if (coupon.perUserLimit > 0) {
+  if (coupon.perUserLimit > 0 && userId && mongoose.Types.ObjectId.isValid(userId)) {
     const userUsage = await CouponUsage.countDocuments({
       coupon: coupon._id,
       user:   new mongoose.Types.ObjectId(userId),

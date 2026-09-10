@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { authenticate, optionalAuth, requireAdmin } from '../middleware/auth.middleware';
 import { apply, list, getByCode, create, update, remove } from '../controllers/coupon.controller';
 import { validate, applyCouponSchema, createCouponSchema } from '../middleware/validation';
 
 const router = Router();
 
-// POST /api/coupons/apply  - authenticated user validates a coupon before checkout
-router.post('/apply', authenticate, validate(applyCouponSchema as any), apply);
+// POST /api/coupons/apply  - validate a coupon before checkout (logged in or guest)
+router.post('/apply', optionalAuth, validate(applyCouponSchema as any), apply);
 
 // Admin routes
 router.get( '/',     authenticate, requireAdmin, list);

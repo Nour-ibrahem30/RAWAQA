@@ -139,6 +139,8 @@ export interface Order {
   shippingAddress: ShippingAddress;
   odooSyncStatus?: string;
   smsStatus?: string;
+  couponCode?: string;
+  couponDiscount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -148,7 +150,33 @@ export interface CheckoutPayload {
   cartId: string;
   shippingAddress: ShippingAddress;
   paymentMethod: 'cash_on_delivery';
+  couponCode?: string;
   notes?: string;
+}
+
+/* ============ COUPONS ============ */
+export interface Coupon {
+  _id: string;
+  code: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  minOrderValue?: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  usedCount: number;
+  perUserLimit?: number;
+  isActive: boolean;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CouponApplyResult {
+  code: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  discountAmount: number;
+  finalTotal: number;
 }
 
 /* ============ ADMIN ============ */

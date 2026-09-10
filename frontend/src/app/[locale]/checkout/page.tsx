@@ -7,7 +7,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { formatPrice } from '@/lib/utils';
-import { checkoutApi, cartApi } from '@/lib/api';
+import { checkoutApi, cartApi, couponsApi } from '@/lib/api';
 
 const DARK   = '#0f0e0a';
 const CARD   = 'rgba(30,27,21,.95)';
@@ -56,9 +56,51 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<Partial<typeof form>>({});
   const [placing, setPlacing] = useState(false);
 
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    type: string;
+    value: number;
+    discountAmount: number;
+    finalTotal: number;
+  } | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+
   const sub      = cart?.subtotal ?? 0;
   const shipping = sub >= FREE ? 0 : sub > 0 ? 50 : 0;
-  const total    = sub + shipping;
+  const discount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  const total    = Math.max(0, sub + shipping - discount);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      showToast(isAr ? 'يرجى إدخال رمز الكوبون' : 'Please enter coupon code', 'error');
+      return;
+    }
+    if (sub <= 0) {
+      showToast(isAr ? 'السلة فارغة' : 'Cart is empty', 'error');
+      return;
+    }
+    setApplyingCoupon(true);
+    try {
+      const productIds = cart?.items.map(item => item.product.id) || [];
+      const res = await couponsApi.apply(couponCode.trim().toUpperCase(), sub, productIds);
+      setAppliedCoupon(res.data);
+      showToast(
+        isAr ? `تم تطبيق كود الخصم "${res.data.code}" بنجاح!` : `Coupon "${res.data.code}" applied!`,
+        'success'
+      );
+    } catch (err: unknown) {
+      showToast((err as Error).message || (isAr ? 'كود الخصم غير صالح أو منتهي' : 'Invalid or expired coupon code'), 'error');
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    showToast(isAr ? 'تم إزالة كود الخصم' : 'Coupon removed', 'info');
+  };
 
   const set = (k: keyof typeof form) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -127,6 +169,7 @@ export default function CheckoutPage() {
             notes: form.notes.trim() || undefined,
           },
           paymentMethod: 'cash_on_delivery',
+          couponCode: appliedCoupon?.code || undefined,
           notes: form.notes.trim() || undefined,
         },
         idempotencyKey
@@ -306,12 +349,100 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
+                {/* Coupon Code Section */}
+                <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: '1rem', marginBottom: '.5rem' }}>
+                  <label style={{ ...labelStyle, marginBottom: '.4rem' }}>
+                    {isAr ? 'كود الخصم / الكوبون' : 'Promo Code / Coupon'}
+                  </label>
+                  
+                  {appliedCoupon ? (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: 'rgba(74,222,128,.08)', border: '1px solid rgba(74,222,128,.3)',
+                      borderRadius: 12, padding: '.6rem .85rem',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                        <span style={{ fontSize: '1.1rem' }}>🏷️</span>
+                        <div>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#4ade80', fontSize: '.9rem' }}>
+                            {appliedCoupon.code}
+                          </span>
+                          <span style={{ display: 'block', fontSize: '.7rem', color: 'rgba(247,244,236,.6)' }}>
+                            {appliedCoupon.type === 'percentage'
+                              ? `${appliedCoupon.value}% ${isAr ? 'خصم' : 'off'}`
+                              : `${appliedCoupon.value} ${isAr ? 'ج.م خصم' : 'EGP off'}`}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        style={{
+                          background: 'transparent', border: 'none',
+                          color: '#f87171', fontSize: '.75rem', cursor: 'pointer',
+                          padding: '.25rem .5rem', textDecoration: 'underline',
+                        }}
+                      >
+                        {isAr ? 'إلغاء' : 'Remove'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '.5rem' }}>
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder={isAr ? 'أدخل كود الخصم' : 'Enter code'}
+                        style={{
+                          flex: 1,
+                          background: 'rgba(255,255,255,.05)',
+                          border: `1px solid ${BORDER}`,
+                          borderRadius: 12,
+                          padding: '.55rem .85rem',
+                          fontSize: '.82rem',
+                          color: GOLD,
+                          fontWeight: 700,
+                          fontFamily: 'monospace',
+                          outline: 'none',
+                          letterSpacing: '.05em',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={applyingCoupon || !couponCode.trim()}
+                        onClick={handleApplyCoupon}
+                        className="btn btn-gold btn-sm"
+                        style={{
+                          borderRadius: 12,
+                          padding: '.55rem 1rem',
+                          fontSize: '.78rem',
+                          fontWeight: 700,
+                          flexShrink: 0,
+                          opacity: (!couponCode.trim() || applyingCoupon) ? 0.6 : 1,
+                        }}
+                      >
+                        {applyingCoupon ? (isAr ? '...' : '...') : (isAr ? 'تطبيق' : 'Apply')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Totals */}
                 <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem' }}>
                     <span style={{ color: 'rgba(247,244,236,.5)' }}>{isAr?'المجموع الفرعي':'Subtotal'}</span>
                     <span style={{ color: IVORY, fontWeight: 600 }}>{formatPrice(sub, locale)}</span>
                   </div>
+                  {appliedCoupon && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem' }}>
+                      <span style={{ color: '#4ade80' }}>
+                        {isAr ? `خصم الكوبون (${appliedCoupon.code})` : `Discount (${appliedCoupon.code})`}
+                      </span>
+                      <span style={{ color: '#4ade80', fontWeight: 700 }}>
+                        - {formatPrice(discount, locale)}
+                      </span>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem' }}>
                     <span style={{ color: 'rgba(247,244,236,.5)' }}>{isAr?'الشحن':'Shipping'}</span>
                     <span style={{ color: shipping===0?'#4ade80':IVORY, fontWeight: 600 }}>

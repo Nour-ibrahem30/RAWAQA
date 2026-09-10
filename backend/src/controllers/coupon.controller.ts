@@ -14,7 +14,7 @@ export const apply = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     const result = await applyCoupon({
-      code, userId: req.user!.userId,
+      code, userId: req.user?.userId,
       cartTotal: Number(cartTotal), productIds,
     });
     res.json({

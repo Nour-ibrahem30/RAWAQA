@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useRef, useState } from 'react';
 
-type ToastType = 'default' | 'success' | 'error';
+type ToastType = 'default' | 'success' | 'error' | 'info';
 
 interface ToastContextValue {
   showToast: (msg: string, type?: ToastType, duration?: number) => void;

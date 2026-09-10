@@ -1,4 +1,5 @@
-import type { ApiResponse, Cart, CartTotals, Category, CheckoutPayload, Order, Product, User, AdminStats } from './types';
+import type { ApiResponse, Cart, CartTotals, Category, CheckoutPayload, Coupon, CouponApplyResult, Order, Product, User, AdminStats } from './types';
+export type { Coupon, CouponApplyResult } from './types';
 
 export function getApiBase(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -296,6 +297,46 @@ export const checkoutApi = {
     apiFetch(`/checkout/cancel/${orderId}`, {
       method: 'POST',
       body: JSON.stringify({ reason }),
+    }),
+};
+
+/* ============ COUPONS ============ */
+export const couponsApi = {
+  apply: (code: string, cartTotal: number, productIds?: string[]) =>
+    apiFetch<CouponApplyResult>('/coupons/apply', {
+      method: 'POST',
+      body: JSON.stringify({ code, cartTotal, productIds }),
+    }),
+
+  list: (page = 1, isActive?: boolean) => {
+    const q = new URLSearchParams({ page: String(page), limit: '50' });
+    if (isActive !== undefined) q.set('isActive', String(isActive));
+    return apiFetch<Coupon[]>(`/coupons?${q}`);
+  },
+
+  getByCode: (code: string) => apiFetch<Coupon>(`/coupons/${code}`),
+
+  create: (data: Partial<Coupon>) =>
+    apiFetch<Coupon>('/coupons', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: Partial<Coupon>) =>
+    apiFetch<Coupon>(`/coupons/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  toggle: (id: string, isActive: boolean) =>
+    apiFetch<Coupon>(`/coupons/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ isActive }),
+    }),
+
+  delete: (id: string) =>
+    apiFetch(`/coupons/${id}`, {
+      method: 'DELETE',
     }),
 };
 
