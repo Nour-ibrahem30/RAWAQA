@@ -1,7 +1,19 @@
 import type { ApiResponse, Cart, CartTotals, Category, CheckoutPayload, Order, Product, User, AdminStats } from './types';
 
-const rawApiBase = process.env.NEXT_PUBLIC_API_URL || 'https://formation-humiliating-whale.abasthan.app/api';
-const API_BASE = rawApiBase.replace(/\/+$/, '');
+export function getApiBase(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && !envUrl.includes('abasthan.app')) {
+    return envUrl.replace(/\/+$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:5002/api';
+    }
+    return `${window.location.origin}/api`;
+  }
+  return 'http://localhost:5002/api';
+}
 
 /* ============ BASE FETCH ============ */
 async function apiFetch<T>(
@@ -9,6 +21,7 @@ async function apiFetch<T>(
   options: RequestInit & { locale?: string } = {}
 ): Promise<ApiResponse<T>> {
   const { locale, ...fetchOptions } = options;
+  const apiBase = getApiBase();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -25,7 +38,7 @@ async function apiFetch<T>(
     if (sessionId && !token) headers['X-Session-ID'] = sessionId;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${apiBase}${path}`, {
     ...fetchOptions,
     headers,
   });
@@ -35,7 +48,7 @@ async function apiFetch<T>(
     const refreshed = await tryRefreshToken();
     if (refreshed) {
       headers['Authorization'] = `Bearer ${localStorage.getItem('accessToken')}`;
-      const retry = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers });
+      const retry = await fetch(`${apiBase}${path}`, { ...fetchOptions, headers });
       return retry.json();
     }
   }
@@ -52,7 +65,8 @@ async function tryRefreshToken(): Promise<boolean> {
   try {
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) return false;
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
+    const apiBase = getApiBase();
+    const res = await fetch(`${apiBase}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
@@ -317,7 +331,7 @@ export const adminApi = {
   stats: () => apiFetch<AdminStats>('/orders/stats'),
   dashboardStats: () => apiFetch<any>('/admin/stats'),
   customers: (page = 1) => apiFetch<{ users: User[]; pagination: unknown }>(`/admin/customers?page=${page}`),
-  getSettings: () => apiFetch<Record<string, string>>('/admin/settings'),
+  getSettings: () => apiFetch<Record<string, string>>('/settings'),
   updateSettings: (colors: Record<string, string>) =>
     apiFetch<Record<string, string>>('/admin/settings', {
       method: 'PUT',
@@ -331,7 +345,7 @@ export const adminApi = {
     if (params?.status) q.set('status', params.status);
     if (params?.from)   q.set('from', params.from);
     if (params?.to)     q.set('to', params.to);
-    const url = `${API_BASE}/admin/export/orders${q.toString() ? '?' + q : ''}`;
+    const url = `${getApiBase()}/admin/export/orders${q.toString() ? '?' + q : ''}`;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error('Export failed');
     const blob = await res.blob();
@@ -340,7 +354,7 @@ export const adminApi = {
 
   exportAnalytics: async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-    const res = await fetch(`${API_BASE}/admin/export/analytics`, {
+    const res = await fetch(`${getApiBase()}/admin/export/analytics`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error('Export failed');

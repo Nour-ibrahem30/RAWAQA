@@ -151,6 +151,7 @@ import adRoutes, { adminAdRoutes } from './routes/ad.routes';
 import contentRoutes, { adminContentRoutes } from './routes/content.routes';
 import exportRoutes from './routes/export.routes';
 import seedRoutes from './routes/seed.routes';
+import { getSettings } from './controllers/admin.controller';
 
 import { featureFlag } from './middleware/feature-flag.middleware';
 
@@ -190,6 +191,7 @@ apiPrefixes.forEach(prefix => {
   app.use(`${prefix}/admin/ads`,     adminAdRoutes);
   app.use(`${prefix}/content`,       contentRoutes);
   app.use(`${prefix}/admin/content`, adminContentRoutes);
+  app.get(`${prefix}/settings`,      getSettings);
   app.use(`${prefix}/admin/export`,  exportRoutes);
   app.use(`${prefix}/seed`,          seedRoutes); // TEMP
 });

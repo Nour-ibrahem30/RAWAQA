@@ -19,8 +19,12 @@ export function broadcastContentUpdate(section: string) {
   } catch { /* BroadcastChannel not supported — no-op */ }
 }
 
-export function useSiteContent(section: string) {
+export function useSiteContent(section: string, initialData?: Record<string, any>) {
   const getInitial = () => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      cache[section] = initialData;
+      return initialData;
+    }
     if (cache[section] && Object.keys(cache[section]).length > 0) {
       return cache[section];
     }
@@ -40,10 +44,19 @@ export function useSiteContent(section: string) {
   const [data, setData] = useState<Record<string, any>>(getInitial);
   const [loaded, setLoaded] = useState(() => Object.keys(getInitial()).length > 0);
 
+  // If initialData arrives, sync state
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      cache[section] = initialData;
+      setData(initialData);
+      setLoaded(true);
+    }
+  }, [section, initialData]);
+
   const refetch = useCallback(() => {
     contentApi.get(section)
       .then(r => {
-        const d = r.data ?? {};
+        const d = (r as any)?.data ?? r ?? {};
         if (d && Object.keys(d).length > 0) {
           cache[section] = d;
           try {
@@ -58,7 +71,6 @@ export function useSiteContent(section: string) {
 
   // Initial fetch / background revalidation
   useEffect(() => {
-    // If we already have stored data, still revalidate once in background
     refetch();
   }, [section, refetch]);
 
@@ -69,6 +81,14 @@ export function useSiteContent(section: string) {
       ch.onmessage = (e: MessageEvent) => {
         if (e.data?.section === section || e.data?.section === '*') {
           delete cache[section]; // invalidate cache
+          try {
+            const stored = localStorage.getItem(`rawaqa_content_${section}`);
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              cache[section] = parsed;
+              setData(parsed);
+            }
+          } catch { /* ignore */ }
           refetch();             // re-fetch from backend
         }
       };

@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import HomeClient from './HomeClient';
+import { contentApi } from '@/lib/api';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -12,5 +13,12 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  return <HomeClient locale={locale} />;
+  let initialContent: Record<string, any> = {};
+  try {
+    const res = await contentApi.getAll();
+    initialContent = res?.data || res || {};
+  } catch {
+    // fallback to client-side fetching / defaults
+  }
+  return <HomeClient locale={locale} initialContent={initialContent} />;
 }
