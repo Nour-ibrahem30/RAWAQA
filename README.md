@@ -1,280 +1,928 @@
 <div align="center">
 
-<img src="frontend/public/logo.png" alt="RAWAQA Logo" width="100" style="border-radius: 20px;" />
+<img src="frontend/public/logo.png" alt="RAWAQA Logo" width="110" />
 
 # RAWAQA — رواقة
 
 ### راحة حرفية. مصممة للحياة.
+
 ### Crafted Comfort. Designed for Life.
+
+**A production-ready bilingual e-commerce platform for premium bean bag chairs in Egypt.**
+
+<br />
 
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org)
-[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-green?logo=mongodb)](https://mongodb.com)
-[![Node.js](https://img.shields.io/badge/Node.js-≥18-339933?logo=node.js)](https://nodejs.org)
+[![Express](https://img.shields.io/badge/Express-4.18-black?logo=express)](https://expressjs.com)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-green?logo=mongodb)](https://www.mongodb.com)
+[![Vercel](https://img.shields.io/badge/Frontend-Vercel-black?logo=vercel)](https://vercel.com)
 [![License](https://img.shields.io/badge/License-Private-red)](.)
+
+<br />
+
+**[🌐 Live Website](https://rawaqa.vercel.app)**
 
 </div>
 
 ---
 
-## نظرة عامة | Overview
+# نظرة عامة | Overview
 
-**RAWAQA** منصة تجارة إلكترونية متكاملة لبيع كراسي البين باج الفاخرة في السوق المصري. تدعم اللغتين العربية والإنجليزية، مع نظام إدارة طلبات كامل وتكامل مع Odoo ERP وإشعارات SMS.
+**RAWAQA** is a full-stack e-commerce platform built for the Egyptian market, focused on premium bean bag chairs and crafted comfort products.
 
-**RAWAQA** is a full-stack e-commerce platform for premium bean bag chairs in the Egyptian market — bilingual Arabic/English, with a complete order management system, Odoo ERP integration, and SMS notifications.
+The platform provides a bilingual **Arabic / English** shopping experience with RTL/LTR support, customer authentication, product and category management, cart functionality, checkout, order tracking, coupons, inventory handling, and a dedicated administrative dashboard.
+
+The architecture is designed around a separate frontend and backend, allowing the system to scale independently and integrate with external business services such as ERP, shipping, and notification providers.
+
+> **Current payment method:** Cash on Delivery (COD)
+> **Current ERP status:** Odoo integration is architecturally prepared but not enabled in the current production flow.
 
 ---
 
-## هيكل المشروع | Project Structure
+# ✨ Core Features
 
+### Customer Experience
+
+* 🛍️ Product browsing and category navigation
+* 🔎 Product details and availability
+* 🛒 Guest and authenticated shopping cart
+* 🔄 Automatic cart merge after authentication
+* 🔐 Secure customer authentication
+* 📦 Checkout and order creation
+* 💵 Cash on Delivery
+* 📍 Order tracking
+* 🌐 Arabic / English localization
+* ↔️ Full RTL / LTR support
+* 📱 Responsive mobile-first UI
+* 🖨️ Printable order / shipping documents
+
+### Administration
+
+* 📊 Admin dashboard
+* 📦 Product management
+* 🗂️ Category management
+* 🧾 Order management
+* 🎟️ Coupon management
+* 📢 Advertisement / banner management
+* 📝 Content management
+* ⚙️ Site settings
+* 👤 Role-protected administrative operations
+
+### Backend & Business Logic
+
+* Atomic inventory operations
+* Inventory reservation during order creation
+* Server-side price validation
+* Coupon validation on the server
+* Idempotent order operations
+* Authentication and authorization
+* Ownership checks for customer resources
+* Input validation
+* Rate limiting
+* Security headers
+* NoSQL injection protection
+* Centralized error handling
+* Structured logging
+
+---
+
+# 🏗️ Architecture
+
+RAWAQA follows a separated frontend/backend architecture.
+
+```text
+                         ┌──────────────────────┐
+                         │       Customer       │
+                         │    Arabic / English  │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Next.js Frontend  │
+                         │        Vercel        │
+                         └──────────┬───────────┘
+                                    │
+                              HTTPS / REST
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Express Backend   │
+                         │       Abasthan       │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │     MongoDB Atlas    │
+                         │   Persistent Data    │
+                         └──────────────────────┘
+
+                    Future / Optional Integrations
+                                    │
+                    ┌───────────────┼────────────────┐
+                    ▼               ▼                ▼
+                  Odoo          Shipping            SMS
+                   ERP           Provider          Provider
 ```
+
+### Architecture Principles
+
+* Frontend and backend are independently deployable.
+* The backend is the source of truth for business validation.
+* Client-side values are never trusted for prices, discounts, permissions, or inventory.
+* Authentication is handled through secure HTTP-only cookies.
+* Database operations enforce business invariants server-side.
+* External integrations are isolated behind service layers.
+
+---
+
+# 📁 Project Structure
+
+```text
 RAWAQA/
-├── frontend/               # Next.js 14 · TypeScript · Tailwind CSS
-│   └── src/
-│       ├── app/            # App Router pages (AR/EN locales)
-│       ├── components/     # Reusable UI components
-│       ├── context/        # Cart, Auth, Toast providers
-│       └── lib/            # API client, types, utilities
 │
-├── backend/                # Node.js · TypeScript · Express
-│   └── src/
-│       ├── controllers/    # Route handlers
-│       ├── services/       # Business logic
-│       ├── models/         # Mongoose schemas
-│       ├── routes/         # API route definitions
-│       ├── middleware/     # Auth, validation, security
-│       └── workers/        # Background job processors
+├── frontend/
+│   ├── public/
+│   │   └── logo.png
+│   │
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── [locale]/
+│   │   │   └── admin/
+│   │   │
+│   │   ├── components/
+│   │   │   └── Reusable UI components
+│   │   │
+│   │   ├── context/
+│   │   │   ├── Auth
+│   │   │   ├── Cart
+│   │   │   └── Toast
+│   │   │
+│   │   └── lib/
+│   │       ├── API client
+│   │       ├── types
+│   │       └── utilities
+│   │
+│   └── package.json
 │
-└── ai/                     # AI context & documentation layer
+├── backend/
+│   ├── src/
+│   │   ├── controllers/
+│   │   ├── services/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── middleware/
+│   │   ├── workers/
+│   │   └── utils/
+│   │
+│   ├── seed-prod.js
+│   └── package.json
+│
+├── ai/
+│   └── AI context and project documentation
+│
+├── docs/
+│   └── Project documentation
+│
+└── README.md
 ```
 
 ---
 
-## التقنيات | Tech Stack
+# 🧰 Tech Stack
 
-### Frontend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Next.js | 14.2 | React framework + App Router |
-| TypeScript | 5.x | Type safety |
-| Tailwind CSS | 3.x | Utility-first styling |
-| next-intl | 3.x | Arabic / English i18n |
-| Cairo | Google Fonts | Arabic typography |
-| Fraunces | Google Fonts | Display headings |
+## Frontend
 
-### Backend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Node.js | ≥ 18 | Runtime |
-| Express | 4.18 | HTTP framework |
-| TypeScript | 5.x | Type safety |
-| Mongoose | 8.x | MongoDB ODM |
-| JWT + bcryptjs | — | Authentication |
-| Zod | 3.x | Input validation |
-| Winston | 3.x | Structured logging |
-| Vonage SDK | 3.x | SMS notifications |
+| Technology   | Purpose                       |
+| ------------ | ----------------------------- |
+| Next.js 14   | React framework + App Router  |
+| React        | UI development                |
+| TypeScript   | Type safety                   |
+| Tailwind CSS | Styling                       |
+| next-intl    | Arabic / English localization |
+| Cairo        | Arabic typography             |
+| Fraunces     | Display typography            |
+| Manrope      | Interface typography          |
 
-### Infrastructure
-| Service | Purpose |
-|---------|---------|
-| MongoDB | Primary database |
-| Odoo ERP | Order & inventory sync |
-| Vonage | SMS order confirmations |
-| Vercel | Frontend hosting |
-| Render / Abasthan | Backend hosting |
+## Backend
+
+| Technology | Purpose            |
+| ---------- | ------------------ |
+| Node.js    | Runtime            |
+| Express    | REST API           |
+| TypeScript | Type safety        |
+| MongoDB    | Database           |
+| Mongoose   | ODM                |
+| JWT        | Authentication     |
+| bcryptjs   | Password hashing   |
+| Zod        | Input validation   |
+| Winston    | Structured logging |
+
+## Infrastructure
+
+| Service       | Purpose          |
+| ------------- | ---------------- |
+| Vercel        | Frontend hosting |
+| Abasthan      | Backend hosting  |
+| MongoDB Atlas | Database         |
+| GitHub        | Source control   |
 
 ---
 
-## تشغيل المشروع | Local Development
+# 🔐 Security
 
-### المتطلبات | Prerequisites
+Security is treated as a backend responsibility rather than a frontend feature.
 
-- Node.js ≥ 18
-- MongoDB (local or Atlas)
-- npm ≥ 9
+The frontend is considered **untrusted input**.
 
-### Frontend
+## Authentication
+
+* Short-lived access tokens
+* Refresh token rotation
+* HTTP-only cookies
+* Secure cookie configuration in production
+* Password hashing using `bcryptjs`
+* Authentication middleware on protected routes
+* Invalid credential handling
+* Protected administrative routes
+
+### Token Model
+
+```text
+Customer
+   │
+   ├── Login
+   │
+   ▼
+Backend
+   │
+   ├── Validate credentials
+   ├── Verify password hash
+   └── Issue tokens
+          │
+          ├── Short-lived access token
+          └── Refresh token
+                    │
+                    ▼
+             HTTP-only Cookie
+```
+
+Tokens are not intended to be exposed to JavaScript through `localStorage`.
+
+---
+
+## Authorization
+
+Authentication alone is not sufficient.
+
+Every protected operation performs server-side authorization checks.
+
+Examples:
+
+* Customer resources require authenticated ownership.
+* Admin operations require administrative privileges.
+* Customers cannot modify another customer's order.
+* Administrative endpoints cannot be accessed by normal customer accounts.
+* Resource IDs are never treated as proof of ownership.
+
+This helps mitigate **IDOR / Broken Access Control** vulnerabilities.
+
+---
+
+## Input Validation
+
+All sensitive API input is validated server-side.
+
+Validation covers areas such as:
+
+* Authentication payloads
+* Product data
+* Categories
+* Orders
+* Coupons
+* Query parameters
+* IDs
+* Administrative operations
+
+The application uses **Zod** schemas to reject malformed or unexpected input before business logic executes.
+
+---
+
+## NoSQL Injection Protection
+
+MongoDB queries are protected against malicious operator injection.
+
+The backend applies sanitization and validation so user-controlled objects cannot directly become MongoDB query operators.
+
+Examples of potentially dangerous input such as:
+
+```text
+$gt
+$ne
+$where
+```
+
+must never be blindly passed into database queries.
+
+---
+
+## Rate Limiting
+
+Sensitive endpoints are rate-limited to reduce abuse and brute-force attempts.
+
+Especially important for:
+
+* Login
+* Registration
+* Authentication
+* Password-related operations
+* Other abuse-sensitive endpoints
+
+---
+
+## HTTP Security Headers
+
+The backend uses security middleware such as **Helmet** to provide appropriate HTTP security headers.
+
+This helps reduce exposure to common browser-based attacks.
+
+---
+
+## CORS
+
+Cross-Origin Resource Sharing is explicitly configured.
+
+The API does not rely on permissive wildcard CORS in production.
+
+Only trusted frontend origins should be allowed to communicate with the production API.
+
+```text
+Production Frontend
+        │
+        │ HTTPS
+        ▼
+   Express API
+        │
+        ├── Origin validation
+        └── Credentials handling
+```
+
+---
+
+## Server-Side Price Validation
+
+Prices received from the browser are **not trusted**.
+
+The backend retrieves authoritative product information before creating an order.
+
+```text
+Browser
+   │
+   │ product ID / quantity
+   ▼
+Backend
+   │
+   ├── Fetch product
+   ├── Validate availability
+   ├── Resolve current price
+   ├── Validate coupon
+   ├── Calculate totals
+   └── Create order
+```
+
+This prevents a customer from manipulating the frontend and submitting an arbitrary price.
+
+---
+
+## Inventory Protection
+
+Inventory operations are performed server-side.
+
+The system is designed to avoid overselling through atomic inventory operations and reservation logic.
+
+```text
+Available Stock
+      │
+      ▼
+Atomic Reservation
+      │
+      ├── Success → Continue Order
+      │
+      └── Failure → Reject / Out of Stock
+```
+
+The frontend is never treated as the authority for stock quantity.
+
+---
+
+## Idempotency
+
+Order-related operations use idempotency protection to reduce the risk of duplicate requests creating duplicate business operations.
+
+This is especially important for:
+
+* Network retries
+* Browser refreshes
+* Double-click submissions
+* Client-side request retries
+* Unstable connections
+
+---
+
+## Error Handling
+
+Production API responses avoid exposing internal implementation details.
+
+The system should not return:
+
+* Database connection strings
+* Stack traces
+* Internal file paths
+* Secrets
+* Authentication credentials
+* Environment variables
+* Internal infrastructure information
+
+Errors are logged server-side while clients receive safe, structured responses.
+
+---
+
+# 🛡️ Security Testing
+
+The project includes automated security and authentication testing covering scenarios such as:
+
+* Valid admin authentication
+* Valid customer authentication
+* Invalid password handling
+* Empty credential validation
+* NoSQL injection attempts
+* Unauthorized admin access
+* Forbidden customer access
+* Protected endpoint behavior
+* Authentication status handling
+
+Security is continuously checked as part of the release process.
+
+---
+
+# 🌍 Localization
+
+RAWAQA supports two languages:
+
+```text
+Arabic
+  └── RTL
+
+English
+  └── LTR
+```
+
+Localized routes follow the application's locale structure:
+
+```text
+/ar
+/en
+```
+
+The UI, navigation, forms, product experience, and major customer-facing flows are designed to work in both directions.
+
+---
+
+# 🛒 Customer Routes
+
+| Route                              | Description        | Access        |
+| ---------------------------------- | ------------------ | ------------- |
+| `/ar` / `/en`                      | Homepage           | Public        |
+| `/[locale]/shop`                   | Shop               | Public        |
+| `/[locale]/product/[id]`           | Product details    | Public        |
+| `/[locale]/cart`                   | Shopping cart      | Public        |
+| `/[locale]/checkout`               | Checkout           | Authenticated |
+| `/[locale]/order-confirmation/[n]` | Order confirmation | Controlled    |
+| `/[locale]/track`                  | Order tracking     | Public        |
+| `/[locale]/login`                  | Login              | Public        |
+| `/[locale]/register`               | Registration       | Public        |
+| `/[locale]/account`                | Customer account   | Authenticated |
+
+---
+
+# 👨‍💼 Admin Routes
+
+| Route               | Purpose                  |
+| ------------------- | ------------------------ |
+| `/admin`            | Dashboard                |
+| `/admin/products`   | Product management       |
+| `/admin/categories` | Category management      |
+| `/admin/orders`     | Order management         |
+| `/admin/coupons`    | Coupon management        |
+| `/admin/ads`        | Advertisements & banners |
+| `/admin/content`    | Content management       |
+| `/admin/settings`   | Site settings            |
+
+> Admin routes are protected by server-side authentication and authorization. Hiding a route in the frontend is not considered a security boundary.
+
+---
+
+# 🎨 Design System
+
+RAWAQA uses a premium, warm visual identity designed around comfort and craftsmanship.
+
+```css
+--charcoal:   #15130F;
+--ivory:      #F7F4EC;
+--gold-light: #D2B56A;
+--gold:       #AD8A4C;
+--ink:        #262117;
+```
+
+### Typography
+
+* **Cairo** — Arabic
+* **Fraunces** — Display headings
+* **Manrope** — Interface / body text
+
+---
+
+# ⚙️ Local Development
+
+## Prerequisites
+
+* Node.js ≥ 18
+* npm ≥ 9
+* MongoDB local instance or MongoDB Atlas
+* Git
+
+---
+
+## Frontend
 
 ```bash
 cd frontend
 npm install
 npm run dev
-# → http://localhost:3000
 ```
 
-### Backend
+Frontend:
 
-```bash
-cd backend
-cp .env.example .env
-# Fill in your values in .env
-npm install
-npm run dev
-# → http://localhost:5002
-```
-
-### Seed Database
-
-```bash
-cd backend
-node seed-prod.js
-# Creates: admin user, categories, products
+```text
+http://localhost:3000
 ```
 
 ---
 
-## المتغيرات البيئية | Environment Variables
+## Backend
 
-### Frontend (`frontend/.env.local`)
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+Backend:
+
+```text
+http://localhost:5002
+```
+
+---
+
+# 🔑 Environment Variables
+
+## Frontend
+
+Create:
+
+```text
+frontend/.env.local
+```
+
+Example:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5002/api
 ```
 
-### Backend (`backend/.env`)
+---
+
+## Backend
+
+Create:
+
+```text
+backend/.env
+```
+
+Example:
 
 ```env
-# Database
-MONGODB_URI=mongodb://localhost:27017/rawaqa
+NODE_ENV=development
+PORT=5002
 
-# Authentication
-JWT_ACCESS_SECRET=your-secret-key
-JWT_REFRESH_SECRET=your-refresh-secret
+MONGODB_URI=your-mongodb-connection-string
+
+JWT_ACCESS_SECRET=your-long-random-secret
+JWT_REFRESH_SECRET=your-long-random-secret
+
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
-
-# SMS (Vonage)
-SMS_ENABLED=true
-SMS_PROVIDER=vonage
-VONAGE_API_KEY=your-api-key
-VONAGE_API_SECRET=your-api-secret
-VONAGE_FROM_NUMBER=RAWAQA
-
-# Odoo ERP (optional)
-ODOO_SYNC_ENABLED=false
-ODOO_URL=https://your-odoo.com
-ODOO_DB=your-db
-ODOO_USERNAME=api_user
-ODOO_PASSWORD=your-password
-
-# Admin
-ADMIN_EMAIL=admin@rawaqa.com
-ADMIN_PASSWORD=StrongPassword123
 ```
+
+### Production-only variables
+
+Production integrations should be configured through the hosting provider's environment-variable system.
+
+**Never commit production secrets to Git.**
+
+Do not place real values for:
+
+* JWT secrets
+* MongoDB credentials
+* API keys
+* SMS credentials
+* Admin passwords
+* OAuth secrets
+* Third-party credentials
+
+inside the repository.
 
 ---
 
-## الصفحات | Pages
+# 🌱 Database Seeding
 
-### Customer
-
-| Route | الصفحة | الوصول |
-|-------|--------|--------|
-| `/ar` · `/en` | الرئيسية | عام |
-| `/[locale]/shop` | المتجر | عام |
-| `/[locale]/product/[id]` | تفاصيل المنتج | عام |
-| `/[locale]/cart` | سلة التسوق | عام |
-| `/[locale]/checkout` | إتمام الطلب | مسجّل |
-| `/[locale]/order-confirmation/[n]` | تأكيد الطلب | — |
-| `/[locale]/track` | تتبع الطلب | عام |
-| `/[locale]/login` | تسجيل الدخول | — |
-| `/[locale]/register` | إنشاء حساب | — |
-| `/[locale]/account` | حسابي | مسجّل |
-
-### Admin
-
-| Route | الوظيفة |
-|-------|---------|
-| `/admin` | لوحة التحكم |
-| `/admin/products` | إدارة المنتجات |
-| `/admin/categories` | إدارة الفئات |
-| `/admin/orders` | إدارة الطلبات |
-| `/admin/coupons` | إدارة الكوبونات |
-| `/admin/ads` | الإعلانات والبانرات |
-| `/admin/content` | إدارة المحتوى (CMS) |
-| `/admin/settings` | إعدادات الموقع والألوان |
-
----
-
-## نظام التصميم | Design System
-
-```css
---charcoal:    #15130F   /* خلفية رئيسية */
---ivory:       #F7F4EC   /* خلفية فاتحة */
---gold-light:  #D2B56A   /* لون رئيسي */
---gold:        #AD8A4C   /* لون ثانوي */
---ink:         #262117   /* نص رئيسي */
-```
-
-**الخطوط:** Cairo (عربي) · Fraunces (عناوين) · Manrope (نص)
-
----
-
-## الأمان | Security
-
-- ✅ JWT (15 دقيقة access / 7 أيام refresh مع rotation)
-- ✅ bcryptjs — تشفير كلمات المرور
-- ✅ MongoDB Sanitize — حماية من NoSQL injection
-- ✅ Rate limiting على endpoints المصادقة
-- ✅ Helmet security headers
-- ✅ Zod input validation
-- ✅ CORS configuration
-- ✅ Idempotency keys — منع الطلبات المكررة
-- ✅ Ownership check على إلغاء الطلبات (IDOR protection)
-
----
-
-## الميزات الرئيسية | Core Features
-
-- 🛒 سلة تسوق للزوار والمسجّلين مع دمج تلقائي عند تسجيل الدخول
-- 📦 إدارة مخزون ذرية (Atomic) — حجز فوري عند الطلب
-- 🎟️ نظام كوبونات (نسبة مئوية / مبلغ ثابت + حد أقصى للخصم)
-- 💳 الدفع عند الاستلام (Cash on Delivery)
-- 📱 إشعارات SMS بالعربية عبر Vonage
-- 📧 إشعارات بريد إلكتروني
-- 🌐 ثنائية اللغة (عربي RTL + إنجليزي LTR)
-- 🖨️ طباعة فواتير وبوالص شحن
-- 📊 لوحة تحكم إدارية متكاملة
-- 🔄 تكامل مع Odoo ERP (اختياري)
-
----
-
-## الـ Deploy | Deployment
-
-### Frontend — Vercel
-
-```bash
-cd frontend
-vercel --prod
-```
-
-متغير مطلوب في Vercel:
-```
-NEXT_PUBLIC_API_URL=https://your-backend-url/api
-```
-
-### Backend — Render / VPS
+For development environments:
 
 ```bash
 cd backend
-npm run build
-npm start   # node dist/server.js
+node seed-prod.js
+```
+
+The seed process may create initial:
+
+* Admin account
+* Categories
+* Products
+
+Production seeding should only be performed intentionally and with the correct environment configuration.
+
+---
+
+# 🚀 Deployment
+
+## Frontend — Vercel
+
+The frontend is deployed as a standalone Next.js application.
+
+Project root:
+
+```text
+frontend/
+```
+
+Required production variable:
+
+```env
+NEXT_PUBLIC_API_URL=https://your-production-backend/api
 ```
 
 ---
 
-## التوثيق | Documentation
+## Backend — Abasthan
 
-- [`backend/API-DOCUMENTATION.md`](backend/API-DOCUMENTATION.md) — مرجع API الكامل
-- [`backend/DEPLOYMENT.md`](backend/DEPLOYMENT.md) — دليل النشر
-- [`ai/`](ai/) — طبقة السياق للـ AI agents
+The backend is deployed independently from the frontend.
+
+Build:
+
+```bash
+npm run build
+```
+
+Start:
+
+```bash
+npm start
+```
+
+Expected production entry:
+
+```text
+node dist/server.js
+```
+
+Required production environment variables should be configured directly in the hosting provider.
+
+---
+
+# 🔄 Order Flow
+
+The current order flow is intentionally simple and reliable:
+
+```text
+Customer
+   │
+   ▼
+Browse Products
+   │
+   ▼
+Add to Cart
+   │
+   ▼
+Login / Authentication
+   │
+   ▼
+Checkout
+   │
+   ▼
+Server Validation
+   │
+   ├── Product validation
+   ├── Price validation
+   ├── Coupon validation
+   ├── Inventory validation
+   └── Idempotency protection
+   │
+   ▼
+Order Created
+   │
+   ▼
+Admin Dashboard
+   │
+   ▼
+Shipping Workflow
+   │
+   ▼
+Customer receives order
+```
+
+The customer does **not** create orders through the admin/chat interface.
+
+Orders are created through the normal customer checkout flow and then become available to the administration workflow.
+
+---
+
+# 📦 External Integrations
+
+The architecture is designed to support external business integrations without coupling the core shopping experience to them.
+
+### Current
+
+* MongoDB Atlas
+* Vercel
+* Abasthan
+* Cash on Delivery
+
+### Prepared / Planned
+
+* Odoo ERP
+* Shipping provider integration
+* SMS notifications
+* Additional business automation
+
+These integrations should be enabled only after their production credentials, failure handling, and operational workflows are properly configured.
+
+---
+
+# 🧪 Quality Assurance
+
+RAWAQA uses a release-gate approach rather than relying only on manual browsing.
+
+Testing includes:
+
+### Authentication
+
+* Admin login
+* Customer login
+* Invalid credentials
+* Empty credentials
+* Authentication failures
+* Protected admin endpoints
+
+### Security
+
+* NoSQL injection attempts
+* Unauthorized access
+* Authorization checks
+* Ownership validation
+* Rate-limit behavior
+
+### Business Logic
+
+* Product validation
+* Inventory behavior
+* Coupon validation
+* Order creation
+* Duplicate request protection
+
+### Build & Type Safety
+
+* TypeScript validation
+* Production builds
+* Backend compilation
+* Frontend compilation
+
+> Automated API/security testing does not replace real browser testing. Visual RTL/LTR behavior, responsive layouts, printing, and real-user interaction should still be verified before final client handoff.
+
+---
+
+# 📚 Documentation
+
+Additional project documentation:
+
+```text
+docs/
+├── ...
+```
+
+Important technical references may include:
+
+```text
+backend/API-DOCUMENTATION.md
+backend/DEPLOYMENT.md
+```
+
+The `ai/` directory contains project context and documentation intended to support AI-assisted development and maintenance.
+
+---
+
+# 🔒 Production Security Checklist
+
+Before production release:
+
+* [ ] No `.env` files committed
+* [ ] No production secrets in source code
+* [ ] Strong random JWT secrets configured
+* [ ] Production CORS origin configured
+* [ ] HTTPS enabled
+* [ ] Secure HTTP-only cookies enabled
+* [ ] Authentication endpoints rate-limited
+* [ ] Admin authorization verified
+* [ ] Ownership checks verified
+* [ ] Server-side price validation verified
+* [ ] Inventory race conditions tested
+* [ ] Idempotency behavior tested
+* [ ] NoSQL injection tests passed
+* [ ] Production error responses sanitized
+* [ ] Database credentials restricted
+* [ ] Production database backups configured
+* [ ] Debug mode disabled
+* [ ] Production logs reviewed
+* [ ] Build passes successfully
+* [ ] Browser QA completed
+* [ ] Mobile responsive QA completed
+* [ ] Arabic RTL QA completed
+* [ ] English LTR QA completed
+
+---
+
+# 🗺️ Roadmap
+
+### Phase 1 — Core Commerce
+
+* [x] Bilingual storefront
+* [x] Product management
+* [x] Cart
+* [x] Authentication
+* [x] Checkout
+* [x] Cash on Delivery
+* [x] Order management
+* [x] Admin dashboard
+
+### Phase 2 — Production Hardening
+
+* [x] API validation
+* [x] Authentication security
+* [x] Authorization
+* [x] Rate limiting
+* [x] NoSQL injection protection
+* [x] Idempotency
+* [x] Ownership checks
+* [x] Production deployment
+* [x] Automated security testing
+
+### Phase 3 — Business Integrations
+
+* [ ] Odoo ERP integration
+* [ ] Shipping provider integration
+* [ ] SMS notification provider
+* [ ] Automated order synchronization
+* [ ] Advanced operational reporting
+
+---
+
+# 📄 License
+
+This project is proprietary software developed for **RAWAQA**.
+
+Unauthorized copying, redistribution, commercial reuse, or modification is not permitted without permission from the project owner.
 
 ---
 
 <div align="center">
 
-**RAWAQA** — راحة حرفية. مصممة للحياة.
+### RAWAQA — رواقة
 
-🇪🇬 صنع في مصر
+**راحة حرفية. مصممة للحياة.**
+
+**Crafted Comfort. Designed for Life.**
+
+🇪🇬 **Made in Egypt**
 
 </div>
