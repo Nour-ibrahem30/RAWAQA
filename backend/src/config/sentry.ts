@@ -48,10 +48,16 @@ export function initSentry(): void {
 }
 
 /** Express request handler — attach before routes */
-export const sentryRequestHandler = (): any => Sentry ? Sentry.Handlers?.requestHandler() : ((_req: any, _res: any, next: any) => next());
+export const sentryRequestHandler = (): any => {
+  if (!Sentry) return (_req: any, _res: any, next: any) => next();
+  return Sentry.Handlers?.requestHandler() || ((_req: any, _res: any, next: any) => next());
+};
 
 /** Express error handler — attach after all routes, before your own error handler */
-export const sentryErrorHandler = (): any => Sentry ? Sentry.Handlers?.errorHandler() : ((_err: any, _req: any, _res: any, next: any) => next());
+export const sentryErrorHandler = (): any => {
+  if (!Sentry) return (_err: any, _req: any, _res: any, next: any) => next(_err);
+  return Sentry.Handlers?.errorHandler() || ((_err: any, _req: any, _res: any, next: any) => next(_err));
+};
 
 /** Manually capture an exception */
 export const captureException = (err: unknown, context?: Record<string, unknown>) => {
