@@ -16,6 +16,9 @@ import { useAuth } from '@/context/AuthContext';
 import { loc, formatPrice } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 
+// Force dynamic rendering (client component with dynamic params)
+export const dynamic = 'force-dynamic';
+
 const DARK   = 'var(--charcoal)';
 const CARD   = 'var(--charcoal-soft)';
 const BORDER = 'var(--charcoal-line)';
@@ -365,14 +368,4 @@ export default function ProductDetailPage() {
       </div>
     </div>
   );
-}
-
-
-// Generate static params for all products
-export async function generateStaticParams() {
-  // Import statically to avoid runtime errors
-  const { STATIC_PRODUCTS } = await import('@/lib/staticProducts');
-  return STATIC_PRODUCTS.map(product => ({
-    id: product.id,
-  }));
 }

@@ -110,13 +110,13 @@ export default function AdminCustomersPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <DetailRow label="ID" value={selectedCustomer._id || selectedCustomer.id} />
+              <DetailRow label="ID" value={(selectedCustomer as any)._id || selectedCustomer.id} />
               <DetailRow label="Name" value={selectedCustomer.name || `${selectedCustomer.firstName || ''} ${selectedCustomer.lastName || ''}`.trim()} />
               <DetailRow label="Email" value={selectedCustomer.email} />
-              <DetailRow label="Phone" value={selectedCustomer.phone || selectedCustomer.phoneNumber || selectedCustomer.mobile || 'Not provided'} />
+              <DetailRow label="Phone" value={(selectedCustomer as any).phone || (selectedCustomer as any).phoneNumber || (selectedCustomer as any).mobile || 'Not provided'} />
               <DetailRow label="Role" value={selectedCustomer.role} />
               <DetailRow label="Email Verified" value={selectedCustomer.isEmailVerified ? 'Yes' : 'No'} />
-              <DetailRow label="Created" value={selectedCustomer.createdAt ? new Date(selectedCustomer.createdAt).toLocaleString() : '—'} />
+              <DetailRow label="Created" value={(selectedCustomer as any).createdAt ? new Date((selectedCustomer as any).createdAt).toLocaleString() : '—'} />
             </div>
           </div>
         </div>
