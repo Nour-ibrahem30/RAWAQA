@@ -21,9 +21,10 @@ import { logError } from '../config/logger';
 // This transform extracts the URL strings, sorted by order/isPrimary
 const transformProduct = (product: any): any => {
   if (!product) return product;
+  const p = typeof product.toObject === 'function' ? product.toObject() : product;
   
-  const images = Array.isArray(product.images)
-    ? product.images
+  const images = Array.isArray(p.images)
+    ? p.images
         .sort((a: any, b: any) => {
           if (a.isPrimary && !b.isPrimary) return -1;
           if (!a.isPrimary && b.isPrimary) return 1;
@@ -34,7 +35,7 @@ const transformProduct = (product: any): any => {
     : [];
 
   // Normalize category: backend returns populated object, frontend expects {id, nameAr, nameEn, slug}
-  const cat = product.category;
+  const cat = p.category;
   const category = cat && typeof cat === 'object' ? {
     id:     (cat._id ?? cat.id)?.toString() ?? cat.slug,
     nameAr: cat.nameAr,
@@ -43,17 +44,17 @@ const transformProduct = (product: any): any => {
   } : cat;
 
   return {
-    ...product,
-    id:       (product._id ?? product.id)?.toString(),
+    ...p,
+    id:       (p._id ?? p.id)?.toString(),
     images,
     category,
     inventory: {
-      onHandQuantity:   product.inventory?.onHandQuantity   ?? 0,
-      reservedQuantity: product.inventory?.reservedQuantity ?? 0,
-      availableQuantity: product.inventory?.availableQuantity ?? 0,
-      lowStockThreshold: product.inventory?.lowStockThreshold ?? 5,
+      onHandQuantity:   p.inventory?.onHandQuantity   ?? 0,
+      reservedQuantity: p.inventory?.reservedQuantity ?? 0,
+      availableQuantity: p.inventory?.availableQuantity ?? 0,
+      lowStockThreshold: p.inventory?.lowStockThreshold ?? 5,
     },
-    ratings: product.ratings ?? { average: 0, count: 0 },
+    ratings: p.ratings ?? { average: 0, count: 0 },
   };
 };
 

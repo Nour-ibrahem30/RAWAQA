@@ -43,18 +43,18 @@ router.get('/export', authenticate, requireAdmin, exportOrders);
 router.get('/', authenticate, requireAdmin, listOrders);
 
 /**
- * @route   GET /api/orders/:id
- * @desc    Get single order by ID
- * @access  Private
- */
-router.get('/:id', authenticate, getOrder);
-
-/**
  * @route   GET /api/orders/number/:orderNumber
  * @desc    Get order by order number (authenticated or public tracking)
  * @access  Public / Authenticated
  */
 router.get('/number/:orderNumber', optionalAuth, getOrderByNumberHandler);
+
+/**
+ * @route   GET /api/orders/:id
+ * @desc    Get single order by ID
+ * @access  Private
+ */
+router.get('/:id', authenticate, getOrder);
 
 /**
  * @route   PUT /api/orders/:id/status

@@ -1,6 +1,7 @@
 import { Coupon, ICoupon, CouponType } from '../models/Coupon';
 import { CouponUsage } from '../models/CouponUsage';
 import mongoose from 'mongoose';
+import { supportsTransactions } from '../config/database';
 
 // ─── Validate & calculate discount ───────────────────────────────────────────
 export const applyCoupon = async (params: {
@@ -81,20 +82,29 @@ export const recordCouponUsage = async (params: {
   orderId:   string;
   discount:  number;
 }): Promise<void> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const canUseTx = supportsTransactions();
+  const session = canUseTx ? await mongoose.startSession() : null;
+  if (session) {
+    session.startTransaction();
+  }
   try {
     await CouponUsage.create(
       [{ coupon: params.couponId, user: params.userId, order: params.orderId, discount: params.discount }],
-      { session }
+      session ? { session } : {}
     );
-    await Coupon.findByIdAndUpdate(params.couponId, { $inc: { usedCount: 1 } }, { session });
-    await session.commitTransaction();
+    await Coupon.findByIdAndUpdate(params.couponId, { $inc: { usedCount: 1 } }, session ? { session } : {});
+    if (session) {
+      await session.commitTransaction();
+    }
   } catch (err) {
-    await session.abortTransaction();
+    if (session) {
+      await session.abortTransaction();
+    }
     throw err;
   } finally {
-    session.endSession();
+    if (session) {
+      session.endSession();
+    }
   }
 };
 

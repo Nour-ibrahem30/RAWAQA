@@ -14,7 +14,7 @@ const CARD   = 'rgba(30,27,21,.95)';
 const BORDER = 'rgba(210,181,106,.1)';
 const IVORY  = 'var(--ivory)';
 const GOLD   = 'var(--gold-light)';
-const FREE   = 3000;
+const FREE   = 1000; // Free shipping threshold — must match backend calculateShipping()
 
 export default function CartPage() {
   const t      = useTranslations('cart');

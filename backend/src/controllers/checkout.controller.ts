@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { processCheckout, cancelOrder, confirmDelivery } from '../services/checkout.service';
+import { Order } from '../models/Order';
 import { logError } from '../config/logger';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -120,6 +121,31 @@ export const cancel = async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
+
+    // ── OWNERSHIP CHECK ──────────────────────────────────────────────────────
+    // Load the order first so we can verify ownership before mutating anything.
+    const existingOrder = await Order.findById(orderId).select('userId status');
+    if (!existingOrder) {
+      res.status(404).json({ success: false, error: 'Not Found', message: 'Order not found' });
+      return;
+    }
+
+    const isAdmin =
+      req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    const orderOwnerId =
+      (existingOrder.userId as any)?._id?.toString() ??
+      (existingOrder.userId as any)?.toString();
+
+    // Normal customers can only cancel their own orders.
+    if (!isAdmin && orderOwnerId !== req.user?.userId) {
+      res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'You are not authorised to cancel this order',
+      });
+      return;
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     const order = await cancelOrder(orderId, reason);
 

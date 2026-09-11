@@ -97,9 +97,25 @@ export const getDatabaseStats = () => {
   };
 };
 
+// Helper to check if transactions are supported by MongoDB topology
+export const supportsTransactions = (): boolean => {
+  try {
+    const client = (mongoose.connection?.getClient?.() || (mongoose.connection as any).client) as any;
+    const topology = client?.topology?.description;
+    if (!topology) return false;
+    if (topology.type === 'Single') return false;
+    const servers = Array.from(topology.servers?.values?.() || []) as any[];
+    if (servers.some((s: any) => s.type === 'Standalone')) return false;
+    return true;
+  } catch (_err) {
+    return false;
+  }
+};
+
 export default {
   connect: connectDatabase,
   disconnect: disconnectDatabase,
   isConnected: isDatabaseConnected,
+  supportsTransactions,
   getStats: getDatabaseStats,
 };

@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
   const locale = (params?.locale as string) || 'ar';
   const isAr = locale === 'ar';
 
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -59,10 +59,10 @@ export default function ForgotPasswordPage() {
     setError('');
     setLoading(true);
     try {
-      await authApi.forgotPassword(email);
+      await authApi.forgotPassword(phone);
       setSent(true);
     } catch {
-      // Don't reveal if email exists — show success regardless
+      // Don't reveal if phone exists — show success regardless
       setSent(true);
     } finally {
       setLoading(false);
@@ -122,10 +122,13 @@ export default function ForgotPasswordPage() {
               </h2>
               <p style={{ color: 'rgba(247,244,236,.45)', fontSize: '.875rem', lineHeight: 1.7, marginBottom: '2rem' }}>
                 {isAr
-                  ? `أرسلنا رابط إعادة التعيين إلى ${email}`
-                  : `We sent a reset link to ${email}`}
+                  ? `أرسلنا رمز OTP إلى ${phone}`
+                  : `We sent an OTP to ${phone}`}
               </p>
-              <Link href={`/${locale}/login`} style={{ color: GOLD, fontSize: '.875rem', fontWeight: 600, textDecoration: 'none' }}>
+              <Link href={`/${locale}/reset-password`} style={{ color: GOLD, fontSize: '.875rem', fontWeight: 600, textDecoration: 'none', display: 'block', marginBottom: '.75rem' }}>
+                {isAr ? 'إدخال رمز OTP' : 'Enter OTP to reset password'}
+              </Link>
+              <Link href={`/${locale}/login`} style={{ color: 'rgba(247,244,236,.4)', fontSize: '.8rem', textDecoration: 'none' }}>
                 {t('back_to_login')}
               </Link>
             </div>
@@ -156,20 +159,20 @@ export default function ForgotPasswordPage() {
               </div>
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Email field */}
+                {/* Phone field */}
                 <div>
                   <label style={{ display: 'block', fontSize: '.65rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(247,244,236,.32)', fontWeight: 600, marginBottom: '.45rem' }}>
-                    {t('email')}
+                    {isAr ? 'رقم الهاتف' : 'Phone Number'}
                   </label>
                   <div style={{ position: 'relative' }}>
                     <span style={{ position: 'absolute', top: '50%', left: '1rem', transform: 'translateY(-50%)', color: 'rgba(247,244,236,.22)', pointerEvents: 'none', display: 'flex' }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                        <rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 7l10 7 10-7"/>
+                        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.01 1.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>
                       </svg>
                     </span>
                     <input
-                      type="email" value={email} onChange={e => setEmail(e.target.value)}
-                      required dir="ltr" placeholder="you@example.com"
+                      type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                      required dir="ltr" placeholder="+20 1XX XXX XXXX"
                       style={{
                         width: '100%', background: 'rgba(255,255,255,.03)',
                         border: `1px solid ${BORDER}`, borderRadius: 14,

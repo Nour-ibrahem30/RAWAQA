@@ -105,7 +105,7 @@ export default function AccountPage() {
   const [ordersLoading, setOrdersLoading] = useState(true);
 
   // Profile
-  const [profileForm, setProfileForm] = useState({ name: '', phone: '' });
+  const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', phone: '' });
   const [savingProfile, setSavingProfile] = useState(false);
 
   // Addresses
@@ -130,7 +130,7 @@ export default function AccountPage() {
   }, [isLoading, isLoggedIn, locale, router]);
 
   useEffect(() => {
-    if (user) setProfileForm({ name: user.name, phone: user.phone });
+    if (user) setProfileForm({ firstName: user.firstName || '', lastName: user.lastName || '', phone: user.phone });
   }, [user]);
 
   useEffect(() => {
@@ -316,7 +316,8 @@ export default function AccountPage() {
         {/* ── PROFILE ─────────────────────────────────────────────── */}
         {tab === 'profile' && (
           <form onSubmit={handleSaveProfile} style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <InputField label={isAr ? 'الاسم' : 'Name'} value={profileForm.name} onChange={v => setProfileForm(f => ({ ...f, name: v }))} />
+            <InputField label={isAr ? 'الاسم الأول' : 'First Name'} value={profileForm.firstName} onChange={v => setProfileForm(f => ({ ...f, firstName: v }))} />
+            <InputField label={isAr ? 'الاسم الأخير' : 'Last Name'} value={profileForm.lastName} onChange={v => setProfileForm(f => ({ ...f, lastName: v }))} />
             <InputField label={isAr ? 'الهاتف' : 'Phone'} value={profileForm.phone} onChange={v => setProfileForm(f => ({ ...f, phone: v }))} dir="ltr" />
             <InputField label={isAr ? 'البريد الإلكتروني' : 'Email'} value={user.email} disabled />
             <button type="submit" disabled={savingProfile} className="btn btn-gold" style={{ alignSelf: 'flex-start' }}>

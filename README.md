@@ -10,87 +10,82 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-green?logo=mongodb)](https://mongodb.com)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-38bdf8?logo=tailwindcss)](https://tailwindcss.com)
+[![Node.js](https://img.shields.io/badge/Node.js-≥18-339933?logo=node.js)](https://nodejs.org)
 [![License](https://img.shields.io/badge/License-Private-red)](.)
 
 </div>
 
 ---
 
-## 📋 نظرة عامة | Overview
+## نظرة عامة | Overview
 
-**RAWAQA** هو موقع تجارة إلكترونية متكامل لبيع كراسي البين باج الفاخرة في السوق المصري. يدعم اللغتين العربية والإنجليزية، ويتكامل مع Odoo ERP وخدمة SMS للإشعارات.
+**RAWAQA** منصة تجارة إلكترونية متكاملة لبيع كراسي البين باج الفاخرة في السوق المصري. تدعم اللغتين العربية والإنجليزية، مع نظام إدارة طلبات كامل وتكامل مع Odoo ERP وإشعارات SMS.
 
-**RAWAQA** is a full-stack e-commerce platform for premium bean bag chairs in the Egyptian market. Bilingual Arabic/English, integrated with Odoo ERP and SMS notifications.
+**RAWAQA** is a full-stack e-commerce platform for premium bean bag chairs in the Egyptian market — bilingual Arabic/English, with a complete order management system, Odoo ERP integration, and SMS notifications.
 
 ---
 
-## 🏗️ هيكل المشروع | Project Structure
+## هيكل المشروع | Project Structure
 
 ```
 RAWAQA/
-├── frontend/          # Next.js 14 — TypeScript — Tailwind CSS
-│   ├── src/
-│   │   ├── app/       # App Router pages (AR/EN i18n)
-│   │   ├── components/
-│   │   ├── context/   # Cart, Auth, Toast
-│   │   ├── lib/       # API client, types, utils
-│   │   └── i18n/      # next-intl routing
-│   └── public/
-│       ├── products/  # Product images
-│       └── hero/      # Hero slideshow images
+├── frontend/               # Next.js 14 · TypeScript · Tailwind CSS
+│   └── src/
+│       ├── app/            # App Router pages (AR/EN locales)
+│       ├── components/     # Reusable UI components
+│       ├── context/        # Cart, Auth, Toast providers
+│       └── lib/            # API client, types, utilities
 │
-├── backend/           # Node.js — TypeScript — Express
-│   ├── src/
-│   │   ├── controllers/
-│   │   ├── services/
-│   │   ├── models/    # Mongoose models
-│   │   ├── routes/
-│   │   ├── middleware/
-│   │   └── workers/   # Outbox + Inventory workers
-│   └── dist/          # Compiled output
+├── backend/                # Node.js · TypeScript · Express
+│   └── src/
+│       ├── controllers/    # Route handlers
+│       ├── services/       # Business logic
+│       ├── models/         # Mongoose schemas
+│       ├── routes/         # API route definitions
+│       ├── middleware/     # Auth, validation, security
+│       └── workers/        # Background job processors
 │
-└── docs/              # Full project documentation (118+ files)
-    └── 00-ai/         # AI context layer
+└── ai/                     # AI context & documentation layer
 ```
 
 ---
 
-## ⚡ التقنيات | Tech Stack
+## التقنيات | Tech Stack
 
 ### Frontend
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | Next.js | 14.2 | React framework + App Router |
 | TypeScript | 5.x | Type safety |
-| Tailwind CSS | 3.x | Styling |
-| next-intl | 3.x | Arabic/English i18n |
-| Cairo Font | Google | Arabic typography |
-| Fraunces | Google | English display font |
+| Tailwind CSS | 3.x | Utility-first styling |
+| next-intl | 3.x | Arabic / English i18n |
+| Cairo | Google Fonts | Arabic typography |
+| Fraunces | Google Fonts | Display headings |
 
 ### Backend
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| Node.js | ≥18 | Runtime |
-| TypeScript | 5.3 | Type safety |
+| Node.js | ≥ 18 | Runtime |
 | Express | 4.18 | HTTP framework |
+| TypeScript | 5.x | Type safety |
 | Mongoose | 8.x | MongoDB ODM |
 | JWT + bcryptjs | — | Authentication |
 | Zod | 3.x | Input validation |
-| Winston | 3.x | Logging |
-| node-cron | 3.x | Background workers |
-| Vonage SDK | — | SMS notifications |
+| Winston | 3.x | Structured logging |
+| Vonage SDK | 3.x | SMS notifications |
 
-### Database & Services
+### Infrastructure
 | Service | Purpose |
 |---------|---------|
 | MongoDB | Primary database |
-| Odoo ERP | Order management |
+| Odoo ERP | Order & inventory sync |
 | Vonage | SMS order confirmations |
+| Vercel | Frontend hosting |
+| Render / Abasthan | Backend hosting |
 
 ---
 
-## 🚀 تشغيل المشروع محلياً | Local Development
+## تشغيل المشروع | Local Development
 
 ### المتطلبات | Prerequisites
 
@@ -112,7 +107,7 @@ npm run dev
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env with your MongoDB URI and other credentials
+# Fill in your values in .env
 npm install
 npm run dev
 # → http://localhost:5002
@@ -122,13 +117,13 @@ npm run dev
 
 ```bash
 cd backend
-npm run seed
+node seed-prod.js
 # Creates: admin user, categories, products
 ```
 
 ---
 
-## 🌐 المتغيرات البيئية | Environment Variables
+## المتغيرات البيئية | Environment Variables
 
 ### Frontend (`frontend/.env.local`)
 
@@ -149,14 +144,16 @@ JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 
 # SMS (Vonage)
+SMS_ENABLED=true
 SMS_PROVIDER=vonage
-VONAGE_API_KEY=your-key
-VONAGE_API_SECRET=your-secret
+VONAGE_API_KEY=your-api-key
+VONAGE_API_SECRET=your-api-secret
 VONAGE_FROM_NUMBER=RAWAQA
 
-# Odoo
-ODOO_URL=https://your-odoo-instance.com
-ODOO_DB=your-database
+# Odoo ERP (optional)
+ODOO_SYNC_ENABLED=false
+ODOO_URL=https://your-odoo.com
+ODOO_DB=your-db
 ODOO_USERNAME=api_user
 ODOO_PASSWORD=your-password
 
@@ -167,125 +164,117 @@ ADMIN_PASSWORD=StrongPassword123
 
 ---
 
-## 📱 الصفحات | Pages
+## الصفحات | Pages
 
-| Route | الصفحة | Auth |
-|-------|--------|------|
-| `/ar` or `/en` | الصفحة الرئيسية | Public |
-| `/[locale]/shop` | المتجر | Public |
-| `/[locale]/product/[id]` | تفاصيل المنتج | Public |
-| `/[locale]/cart` | سلة التسوق | Public |
-| `/[locale]/checkout` | إتمام الطلب | **Required** |
+### Customer
+
+| Route | الصفحة | الوصول |
+|-------|--------|--------|
+| `/ar` · `/en` | الرئيسية | عام |
+| `/[locale]/shop` | المتجر | عام |
+| `/[locale]/product/[id]` | تفاصيل المنتج | عام |
+| `/[locale]/cart` | سلة التسوق | عام |
+| `/[locale]/checkout` | إتمام الطلب | مسجّل |
 | `/[locale]/order-confirmation/[n]` | تأكيد الطلب | — |
-| `/[locale]/track` | تتبع الطلب | Public |
+| `/[locale]/track` | تتبع الطلب | عام |
 | `/[locale]/login` | تسجيل الدخول | — |
 | `/[locale]/register` | إنشاء حساب | — |
-| `/[locale]/account` | حسابي | Required |
-| `/admin` | لوحة التحكم | Admin |
-| `/admin/products` | إدارة المنتجات | Admin |
-| `/admin/orders` | إدارة الطلبات | Admin |
-| `/admin/settings` | إعدادات الموقع | Admin |
+| `/[locale]/account` | حسابي | مسجّل |
+
+### Admin
+
+| Route | الوظيفة |
+|-------|---------|
+| `/admin` | لوحة التحكم |
+| `/admin/products` | إدارة المنتجات |
+| `/admin/categories` | إدارة الفئات |
+| `/admin/orders` | إدارة الطلبات |
+| `/admin/coupons` | إدارة الكوبونات |
+| `/admin/ads` | الإعلانات والبانرات |
+| `/admin/content` | إدارة المحتوى (CMS) |
+| `/admin/settings` | إعدادات الموقع والألوان |
 
 ---
 
-## 🛒 المنتجات | Products
-
-| المنتج | SKU | السعر |
-|--------|-----|-------|
-| كرسي لاونج | RWQ-LC-001 | 1,815 ج.م |
-| كرسي لاونج كلاسيك | RWQ-LC-002 | 1,815 ج.م |
-| بين باج 8-بول | RWQ-8B-001 | 1,650 ج.م |
-| بين باج كورة — L | RWQ-FB-L | 1,270 ج.م |
-| بين باج كورة — XL | RWQ-FB-XL | 1,430 ج.م |
-| بين باج كورة — 2XL | RWQ-FB-2XL | 1,610 ج.م |
-| بين باج كورة — 3XL | RWQ-FB-3XL | 1,920 ج.م |
-| كرسي لاونج مخمل + فوتة | RWQ-CHL-001 | 1,920 ج.م |
-
----
-
-## 🎨 نظام التصميم | Design System
+## نظام التصميم | Design System
 
 ```css
---charcoal:    #15130F  /* خلفية رئيسية */
---ivory:       #F7F4EC  /* خلفية فاتحة */
---gold-light:  #D2B56A  /* Accent رئيسي */
---gold:        #AD8A4C  /* Accent ثانوي */
---ink:         #262117  /* نص رئيسي */
+--charcoal:    #15130F   /* خلفية رئيسية */
+--ivory:       #F7F4EC   /* خلفية فاتحة */
+--gold-light:  #D2B56A   /* لون رئيسي */
+--gold:        #AD8A4C   /* لون ثانوي */
+--ink:         #262117   /* نص رئيسي */
 ```
 
-**Fonts:** Cairo (Arabic) · Fraunces (Display) · Manrope (Body)
+**الخطوط:** Cairo (عربي) · Fraunces (عناوين) · Manrope (نص)
 
 ---
 
-## 🔒 الأمان | Security
+## الأمان | Security
 
-- ✅ JWT authentication (15m access / 7d refresh)
-- ✅ bcryptjs password hashing (cost 10)
-- ✅ MongoDB sanitization (NoSQL injection prevention)
-- ✅ Rate limiting on auth endpoints
+- ✅ JWT (15 دقيقة access / 7 أيام refresh مع rotation)
+- ✅ bcryptjs — تشفير كلمات المرور
+- ✅ MongoDB Sanitize — حماية من NoSQL injection
+- ✅ Rate limiting على endpoints المصادقة
 - ✅ Helmet security headers
-- ✅ Input validation with Zod
+- ✅ Zod input validation
 - ✅ CORS configuration
-- ✅ Checkout requires authentication
+- ✅ Idempotency keys — منع الطلبات المكررة
+- ✅ Ownership check على إلغاء الطلبات (IDOR protection)
 
 ---
 
-## 🌍 الدعم الدولي | Internationalization
+## الميزات الرئيسية | Core Features
 
-- 🇸🇦 **العربية** — الافتراضية، RTL layout، خط Cairo
-- 🇬🇧 **English** — LTR layout، خط Fraunces + Manrope
-- Toggle في الـ Navbar للتبديل بين اللغتين
-- جميع المحتوى مترجم (المنتجات، الواجهة، رسائل الخطأ)
+- 🛒 سلة تسوق للزوار والمسجّلين مع دمج تلقائي عند تسجيل الدخول
+- 📦 إدارة مخزون ذرية (Atomic) — حجز فوري عند الطلب
+- 🎟️ نظام كوبونات (نسبة مئوية / مبلغ ثابت + حد أقصى للخصم)
+- 💳 الدفع عند الاستلام (Cash on Delivery)
+- 📱 إشعارات SMS بالعربية عبر Vonage
+- 📧 إشعارات بريد إلكتروني
+- 🌐 ثنائية اللغة (عربي RTL + إنجليزي LTR)
+- 🖨️ طباعة فواتير وبوالص شحن
+- 📊 لوحة تحكم إدارية متكاملة
+- 🔄 تكامل مع Odoo ERP (اختياري)
 
 ---
 
-## 📦 الـ Deploy | Deployment
+## الـ Deploy | Deployment
 
-### Vercel (Frontend)
+### Frontend — Vercel
 
 ```bash
 cd frontend
-vercel --prod --yes
+vercel --prod
 ```
 
-### Backend (VPS / Railway / Render)
+متغير مطلوب في Vercel:
+```
+NEXT_PUBLIC_API_URL=https://your-backend-url/api
+```
+
+### Backend — Render / VPS
 
 ```bash
 cd backend
 npm run build
-npm start
+npm start   # node dist/server.js
 ```
 
 ---
 
-## 📄 التوثيق | Documentation
+## التوثيق | Documentation
 
-- [`docs/00-ai/`](docs/00-ai/) — AI Context Layer (للـ AI agents)
-- [`docs/02-requirements/FRS.md`](docs/02-requirements/FRS.md) — Functional Requirements
-- [`docs/04-api/API-Design.md`](docs/04-api/API-Design.md) — API Documentation
-- [`docs/05-database/ERD.md`](docs/05-database/ERD.md) — MongoDB Schema
-- [`backend/API-DOCUMENTATION.md`](backend/API-DOCUMENTATION.md) — Full API Reference
-- [`backend/DEPLOYMENT.md`](backend/DEPLOYMENT.md) — Deployment Guide
+- [`backend/API-DOCUMENTATION.md`](backend/API-DOCUMENTATION.md) — مرجع API الكامل
+- [`backend/DEPLOYMENT.md`](backend/DEPLOYMENT.md) — دليل النشر
+- [`ai/`](ai/) — طبقة السياق للـ AI agents
 
 ---
-
-## 💰 النطاق التجاري | Commercial Scope
-
-| المرحلة | التكلفة |
-|---------|---------|
-| Frontend Development | 12,000 ج.م |
-| Backend Development | 10,000 ج.م |
-| Odoo Integration | 7,000 ج.م |
-| SMS Integration | 3,000 ج.م |
-| Testing & Deployment | 3,000 ج.م |
-| **الإجمالي** | **35,000 ج.م** |
-
----
-
-## 🇪🇬 صنع في مصر | Made in Egypt
 
 <div align="center">
 
 **RAWAQA** — راحة حرفية. مصممة للحياة.
+
+🇪🇬 صنع في مصر
 
 </div>

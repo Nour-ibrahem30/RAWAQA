@@ -143,8 +143,12 @@ export default function RegisterPage() {
     if (form.password !== form.confirm) { setError(t('password_mismatch')); return; }
     setLoading(true);
     try {
+      // Split full name into firstName / lastName for backend
+      const nameParts = form.name.trim().split(/\s+/);
+      const firstName = nameParts[0] || form.name;
+      const lastName  = nameParts.slice(1).join(' ') || nameParts[0] || '';
       const res = await authApi.register({
-        name: form.name, email: form.email,
+        firstName, lastName, email: form.email,
         phone: normalizePhone(form.phone), password: form.password,
       });
       setSuccess(true);

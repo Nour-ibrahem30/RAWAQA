@@ -30,6 +30,20 @@ interface CheckoutResult {
   fromCache: boolean;
 }
 
+function supportsTransactions(): boolean {
+  try {
+    const client = (mongoose.connection?.getClient?.() || (mongoose.connection as any).client) as any;
+    const topology = client?.topology?.description;
+    if (!topology) return false;
+    if (topology.type === 'Single') return false;
+    const servers = Array.from(topology.servers?.values?.() || []) as any[];
+    if (servers.some((s: any) => s.type === 'Standalone')) return false;
+    return true;
+  } catch (_err) {
+    return false;
+  }
+}
+
 /**
  * Process checkout with atomic inventory reservation
  * Implements: Idempotency, Atomic Inventory, Outbox Pattern
@@ -60,9 +74,12 @@ export const processCheckout = async (
     }
   }
 
-  // Start MongoDB session for transaction
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  // Start MongoDB session for transaction if supported (replica set / Mongo Atlas)
+  const canUseTx = supportsTransactions();
+  const session = canUseTx ? await mongoose.startSession() : null;
+  if (session) {
+    session.startTransaction();
+  }
 
   try {
     // 1. Get and validate cart
@@ -93,14 +110,17 @@ export const processCheckout = async (
         );
       }
 
-      // ATOMIC: Reserve inventory (increment reservedQuantity)
+      // ATOMIC: Reserve inventory (increment reservedQuantity, decrement availableQuantity)
       const updateResult = await Product.updateOne(
         {
           _id: product._id,
           'inventory.availableQuantity': { $gte: cartItem.quantity },
         },
         {
-          $inc: { 'inventory.reservedQuantity': cartItem.quantity },
+          $inc: {
+            'inventory.reservedQuantity': cartItem.quantity,
+            'inventory.availableQuantity': -cartItem.quantity,
+          },
         }
       ).session(session);
 
@@ -199,7 +219,7 @@ export const processCheckout = async (
       customerNotes: input.notes,
     });
 
-    await order.save({ session });
+    await order.save(session ? { session } : {});
 
     // 6. Create outbox events
     await createOutboxEvents(order, session);
@@ -216,15 +236,17 @@ export const processCheckout = async (
           result:           { orderId: order._id },
         },
       ],
-      { session }
+      session ? { session } : {}
     );
 
     // 8. Clear cart
     cart.items = [];
-    await cart.save({ session });
+    await cart.save(session ? { session } : {});
 
     // Commit transaction
-    await session.commitTransaction();
+    if (session) {
+      await session.commitTransaction();
+    }
 
     // 9. Record coupon usage AFTER commit (non-critical, outside transaction)
     if (couponCode && couponDiscount > 0) {
@@ -247,10 +269,14 @@ export const processCheckout = async (
     return { order, fromCache: false };
   } catch (error) {
     // Rollback transaction on error
-    await session.abortTransaction();
+    if (session) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
-    session.endSession();
+    if (session) {
+      session.endSession();
+    }
   }
 };
 
@@ -258,8 +284,11 @@ export const processCheckout = async (
  * Cancel order and release inventory
  */
 export const cancelOrder = async (orderId: string, reason: string): Promise<IOrder> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const canUseTx = supportsTransactions();
+  const session = canUseTx ? await mongoose.startSession() : null;
+  if (session) {
+    session.startTransaction();
+  }
 
   try {
     const order = await Order.findById(orderId).session(session);
@@ -276,7 +305,12 @@ export const cancelOrder = async (orderId: string, reason: string): Promise<IOrd
     for (const item of order.items) {
       await Product.updateOne(
         { _id: item.product },
-        { $inc: { 'inventory.reservedQuantity': -item.quantity } }
+        {
+          $inc: {
+            'inventory.reservedQuantity': -item.quantity,
+            'inventory.availableQuantity': item.quantity,
+          },
+        }
       ).session(session);
     }
 
@@ -285,7 +319,7 @@ export const cancelOrder = async (orderId: string, reason: string): Promise<IOrd
     order.internalNotes = reason;
     order.cancelledAt = new Date();
 
-    await order.save({ session });
+    await order.save(session ? { session } : {});
 
     // Create outbox event
     await OutboxEvent.create(
@@ -297,16 +331,22 @@ export const cancelOrder = async (orderId: string, reason: string): Promise<IOrd
           payload: { orderId: order._id, reason },
         },
       ],
-      { session }
+      session ? { session } : {}
     );
 
-    await session.commitTransaction();
+    if (session) {
+      await session.commitTransaction();
+    }
     return order;
   } catch (error) {
-    await session.abortTransaction();
+    if (session) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
-    session.endSession();
+    if (session) {
+      session.endSession();
+    }
   }
 };
 
@@ -314,8 +354,11 @@ export const cancelOrder = async (orderId: string, reason: string): Promise<IOrd
  * Confirm order delivery and deduct inventory
  */
 export const confirmDelivery = async (orderId: string): Promise<IOrder> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const canUseTx = supportsTransactions();
+  const session = canUseTx ? await mongoose.startSession() : null;
+  if (session) {
+    session.startTransaction();
+  }
 
   try {
     const order = await Order.findById(orderId).session(session);
@@ -354,7 +397,7 @@ export const confirmDelivery = async (orderId: string): Promise<IOrder> => {
     order.deliveredAt = new Date();
     order.paymentStatus = PaymentStatus.PAID;
 
-    await order.save({ session });
+    await order.save(session ? { session } : {});
 
     // Create outbox event
     await OutboxEvent.create(
@@ -366,16 +409,22 @@ export const confirmDelivery = async (orderId: string): Promise<IOrder> => {
           payload: { orderId: order._id },
         },
       ],
-      { session }
+      session ? { session } : {}
     );
 
-    await session.commitTransaction();
+    if (session) {
+      await session.commitTransaction();
+    }
     return order;
   } catch (error) {
-    await session.abortTransaction();
+    if (session) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
-    session.endSession();
+    if (session) {
+      session.endSession();
+    }
   }
 };
 
@@ -393,28 +442,41 @@ function generateRequestHash(input: CheckoutInput): string {
 
 async function generateOrderNumber(): Promise<string> {
   const date = new Date();
-  const year = date.getFullYear();
+  const year  = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  
+  const day   = String(date.getDate()).padStart(2, '0');
+
   const prefix = `RWQ${year}${month}${day}`;
-  
-  // Get today's order count
+
+  // Count existing orders with today's prefix to get a starting sequence,
+  // then loop until we find a sequence not already taken (handles gaps from
+  // deletions and race conditions — BUG-26 fix).
   const count = await Order.countDocuments({
     orderNumber: { $regex: `^${prefix}` },
   });
-  
-  const sequence = String(count + 1).padStart(4, '0');
-  return `${prefix}${sequence}`;
+
+  let candidate = '';
+  let attempt   = count + 1;
+  const MAX_ATTEMPTS = 200;
+
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    candidate = `${prefix}${String(attempt).padStart(4, '0')}`;
+    const exists = await Order.exists({ orderNumber: candidate });
+    if (!exists) break;
+    attempt++;
+  }
+
+  return candidate;
 }
 
 function calculateShipping(governorate: string, subtotal: number): number {
   // Free shipping over 1000 EGP
   if (subtotal >= 1000) return 0;
-  
-  // Cairo/Giza: 50 EGP, other: 75 EGP
-  const cairoCities = ['Cairo', 'Giza', 'القاهرة', 'الجيزة'];
-  return cairoCities.includes(governorate) ? 50 : 75;
+
+  // Cairo/Giza: 50 EGP, other governorates: 75 EGP
+  // Match lowercase slugs (from frontend form) and Arabic display names
+  const cairoSlugs = ['cairo', 'giza', 'القاهرة', 'الجيزة', 'Cairo', 'Giza'];
+  return cairoSlugs.includes(governorate) ? 50 : 75;
 }
 
 function calculateTax(subtotal: number): number {
@@ -422,7 +484,7 @@ function calculateTax(subtotal: number): number {
   return Math.round(subtotal * 0.14 * 100) / 100;
 }
 
-async function createOutboxEvents(order: IOrder, session: mongoose.ClientSession): Promise<void> {
+async function createOutboxEvents(order: IOrder, session: mongoose.ClientSession | null): Promise<void> {
   const events = [
     {
       aggregateType: 'Order',
@@ -437,5 +499,5 @@ async function createOutboxEvents(order: IOrder, session: mongoose.ClientSession
     },
   ];
 
-  await OutboxEvent.create(events, { session });
+  await OutboxEvent.create(events, session ? { session } : {});
 }

@@ -13,7 +13,7 @@ const EMPTY = {
   sku: '', nameAr: '', nameEn: '', descriptionAr: '', descriptionEn: '',
   longDescriptionAr: '', longDescriptionEn: '', price: '', compareAtPrice: '',
   category: '', onHandQuantity: '0', lowStockThreshold: '5',
-  featured: false, status: 'active' as 'active' | 'inactive',
+  featured: false, status: 'active' as 'active' | 'draft' | 'inactive' | 'archived' | 'out_of_stock',
   images: '',
 };
 
@@ -42,8 +42,8 @@ export default function ProductForm({ productId }: Props) {
           onHandQuantity: String(p.inventory?.onHandQuantity ?? 0),
           lowStockThreshold: String(p.inventory?.lowStockThreshold ?? 5),
           featured: Boolean(p.featured),
-          status: p.status === 'inactive' ? 'inactive' : 'active',
-          images: p.images?.join(', ') || '',
+          status: (p.status === 'draft' || p.status === 'archived' || p.status === 'out_of_stock') ? p.status : 'active',
+          images: p.images?.map((img: any) => (typeof img === 'string' ? img : img?.url)).filter(Boolean).join(', ') || '',
         });
         setLoading(false);
       }).catch(() => router.push('/admin/products'));
@@ -227,7 +227,9 @@ export default function ProductForm({ productId }: Props) {
         <div className="grid grid-cols-2 gap-4">
           <AdminSelect label="Status" value={form.status} onChange={set('status')}>
             <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="draft">Draft</option>
+            <option value="archived">Archived</option>
+            <option value="out_of_stock">Out of Stock</option>
           </AdminSelect>
           <div className="flex flex-col gap-1">
             <label className="text-xs" style={{ color: 'rgba(247,244,236,.45)' }}>Featured</label>

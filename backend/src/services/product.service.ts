@@ -180,6 +180,19 @@ export const createProduct = async (data: Partial<IProduct>): Promise<IProduct> 
     });
   }
 
+  // Normalize inventory
+  if (data.inventory) {
+    if ((data.inventory as any).onHand !== undefined && data.inventory.onHandQuantity === undefined) {
+      data.inventory.onHandQuantity = (data.inventory as any).onHand;
+    }
+    if (data.inventory.onHandQuantity !== undefined && data.inventory.reservedQuantity === undefined) {
+      data.inventory.reservedQuantity = 0;
+    }
+    if (data.inventory.availableQuantity === undefined && data.inventory.onHandQuantity !== undefined) {
+      data.inventory.availableQuantity = data.inventory.onHandQuantity - (data.inventory.reservedQuantity || 0);
+    }
+  }
+
   // Create product
   const product = new Product(data);
   await product.save();
@@ -238,9 +251,37 @@ export const updateProduct = async (
     });
   }
 
-  // Update product
-  const product = await Product.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+  // Normalize inventory aliases
+  if (data.inventory) {
+    if ((data.inventory as any).onHand !== undefined && data.inventory.onHandQuantity === undefined) {
+      data.inventory.onHandQuantity = (data.inventory as any).onHand;
+    }
+  }
+  if ((data as any)['inventory.onHand'] !== undefined && (data as any)['inventory.onHandQuantity'] === undefined) {
+    (data as any)['inventory.onHandQuantity'] = (data as any)['inventory.onHand'];
+  }
 
+  // Apply updates to existingProduct
+  Object.keys(data).forEach((key) => {
+    if (key.includes('.')) {
+      const parts = key.split('.');
+      const parent = parts[0];
+      const child = parts[1];
+      if (parent && child && (existingProduct as any)[parent]) {
+        (existingProduct as any)[parent][child] = (data as any)[key];
+      }
+    } else if (key === 'inventory' && typeof (data as any).inventory === 'object') {
+      Object.assign(existingProduct.inventory, data.inventory);
+    } else {
+      (existingProduct as any)[key] = (data as any)[key];
+    }
+  });
+
+  if (existingProduct.inventory) {
+    existingProduct.updateAvailableQuantity();
+  }
+
+  const product = await existingProduct.save();
   return product;
 };
 

@@ -1,6 +1,7 @@
 import { Order, IOrder, OrderStatus, PaymentStatus } from '../models/Order';
 import { OutboxEvent } from '../models/OutboxEvent';
 import mongoose from 'mongoose';
+import { supportsTransactions } from '../config/database';
 
 interface OrderFilters {
   userId?: string;
@@ -114,17 +115,12 @@ export const updateOrderStatus = async (
   status: OrderStatus,
   notes?: string
 ): Promise<IOrder> => {
-  let session: mongoose.ClientSession | null = null;
-  let useTransaction = false;
-
-  try {
-    session = await mongoose.startSession();
+  const canUseTx = supportsTransactions();
+  const session = canUseTx ? await mongoose.startSession() : null;
+  if (session) {
     session.startTransaction();
-    useTransaction = true;
-  } catch {
-    session = null;
-    useTransaction = false;
   }
+  const useTransaction = Boolean(session);
 
   try {
     let order: IOrder | null = null;
@@ -231,8 +227,11 @@ export const updatePaymentStatus = async (
   paymentStatus: PaymentStatus,
   _paymentDetails?: any
 ): Promise<IOrder> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const canUseTx = supportsTransactions();
+  const session = canUseTx ? await mongoose.startSession() : null;
+  if (session) {
+    session.startTransaction();
+  }
 
   try {
     const order = await Order.findById(orderId).session(session);
@@ -248,7 +247,7 @@ export const updatePaymentStatus = async (
     }
 
     // Don't use paymentDetails field - not in Order model
-    await order.save({ session });
+    await order.save(session ? { session } : {});
 
     // Create outbox event
     await OutboxEvent.create(
@@ -264,16 +263,22 @@ export const updatePaymentStatus = async (
           },
         },
       ],
-      { session }
+      session ? { session } : {}
     );
 
-    await session.commitTransaction();
+    if (session) {
+      await session.commitTransaction();
+    }
     return order;
   } catch (error) {
-    await session.abortTransaction();
+    if (session) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
-    session.endSession();
+    if (session) {
+      session.endSession();
+    }
   }
 };
 

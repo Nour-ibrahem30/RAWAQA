@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useSearchParams, useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { authApi } from '@/lib/api';
 
@@ -43,13 +43,12 @@ function ParticleCanvas() {
 export default function ResetPasswordPage() {
   const t = useTranslations('auth');
   const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const locale = (params?.locale as string) || 'ar';
   const isAr = locale === 'ar';
 
-  const token = searchParams?.get('token') || '';
-
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -69,14 +68,14 @@ export default function ResetPasswordPage() {
       setError(isAr ? 'كلمات المرور غير متطابقة' : 'Passwords do not match');
       return;
     }
-    if (!token) {
-      setError(t('reset_invalid_token'));
+    if (!phone || !otp) {
+      setError(isAr ? 'رقم الهاتف والرمز مطلوبان' : 'Phone and OTP are required');
       return;
     }
     setError('');
     setLoading(true);
     try {
-      await authApi.resetPassword(token, password);
+      await authApi.resetPassword(phone, otp, password);
       setSuccess(true);
       setTimeout(() => router.push(`/${locale}/login`), 2500);
     } catch (err: unknown) {
@@ -125,13 +124,6 @@ export default function ResetPasswordPage() {
                 {isAr ? 'جاري تحويلك لتسجيل الدخول...' : 'Redirecting to sign in...'}
               </p>
             </div>
-          ) : !token ? (
-            <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-              <p style={{ color: '#f87171', fontSize: '.9rem', marginBottom: '1.5rem' }}>{t('reset_invalid_token')}</p>
-              <Link href={`/${locale}/forgot-password`} style={{ color: GOLD, fontWeight: 600, textDecoration: 'none', fontSize: '.875rem' }}>
-                {isAr ? 'طلب رابط جديد' : 'Request a new link'}
-              </Link>
-            </div>
           ) : (
             <>
               <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
@@ -149,6 +141,33 @@ export default function ResetPasswordPage() {
               </div>
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Phone */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '.65rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(247,244,236,.32)', fontWeight: 600, marginBottom: '.45rem' }}>
+                    {isAr ? 'رقم الهاتف' : 'Phone Number'}
+                  </label>
+                  <input
+                    type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                    required dir="ltr" placeholder="+20 1XX XXX XXXX"
+                    style={{ width: '100%', background: 'rgba(255,255,255,.03)', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '.85rem 1rem', fontSize: '.88rem', color: 'var(--ivory)', outline: 'none', fontFamily: 'inherit', transition: 'border-color 300ms ease' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(210,181,106,.6)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = BORDER)}
+                  />
+                </div>
+                {/* OTP */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '.65rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(247,244,236,.32)', fontWeight: 600, marginBottom: '.45rem' }}>
+                    {isAr ? 'رمز التحقق (OTP)' : 'OTP Code'}
+                  </label>
+                  <input
+                    type="text" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    required dir="ltr" placeholder="• • • • • •" maxLength={6}
+                    style={{ width: '100%', textAlign: 'center', letterSpacing: '.4em', fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,.03)', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '.85rem 1rem', color: GOLD, outline: 'none', transition: 'border-color 300ms ease' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(210,181,106,.6)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = BORDER)}
+                  />
+                </div>
+                {/* New password fields */}
                 {[
                   { label: t('reset_new_password'), val: password, setter: setPassword },
                   { label: t('confirm_password'), val: confirm, setter: setConfirm },

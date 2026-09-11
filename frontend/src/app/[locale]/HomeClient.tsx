@@ -10,7 +10,7 @@ import { Tilt3D } from '@/components/ui/ScrollAnimations';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import HeroSlideshow from '@/components/ui/HeroSlideshow';
 import AdPopup from '@/components/ui/AdPopup';
-import { productsApi } from '@/lib/api';
+import { productsApi, reviewsApi, type Review } from '@/lib/api';
 import { useSiteContent, locContent } from '@/lib/useSiteContent';
 import { STATIC_PRODUCTS } from '@/lib/staticProducts';
 import type { Product } from '@/lib/types';
@@ -23,8 +23,8 @@ const CATS = [
   { key: 'outdoor', color: '#4B5B45', icon: '🌿', image: 'https://res.cloudinary.com/dr5welrvq/image/upload/v1788812766/rawaqa/products/football-new/img-5.jpg' },
 ];
 
-/* ─── Reviews ─────────────────────────────────────────────── */
-const REVIEWS = [
+/* ─── Reviews — static fallback (used when API returns no approved reviews) ── */
+const FALLBACK_REVIEWS = [
   { name: 'أحمد محمد', nameEn: 'Ahmed Mohamed', rating: 5,
     textAr: 'جودة رائعة وراحة لا تُصدق. أنصح به بشدة!',
     textEn: 'Amazing quality and incredible comfort. Highly recommended!' },
@@ -141,6 +141,11 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
   const statsRef = useRef<HTMLDivElement>(null);
   const [activeReview, setActiveReview] = useState(0);
 
+  // Reviews — fetch from API (any approved reviews), fallback to static
+  const [reviews, setReviews] = useState<Array<{
+    name: string; nameEn: string; rating: number; textAr: string; textEn: string;
+  }>>(FALLBACK_REVIEWS);
+
   // Section reveal refs
   const categoriesRef = useRef<HTMLElement>(null);
   const featuredRef   = useRef<HTMLElement>(null);
@@ -159,12 +164,38 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
       .catch(() => {/* keep static fallback */});
   }, [locale]);
 
+  // Fetch recent approved reviews from the most popular product
+  useEffect(() => {
+    // Try to get featured products first, then fetch reviews for the first one
+    const fetchReviews = async () => {
+      try {
+        const prods = await productsApi.featured(locale);
+        const firstId = prods.data?.[0]?.id;
+        if (!firstId) return;
+        const r = await reviewsApi.list(firstId, 1, locale);
+        const apiReviews = (r.data ?? []).slice(0, 3);
+        if (apiReviews.length > 0) {
+          setReviews(apiReviews.map((rv: Review) => ({
+            name:    rv.user?.name || (locale === 'ar' ? 'عميل' : 'Customer'),
+            nameEn:  rv.user?.name || 'Customer',
+            rating:  rv.rating,
+            textAr:  rv.comment,
+            textEn:  rv.comment,
+          })));
+        }
+      } catch {
+        // keep FALLBACK_REVIEWS
+      }
+    };
+    fetchReviews();
+  }, [locale]);
+
   useEffect(() => {
     const timer = setInterval(() => {
-      setActiveReview(prev => (prev + 1) % REVIEWS.length);
+      setActiveReview(prev => (prev + 1) % reviews.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [reviews.length]);
 
   useEffect(() => {
     if (!statsRef.current) return;
@@ -663,7 +694,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
               {/* Rating */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: REVIEWS[activeReview].rating }).map((_, j) => (
+                  {Array.from({ length: reviews[activeReview]?.rating ?? 5 }).map((_, j) => (
                     <span key={j} style={{ color: 'var(--gold-light)', fontSize: '.95rem' }}>★</span>
                   ))}
                   <span className="text-xs font-bold text-ivory/60 ms-1.5">5.0</span>
@@ -681,7 +712,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                 key={activeReview}
                 className="text-sm sm:text-base text-ivory/85 leading-relaxed mb-6 font-normal"
               >
-                &ldquo;{isAr ? REVIEWS[activeReview].textAr : REVIEWS[activeReview].textEn}&rdquo;
+                &ldquo;{isAr ? reviews[activeReview]?.textAr : reviews[activeReview]?.textEn}&rdquo;
               </p>
 
               {/* Author Row & Slider Controls */}
@@ -696,11 +727,11 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                       fontWeight: 800, color: 'var(--charcoal)', fontSize: '.85rem',
                     }}
                   >
-                    {(isAr ? REVIEWS[activeReview].name : REVIEWS[activeReview].nameEn)[0]}
+                    {(isAr ? reviews[activeReview]?.name : reviews[activeReview]?.nameEn)?.[0] ?? '?'}
                   </div>
                   <div>
                     <p className="text-xs sm:text-sm font-bold text-ivory leading-tight">
-                      {isAr ? REVIEWS[activeReview].name : REVIEWS[activeReview].nameEn}
+                      {isAr ? reviews[activeReview]?.name : reviews[activeReview]?.nameEn}
                     </p>
                     <p className="text-[.68rem] text-ivory/40 mt-0.5">
                       {isAr ? 'عميل لدى رواقة' : 'RAWAQA Customer'}
@@ -712,7 +743,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                 <div className="flex items-center gap-3">
                   {/* Dots */}
                   <div className="flex items-center gap-1">
-                    {REVIEWS.map((_, i) => (
+                    {reviews.map((_: unknown, i: number) => (
                       <button
                         key={i}
                         onClick={() => setActiveReview(i)}
@@ -730,14 +761,14 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                   {/* Arrows */}
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => setActiveReview(prev => (prev - 1 + REVIEWS.length) % REVIEWS.length)}
+                      onClick={() => setActiveReview(prev => (prev - 1 + reviews.length) % reviews.length)}
                       className="w-6 h-6 rounded-full flex items-center justify-center text-ivory/60 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-[10px]"
                       aria-label="Previous review"
                     >
                       {isAr ? '→' : '←'}
                     </button>
                     <button
-                      onClick={() => setActiveReview(prev => (prev + 1) % REVIEWS.length)}
+                      onClick={() => setActiveReview(prev => (prev + 1) % reviews.length)}
                       className="w-6 h-6 rounded-full flex items-center justify-center text-ivory/60 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-[10px]"
                       aria-label="Next review"
                     >

@@ -3,7 +3,7 @@ export type { Coupon, CouponApplyResult } from './types';
 
 export function getApiBase(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl && !envUrl.includes('abasthan.app')) {
+  if (envUrl) {
     return envUrl.replace(/\/+$/, '');
   }
   if (typeof window !== 'undefined') {
@@ -11,6 +11,7 @@ export function getApiBase(): string {
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://localhost:5002/api';
     }
+    // Production fallback — should never reach here if NEXT_PUBLIC_API_URL is set
     return `${window.location.origin}/api`;
   }
   return 'http://localhost:5002/api';
@@ -84,7 +85,7 @@ async function tryRefreshToken(): Promise<boolean> {
 
 /* ============ AUTH ============ */
 export const authApi = {
-  register: (payload: { name: string; email: string; phone: string; password: string }) =>
+  register: (payload: { firstName: string; lastName: string; email: string; phone: string; password: string }) =>
     apiFetch<{ user: User; accessToken: string; refreshToken: string }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -110,37 +111,37 @@ export const authApi = {
 
   me: (locale?: string) => apiFetch<User>('/auth/me', { locale }),
 
-  updateProfile: (payload: { name?: string; phone?: string }) =>
+  updateProfile: (payload: { firstName?: string; lastName?: string; phone?: string }) =>
     apiFetch<User>('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
 
   changePassword: (currentPassword: string, newPassword: string) =>
-    apiFetch('/auth/password', {
+    apiFetch('/auth/change-password', {
       method: 'PUT',
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
 
-  forgotPassword: (email: string) =>
+  forgotPassword: (phone: string) =>
     apiFetch('/auth/forgot-password', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ phone }),
     }),
 
-  resetPassword: (token: string, newPassword: string) =>
+  resetPassword: (phone: string, otp: string, newPassword: string) =>
     apiFetch('/auth/reset-password', {
       method: 'POST',
-      body: JSON.stringify({ token, newPassword }),
+      body: JSON.stringify({ phone, otp, newPassword }),
     }),
 
   sendPhoneOtp: () =>
     apiFetch('/auth/send-phone-otp', { method: 'POST' }),
 
-  verifyPhone: (code: string) =>
+  verifyPhone: (otp: string) =>
     apiFetch('/auth/verify-phone', {
       method: 'POST',
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ otp }),
     }),
 
   sendEmailVerification: () =>
@@ -164,6 +165,7 @@ export const productsApi = {
     order?: string;
     minPrice?: number;
     maxPrice?: number;
+    inStock?: boolean;
   } = {}, locale = 'ar') => {
     try {
       const q = new URLSearchParams();
@@ -178,6 +180,7 @@ export const productsApi = {
         const q = params.search.toLowerCase();
         data = data.filter(p => p.nameEn.toLowerCase().includes(q) || p.nameAr.includes(q));
       }
+      if (params.inStock) data = data.filter(p => (p.inventory?.availableQuantity ?? 0) > 0);
       if (params.sort === 'price' && params.order === 'asc') data.sort((a, b) => a.price - b.price);
       if (params.sort === 'price' && params.order === 'desc') data.sort((a, b) => b.price - a.price);
       const page = params.page ?? 1;
@@ -281,8 +284,8 @@ export const cartApi = {
   clear: () => apiFetch('/cart', { method: 'DELETE' }),
   totals: (governorate?: string) =>
     apiFetch<CartTotals>(`/cart/totals${governorate ? `?governorate=${governorate}` : ''}`),
-  merge: (guestCartId: string) =>
-    apiFetch('/cart/merge', { method: 'POST', body: JSON.stringify({ guestCartId }) }),
+  merge: (guestSessionId: string) =>
+    apiFetch('/cart/merge', { method: 'POST', body: JSON.stringify({ guestSessionId }) }),
 };
 
 /* ============ CHECKOUT ============ */
@@ -494,7 +497,7 @@ export const uploadApi = {
   direct: async (files: File[]): Promise<string[]> => {
     const formData = new FormData();
     files.forEach(f => formData.append('images', f));
-    const token = typeof window !== 'undefined' ? localStorage.getItem('rawaqa_token') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api'}/upload/direct`, {
       method: 'POST',
       headers: {

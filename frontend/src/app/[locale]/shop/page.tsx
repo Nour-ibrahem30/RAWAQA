@@ -52,6 +52,7 @@ export default function ShopPage() {
         ...(sort && { sort: sort.split('-')[0], order: sort.split('-')[1] || 'asc' }),
         ...(minPrice && { minPrice: Number(minPrice) }),
         ...(maxPrice && { maxPrice: Number(maxPrice) }),
+        ...(inStock && { inStock: true }),
       }, locale);
       const data = res.data ?? [];
       setProducts(prev => reset ? data : [...prev, ...data]);
@@ -63,7 +64,7 @@ export default function ShopPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, search, sort, minPrice, maxPrice, locale]);
+  }, [category, search, sort, minPrice, maxPrice, inStock, locale]);
 
   useEffect(() => {
     fetchProducts(1, true);

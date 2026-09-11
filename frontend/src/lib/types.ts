@@ -73,7 +73,7 @@ export interface Product {
   category: Pick<Category, 'id' | 'nameAr' | 'nameEn' | 'slug'>;
   inventory: ProductInventory;
   featured: boolean;
-  status: 'active' | 'inactive' | 'archived';
+  status: 'active' | 'inactive' | 'draft' | 'archived' | 'out_of_stock';
   tags?: string[];
   createdAt: string;
 }
