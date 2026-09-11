@@ -366,3 +366,13 @@ export default function ProductDetailPage() {
     </div>
   );
 }
+
+
+// Generate static params for all products
+export async function generateStaticParams() {
+  // Import statically to avoid runtime errors
+  const { STATIC_PRODUCTS } = await import('@/lib/staticProducts');
+  return STATIC_PRODUCTS.map(product => ({
+    id: product.id,
+  }));
+}

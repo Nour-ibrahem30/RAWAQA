@@ -100,13 +100,23 @@ export default function AdminContentPage() {
     try {
       await contentApi.update(activeSection, form);
       setAllContent(prev => ({ ...prev, [activeSection]: form }));
+      
+      // Clear localStorage cache
       try {
+        localStorage.removeItem(`rawaqa_content_${activeSection}`);
         localStorage.setItem(`rawaqa_content_${activeSection}`, JSON.stringify(form));
+        localStorage.setItem(`rawaqa_content_timestamp`, Date.now().toString());
       } catch { /* ignore */ }
-      broadcastContentUpdate(activeSection); // notify all open tabs instantly
-      showToast('Content saved — site updated live!', 'success');
-    } catch {
-      showToast('Failed to save content', 'error');
+      
+      // Broadcast update + force page reload after 1.5s to show changes
+      broadcastContentUpdate(activeSection);
+      showToast('Content saved! Reloading to show changes...', 'success');
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save content', 'error');
     } finally {
       setSaving(false);
     }
