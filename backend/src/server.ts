@@ -361,6 +361,15 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
 const startServer = async () => {
   // 1. Start HTTP Server immediately on 0.0.0.0 so platform port inspection succeeds instantly
   const port = Number(process.env.PORT) || env.PORT || 5000;
+  
+  console.log('='.repeat(60));
+  console.log('🚀 RAWAQA Backend Starting...');
+  console.log(`PORT from process.env.PORT: ${process.env.PORT}`);
+  console.log(`PORT from env.PORT: ${env.PORT}`);
+  console.log(`Final PORT: ${port}`);
+  console.log(`Binding to: 0.0.0.0:${port}`);
+  console.log('='.repeat(60));
+  
   const server = app.listen(port, '0.0.0.0', () => {
     logInfo(`🚀 RAWAQA 2.0 Backend listening on 0.0.0.0:${port}`, {
       environment: env.NODE_ENV,
@@ -368,7 +377,8 @@ const startServer = async () => {
       nodeVersion: process.version,
       pid: process.pid,
     });
-    console.log(`RAWAQA Backend is live on port ${port} (0.0.0.0:${port})`);
+    console.log(`✓ RAWAQA Backend is LIVE on port ${port} (0.0.0.0:${port})`);
+    console.log(`✓ Health check: http://0.0.0.0:${port}/health`);
   });
 
   // 2. Connect to Database asynchronously with background retry

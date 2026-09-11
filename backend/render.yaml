@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: rawaqa-backend
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://rawaqa.vercel.app
+      - key: ENABLE_WORKERS
+        value: true
