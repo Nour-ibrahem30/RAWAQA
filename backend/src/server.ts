@@ -130,6 +130,18 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // =============================================================================
+// HEALTH CHECK ENDPOINT (CRITICAL FOR RENDER/RAILWAY PORT INSPECTION)
+// =============================================================================
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    env: env.NODE_ENV,
+  });
+});
+
+// =============================================================================
 // ROUTES
 // =============================================================================
 
