@@ -61,7 +61,6 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
   useEffect(() => {
     if (!mounted || !clientId) return;
 
-    // Load Google Identity Services script if not loaded
     const scriptId = 'google-gsi-script';
     let script = document.getElementById(scriptId) as HTMLScriptElement | null;
 
@@ -79,6 +78,7 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
           window.google.accounts.id.renderButton(targetEl, {
             theme: 'filled_black',
             size: 'large',
+            width: 320,
             text: 'continue_with',
             shape: 'pill',
             locale: isAr ? 'ar' : 'en',
@@ -98,7 +98,7 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
     } else {
       initGsi();
     }
-  }, [clientId, isAr]);
+  }, [clientId, isAr, mounted]);
 
   const handleCustomClick = () => {
     if (loading) return;
@@ -111,8 +111,28 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
       return;
     }
 
+    // Direct Google OAuth2 fallback redirect if prompt is blocked or suppressed by browser
     if (window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.warn('Google One Tap suppressed by browser policy. Falling back to OAuth redirect.');
+          const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/${locale}` : '';
+          const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+            clientId
+          )}&redirect_uri=${encodeURIComponent(
+            redirectUri
+          )}&response_type=id_token&scope=openid%20profile%20email&nonce=${Date.now()}`;
+          window.location.href = oauthUrl;
+        }
+      });
+    } else {
+      const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/${locale}` : '';
+      const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+        clientId
+      )}&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&response_type=id_token&scope=openid%20profile%20email&nonce=${Date.now()}`;
+      window.location.href = oauthUrl;
     }
   };
 
