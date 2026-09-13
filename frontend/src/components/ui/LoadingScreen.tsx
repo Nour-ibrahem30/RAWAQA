@@ -31,7 +31,7 @@ interface LoadingScreenProps {
 export default function LoadingScreen({
   isPersistent = false,
   onFinished,
-  minDuration = 2400,
+  minDuration = 1100,
 }: LoadingScreenProps) {
   const params = useParams();
   const locale = ((params?.locale as string) || 'ar') === 'en' ? 'en' : 'ar';

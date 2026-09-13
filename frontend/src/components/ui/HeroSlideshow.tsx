@@ -152,11 +152,13 @@ export default function HeroSlideshow({ className = '', style }: Props) {
 
 /* ── Single slide image with Ken Burns zoom ── */
 function SlideImage({ src, alt, active }: { src: string; alt: string; active: boolean }) {
+  const isFirst = src === '/hero/hero-1.jpg';
   return (
     <Image
       src={src}
       alt={alt}
       fill
+      quality={75}
       style={{
         objectFit: 'cover',
         objectPosition: 'center',
@@ -165,8 +167,9 @@ function SlideImage({ src, alt, active }: { src: string; alt: string; active: bo
           ? `transform ${INTERVAL + TRANS_DUR}ms cubic-bezier(.25,.46,.45,.94)`
           : 'none',
       }}
-      sizes="(max-width: 768px) 100vw, 55vw"
-      priority={src === '/hero/hero-1.jpg'}
+      sizes="(max-width: 640px) 92vw, (max-width: 1024px) 450px, 520px"
+      priority={isFirst}
+      fetchPriority={isFirst ? 'high' : 'auto'}
     />
   );
 }

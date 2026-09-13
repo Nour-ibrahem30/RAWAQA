@@ -429,8 +429,9 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                     src={cat.image}
                     alt={cat.key}
                     fill
+                    quality={70}
                     style={{ objectFit: 'cover', transition: 'transform 500ms ease' }}
-                    sizes="(max-width: 640px) 100vw, 25vw"
+                    sizes="(max-width: 640px) 46vw, (max-width: 1024px) 240px, 260px"
                     className="cat-img"
                   />
                   {/* Dark gradient overlay */}

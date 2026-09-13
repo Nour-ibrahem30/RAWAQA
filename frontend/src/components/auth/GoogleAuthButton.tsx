@@ -123,11 +123,8 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
   }
 
   return (
-    <div className="w-full flex flex-col items-center">
-      {/* Container for native Google button render if available */}
-      <div id="google-native-btn-container" className="w-full hidden" />
-
-      {/* Luxury Styled Button */}
+    <div className="w-full relative flex flex-col items-center">
+      {/* Luxury Styled Button (Visible Design) */}
       <button
         type="button"
         onClick={handleCustomClick}
@@ -181,6 +178,15 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
         )}
         <span>{isAr ? 'المتابعة باستخدام Google' : 'Continue with Google'}</span>
       </button>
+
+      {/* Native Google Button overlay (Guarantees Google sign-in works without browser blocking) */}
+      {clientId && (
+        <div
+          id="google-native-btn-container"
+          className="absolute inset-0 opacity-0 overflow-hidden cursor-pointer"
+          style={{ zIndex: 10 }}
+        />
+      )}
     </div>
   );
 }

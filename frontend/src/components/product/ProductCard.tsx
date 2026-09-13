@@ -26,8 +26,9 @@ function ProductImage({ src, name, product }: { src?: string; name: string; prod
         src={src}
         alt={name}
         fill
+        quality={72}
         className="object-cover card-img"
-        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        sizes="(max-width: 640px) 92vw, (max-width: 1024px) 45vw, 360px"
         style={{ transition: 'transform 500ms cubic-bezier(.22,.61,.36,1)' }}
       />
     );

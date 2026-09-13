@@ -78,9 +78,9 @@ export default function AdminLoadingScreen({
   useEffect(() => {
     if (isPersistent) return;
 
-    const t1 = setTimeout(() => setPhase('welcome'), 1500);
-    const t2 = setTimeout(() => setPhase('fadeout'), 3100);
-    const t3 = setTimeout(() => onDone?.(), 3550);
+    const t1 = setTimeout(() => setPhase('welcome'), 600);
+    const t2 = setTimeout(() => setPhase('fadeout'), 1300);
+    const t3 = setTimeout(() => onDone?.(), 1600);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);

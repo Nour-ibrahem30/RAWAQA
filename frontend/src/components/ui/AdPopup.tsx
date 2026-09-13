@@ -157,9 +157,12 @@ export default function AdPopup({ locale }: Props) {
         {/* Image */}
         <div style={{ position: 'relative', aspectRatio: '16/7', overflow: 'hidden', background: '#1a1710' }}>
           <Image
-            src={ad.imageUrl} alt={title} fill
+            src={ad.imageUrl}
+            alt={title}
+            fill
+            quality={70}
+            sizes="(max-width: 600px) 92vw, 520px"
             style={{ objectFit: 'cover', opacity: imgLoaded ? 1 : 0, transition: 'opacity 500ms ease' }}
-            sizes="540px"
             onLoad={() => setImgLoaded(true)}
           />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 30%, rgba(21,19,15,.9) 100%)' }} />
