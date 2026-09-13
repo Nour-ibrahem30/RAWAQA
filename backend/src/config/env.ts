@@ -8,7 +8,7 @@ dotenv.config();
 const envSchema = z.object({
   // Node Environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().min(1).max(65535).default(5000),
+  PORT: z.coerce.number().min(1).max(65535).default(3000),
 
   // Database
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/rawaqa'),

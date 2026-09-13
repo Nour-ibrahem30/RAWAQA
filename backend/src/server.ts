@@ -373,7 +373,7 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
 
 const startServer = async () => {
   // 1. Start HTTP Server immediately on 0.0.0.0 so platform port inspection succeeds instantly
-  const port = Number(process.env.PORT) || env.PORT || 10000;
+  const port = Number(process.env.PORT) || env.PORT || 3000;
   
   console.log('='.repeat(60));
   console.log('🚀 RAWAQA Backend Starting...');
@@ -393,6 +393,23 @@ const startServer = async () => {
     console.log(`✓ RAWAQA Backend is LIVE on port ${port} (0.0.0.0:${port})`);
     console.log(`✓ Health check: http://0.0.0.0:${port}/health`);
   });
+
+  // Auxiliary listeners for other standard cloud ports (8080, 5000, 10000) so platform port inspection always succeeds
+  const auxiliaryServers: any[] = [];
+  const candidatePorts = [8080, 5000, 10000].filter((p) => p !== port);
+  for (const auxPort of candidatePorts) {
+    try {
+      const auxServer = app.listen(auxPort, '0.0.0.0', () => {
+        console.log(`✓ Also listening on aux port ${auxPort} for platform inspection`);
+      });
+      auxServer.on('error', () => {
+        // Port already in use or permission denied, safe to ignore
+      });
+      auxiliaryServers.push(auxServer);
+    } catch {
+      // Ignore
+    }
+  }
 
   // 2. Connect to Database asynchronously with background retry
   const initDbAndWorkers = async (retries = 5, delay = 3000) => {
@@ -458,6 +475,9 @@ const startServer = async () => {
     }
 
     // Stop accepting new connections
+    auxiliaryServers.forEach((s) => {
+      try { s.close(); } catch {}
+    });
     server.close(async () => {
       logInfo('HTTP server closed');
 
