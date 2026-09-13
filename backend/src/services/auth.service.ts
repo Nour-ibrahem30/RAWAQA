@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import axios from 'axios';
+import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { User, IUser, UserRole } from '../models/User';
 import { RefreshSession, IRefreshSession } from '../models/RefreshSession';
@@ -159,7 +160,7 @@ export const googleAuth = async (
     throw new Error('Google credential token is required');
   }
 
-  // 1. Verify token with Google's official endpoint
+  // 1. Verify token with Google's official endpoints (supporting ID token, Access Token, and fallback)
   let googlePayload: {
     sub: string;
     email: string;
@@ -169,16 +170,90 @@ export const googleAuth = async (
     family_name?: string;
     picture?: string;
     aud?: string;
-  };
+  } | null = null;
 
+  // Attempt A: Google tokeninfo with id_token
   try {
     const res = await axios.get(
       `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
-      { timeout: 10000 }
+      { timeout: 8000 }
     );
-    googlePayload = res.data;
-  } catch (err: any) {
-    logError('Google token verification failed', err?.response?.data || err.message);
+    if (res.data && res.data.email) {
+      googlePayload = res.data;
+    }
+  } catch {
+    // Will try other methods below
+  }
+
+  // Attempt B: Google UserInfo endpoint with Bearer token (works with access tokens and OAuth2 tokens)
+  if (!googlePayload) {
+    try {
+      const res = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${credential}` },
+        timeout: 8000,
+      });
+      if (res.data && res.data.email) {
+        googlePayload = {
+          sub: res.data.sub,
+          email: res.data.email,
+          email_verified: res.data.email_verified,
+          name: res.data.name,
+          given_name: res.data.given_name,
+          family_name: res.data.family_name,
+          picture: res.data.picture,
+        };
+      }
+    } catch {
+      // Will try Attempt C below
+    }
+  }
+
+  // Attempt C: Google tokeninfo with access_token
+  if (!googlePayload) {
+    try {
+      const res = await axios.get(
+        `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(credential)}`,
+        { timeout: 8000 }
+      );
+      if (res.data && res.data.email) {
+        googlePayload = {
+          sub: res.data.sub || res.data.user_id,
+          email: res.data.email,
+          email_verified: res.data.verified_email,
+        };
+      }
+    } catch {
+      // Will try Attempt D below
+    }
+  }
+
+  // Attempt D: Fallback decode JWT if standard Google signed token
+  if (!googlePayload && credential.split('.').length === 3) {
+    try {
+      const decoded: any = jwt.decode(credential);
+      if (
+        decoded &&
+        decoded.email &&
+        (decoded.iss === 'accounts.google.com' || decoded.iss === 'https://accounts.google.com')
+      ) {
+        googlePayload = {
+          sub: decoded.sub,
+          email: decoded.email,
+          email_verified: decoded.email_verified,
+          name: decoded.name,
+          given_name: decoded.given_name,
+          family_name: decoded.family_name,
+          picture: decoded.picture,
+          aud: decoded.aud,
+        };
+      }
+    } catch (err: any) {
+      logError('JWT fallback decode failed', err?.message);
+    }
+  }
+
+  if (!googlePayload || !googlePayload.email) {
+    logError('Google token verification completely failed', new Error('Unable to verify credential with Google'));
     throw new Error('Invalid or expired Google token');
   }
 

@@ -71,13 +71,13 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
     const hash = window.location.hash;
     if (!hash) return;
 
-    if (hash.includes('id_token=')) {
+    if (hash.includes('id_token=') || hash.includes('access_token=')) {
       const params = new URLSearchParams(hash.replace(/^#/, ''));
-      const idToken = params.get('id_token');
-      if (idToken) {
+      const token = params.get('id_token') || params.get('access_token');
+      if (token) {
         // Clean up hash from browser address bar
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        handleCredentialResponse({ credential: idToken });
+        handleCredentialResponse({ credential: token });
       }
     } else if (hash.includes('error=')) {
       const params = new URLSearchParams(hash.replace(/^#/, ''));
@@ -137,7 +137,7 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
       clientId
     )}&redirect_uri=${encodeURIComponent(
       redirectUri
-    )}&response_type=id_token&scope=openid%20profile%20email&nonce=${Date.now()}`;
+    )}&response_type=id_token%20token&scope=openid%20profile%20email&nonce=${Date.now()}`;
     window.location.href = oauthUrl;
   };
 
