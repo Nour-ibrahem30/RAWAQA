@@ -82,9 +82,11 @@ export default function ProductCard({ product }: { product: Product }) {
     }
   };
 
+  const prodId = product.id || (product as any)._id;
+
   return (
     <Link
-      href={`/${locale}/product/${product.id}`}
+      href={`/${locale}/product/${prodId}`}
       className="product-card-3d"
       style={{
         display: 'flex',

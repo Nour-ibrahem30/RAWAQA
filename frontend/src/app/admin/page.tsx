@@ -375,28 +375,31 @@ export default function AdminDashboard() {
           <p style={{ color: DIM, fontSize: '.82rem', textAlign: 'center', padding: '2rem 0' }}>{t.no_orders}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
-            {recentOrders.map(order => (
-              <Link key={order.id} href={`/admin/orders/${order.id}`}
-                style={{ display: 'flex', alignItems: 'center', padding: '.65rem .75rem', borderRadius: 10, textDecoration: 'none', transition: 'background 200ms ease' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.04)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                <div style={{ flex: '0 0 140px' }}>
-                  <p style={{ fontFamily: 'monospace', fontSize: '.78rem', color: GOLD, letterSpacing: '.04em' }}>{order.orderNumber}</p>
-                  <p style={{ fontSize: '.65rem', color: DIM, marginTop: '.1rem' }}>
-                    {new Date(order.createdAt).toLocaleString(isAr ? 'ar-EG' : 'en-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            {recentOrders.map(order => {
+              const orderId = order.id || (order as any)._id || order.orderNumber;
+              return (
+                <Link key={orderId} href={`/admin/orders/${orderId}`}
+                  style={{ display: 'flex', alignItems: 'center', padding: '.65rem .75rem', borderRadius: 10, textDecoration: 'none', transition: 'background 200ms ease' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.04)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <div style={{ flex: '0 0 140px' }}>
+                    <p style={{ fontFamily: 'monospace', fontSize: '.78rem', color: GOLD, letterSpacing: '.04em' }}>{order.orderNumber}</p>
+                    <p style={{ fontSize: '.65rem', color: DIM, marginTop: '.1rem' }}>
+                      {new Date(order.createdAt).toLocaleString(isAr ? 'ar-EG' : 'en-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <p style={{ flex: 1, fontSize: '.75rem', color: DIM }}>
+                    {order.items?.length ?? 0} {(order.items?.length ?? 0) !== 1 ? t.items_plural : t.items}
                   </p>
-                </div>
-                <p style={{ flex: 1, fontSize: '.75rem', color: DIM }}>
-                  {order.items?.length ?? 0} {(order.items?.length ?? 0) !== 1 ? t.items_plural : t.items}
-                </p>
-                <span className={`text-[.62rem] font-semibold px-2 py-0.5 rounded-pill ${orderStatusColor(order.status)}`} style={{ marginInlineEnd: '1rem' }}>
-                  {orderStatusLabel(order.status, lang === 'ar' ? 'ar' : 'en')}
-                </span>
-                <span style={{ fontSize: '.82rem', fontWeight: 800, color: IVORY, minWidth: 80, textAlign: isAr ? 'left' : 'right' }}>
-                  {formatPrice(order.total, lang === 'ar' ? 'ar' : 'en')}
-                </span>
-              </Link>
-            ))}
+                  <span className={`text-[.62rem] font-semibold px-2 py-0.5 rounded-pill ${orderStatusColor(order.status)}`} style={{ marginInlineEnd: '1rem' }}>
+                    {orderStatusLabel(order.status, lang === 'ar' ? 'ar' : 'en')}
+                  </span>
+                  <span style={{ fontSize: '.82rem', fontWeight: 800, color: IVORY, minWidth: 80, textAlign: isAr ? 'left' : 'right' }}>
+                    {formatPrice(order.total, lang === 'ar' ? 'ar' : 'en')}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

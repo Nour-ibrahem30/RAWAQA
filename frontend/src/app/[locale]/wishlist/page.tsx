@@ -126,7 +126,7 @@ export default function WishlistPage() {
                   onMouseLeave={e => (e.currentTarget.style.borderColor = BORDER)}>
 
                   {/* Image */}
-                  <Link href={`/${locale}/product/${product.id}`} style={{ position: 'relative', aspectRatio: '4/5', display: 'block', background: 'rgba(232,224,210,.08)', overflow: 'hidden' }}>
+                  <Link href={`/${locale}/product/${product.id || (product as any)._id}`} style={{ position: 'relative', aspectRatio: '4/5', display: 'block', background: 'rgba(232,224,210,.08)', overflow: 'hidden' }}>
                     {image ? (
                       <Image src={image} alt={name} fill style={{ objectFit: 'cover', transition: 'transform 400ms ease' }}
                         sizes="(max-width:640px) 100vw, 300px" />
@@ -149,7 +149,7 @@ export default function WishlistPage() {
                     <p style={{ fontSize: '.62rem', letterSpacing: '.14em', textTransform: 'uppercase', color: GOLD }}>
                       {loc(product.category?.nameAr, product.category?.nameEn, locale)}
                     </p>
-                    <Link href={`/${locale}/product/${product.id}`} style={{ fontWeight: 700, fontSize: '.95rem', color: IVORY, textDecoration: 'none', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <Link href={`/${locale}/product/${product.id || (product as any)._id}`} style={{ fontWeight: 700, fontSize: '.95rem', color: IVORY, textDecoration: 'none', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {name}
                     </Link>
                     <p style={{ fontWeight: 800, fontSize: '1rem', color: GOLD, marginTop: 'auto', paddingTop: '.5rem' }}>

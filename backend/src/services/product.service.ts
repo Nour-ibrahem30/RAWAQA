@@ -1,6 +1,6 @@
 import { Product, IProduct, ProductStatus } from '../models/Product';
 import { Category } from '../models/Category';
-import { FilterQuery, SortOrder } from 'mongoose';
+import mongoose, { FilterQuery, SortOrder } from 'mongoose';
 
 // Query parameters interface
 export interface IProductQuery {
@@ -96,17 +96,34 @@ export const getProducts = async (
   };
 };
 
-// Get single product by ID
+// Get single product by ID (supports ObjectId, slug, or SKU)
 export const getProductById = async (id: string): Promise<IProduct | null> => {
-  const product = await Product.findById(id).populate('category', 'nameAr nameEn slugAr slugEn');
-
-  if (product) {
-    // Increment view count
-    product.viewCount += 1;
-    await product.save();
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    const product = await Product.findById(id).populate('category', 'nameAr nameEn slugAr slugEn');
+    if (product) {
+      product.viewCount += 1;
+      await product.save();
+      return product;
+    }
   }
 
-  return product;
+  // Fallback to slug or SKU
+  const product = await Product.findOne({
+    $or: [
+      { slugEn: id },
+      { slugAr: id },
+      { sku: id.toUpperCase() },
+      { sku: id },
+    ],
+  }).populate('category', 'nameAr nameEn slugAr slugEn');
+
+  if (product) {
+    product.viewCount += 1;
+    await product.save();
+    return product;
+  }
+
+  return null;
 };
 
 // Get product by slug

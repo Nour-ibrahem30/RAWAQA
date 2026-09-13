@@ -29,6 +29,61 @@ const nextConfig = {
         destination: '/admin/products',
         permanent: true,
       },
+      {
+        source: '/admin/order',
+        destination: '/admin/orders',
+        permanent: true,
+      },
+      {
+        source: '/:locale(ar|en)/admin',
+        destination: '/admin',
+        permanent: false,
+      },
+      {
+        source: '/:locale(ar|en)/admin/:path*',
+        destination: '/admin/:path*',
+        permanent: false,
+      },
+      {
+        source: '/orders',
+        destination: '/ar/account',
+        permanent: false,
+      },
+      {
+        source: '/:locale(ar|en)/orders',
+        destination: '/:locale/account',
+        permanent: false,
+      },
+      {
+        source: '/account/orders',
+        destination: '/ar/account',
+        permanent: false,
+      },
+      {
+        source: '/:locale(ar|en)/account/orders',
+        destination: '/:locale/account',
+        permanent: false,
+      },
+      {
+        source: '/products',
+        destination: '/ar/shop',
+        permanent: false,
+      },
+      {
+        source: '/:locale(ar|en)/products',
+        destination: '/:locale/shop',
+        permanent: false,
+      },
+      {
+        source: '/product',
+        destination: '/ar/shop',
+        permanent: false,
+      },
+      {
+        source: '/:locale(ar|en)/product',
+        destination: '/:locale/shop',
+        permanent: false,
+      },
     ];
   },
 };

@@ -131,7 +131,7 @@ export default function CartPage() {
                     {/* Info */}
                     <div className="flex-1 min-w-0 w-full sm:w-auto">
                       <Link
-                        href={`/${locale}/product/${item.product.id}`}
+                        href={`/${locale}/product/${item.product.id || (item.product as any)._id}`}
                         style={{ fontWeight: 600, fontSize: '.95rem', color: IVORY, display: 'block', marginBottom: '.25rem', transition: 'color 250ms ease' }}
                         onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
                         onMouseLeave={e => (e.currentTarget.style.color = IVORY)}
