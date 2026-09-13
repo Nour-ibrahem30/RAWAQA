@@ -29,9 +29,14 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
   const router = useRouter();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const isAr = locale === 'ar';
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleCredentialResponse = async (response: { credential: string }) => {
     if (!response?.credential) return;
@@ -54,7 +59,7 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
   };
 
   useEffect(() => {
-    if (!clientId) return;
+    if (!mounted || !clientId) return;
 
     // Load Google Identity Services script if not loaded
     const scriptId = 'google-gsi-script';
@@ -110,6 +115,12 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
       window.google.accounts.id.prompt();
     }
   };
+
+  if (!mounted) {
+    return (
+      <div className="w-full h-11 rounded-full border border-[rgba(210,181,106,.15)] bg-[rgba(255,255,255,.02)] opacity-50" />
+    );
+  }
 
   return (
     <div className="w-full flex flex-col items-center">
