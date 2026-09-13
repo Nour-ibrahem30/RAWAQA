@@ -29,8 +29,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) { setIsLoading(false); return; }
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const res = await authApi.me();
       // Backend returns { data: { user: {...} } } or { data: {...} }
@@ -40,16 +43,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userData.name = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
       }
       setUser(userData);
-    } catch {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      setUser(null);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('rawaqa_user', JSON.stringify(userData));
+      }
+    } catch (err: any) {
+      // Only wipe credentials on genuine 401/403 auth failures, not transient network errors
+      if (err?.status === 401 || err?.status === 403) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('rawaqa_user');
+        }
+        setUser(null);
+      }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => { refreshUser(); }, [refreshUser]);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('rawaqa_user');
+      if (saved) {
+        setUser(JSON.parse(saved));
+      }
+    } catch { /* ignore */ }
+    refreshUser();
+  }, [refreshUser]);
 
   const login = useCallback((accessToken: string, refreshToken: string, userData: User) => {
     localStorage.setItem('accessToken', accessToken);
@@ -59,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!normalized.name && (normalized.firstName || normalized.lastName)) {
       normalized.name = `${normalized.firstName || ''} ${normalized.lastName || ''}`.trim();
     }
+    localStorage.setItem('rawaqa_user', JSON.stringify(normalized));
     setUser(normalized);
     // Trigger cart merge after login — imported lazily to avoid circular dep
     import('@/context/CartContext').then(() => {
@@ -74,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try { await authApi.logout(refreshToken); } catch { /* ignore */ }
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('rawaqa_user');
     setUser(null);
   }, []);
 

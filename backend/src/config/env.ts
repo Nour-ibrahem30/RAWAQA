@@ -21,8 +21,8 @@ const envSchema = z.object({
   // JWT
   JWT_ACCESS_SECRET: z.string().min(16).default('rawaqa-jwt-access-secret-default-key-32-chars-minimum'),
   JWT_REFRESH_SECRET: z.string().min(16).default('rawaqa-jwt-refresh-secret-default-key-32-chars-minimum'),
-  JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+  JWT_ACCESS_EXPIRES_IN: z.string().default('24h'),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
   // Bcrypt
   BCRYPT_ROUNDS: z.coerce.number().min(8).max(15).default(10),
@@ -32,7 +32,7 @@ const envSchema = z.object({
   SESSION_INACTIVITY_TIMEOUT: z.string().default('30d'),
 
   // Cookies
-  COOKIE_DOMAIN: z.string().default('localhost'),
+  COOKIE_DOMAIN: z.string().optional(),
   COOKIE_SECURE: z.string().transform((val) => val === 'true').default('false'),
   COOKIE_SAME_SITE: z.enum(['strict', 'lax', 'none']).default('lax'),
 
@@ -157,8 +157,8 @@ const envSchema = z.object({
 
   // Feature Flags
   FEATURE_GUEST_CHECKOUT: z.string().transform((val) => val === 'true').default('false'),
-  FEATURE_REVIEWS: z.string().transform((val) => val === 'true').default('false'),
-  FEATURE_WISHLIST: z.string().transform((val) => val === 'true').default('false'),
+  FEATURE_REVIEWS: z.string().transform((val) => val === 'true').default('true'),
+  FEATURE_WISHLIST: z.string().transform((val) => val === 'true').default('true'),
   FEATURE_REFERRAL: z.string().transform((val) => val === 'true').default('false'),
 });
 

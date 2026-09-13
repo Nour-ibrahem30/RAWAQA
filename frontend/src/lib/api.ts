@@ -57,7 +57,10 @@ async function apiFetch<T>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.message || `API error ${res.status}`);
+    const detailMsg = Array.isArray(err?.details)
+      ? err.details.map((d: any) => `${d.field ? d.field.replace(/^body\./, '') + ': ' : ''}${d.message}`).join(' | ')
+      : '';
+    throw new Error(detailMsg || err?.message || `API error ${res.status}`);
   }
 
   return res.json();
@@ -421,11 +424,13 @@ export const wishlistApi = {
 /* ============ REVIEWS ============ */
 export interface Review {
   id: string;
-  user: { id: string; name: string };
+  user: { id: string; name: string; email?: string };
+  product?: any;
   rating: number;
   titleAr?: string;
   titleEn?: string;
   comment: string;
+  isApproved?: boolean;
   isVerifiedPurchase: boolean;
   helpfulVotes: number;
   createdAt: string;
@@ -443,6 +448,14 @@ export const reviewsApi = {
     apiFetch(`/reviews/${reviewId}/helpful`, { method: 'POST' }),
   remove: (reviewId: string) =>
     apiFetch(`/reviews/${reviewId}`, { method: 'DELETE' }),
+  adminAll: (status = 'all', page = 1) =>
+    apiFetch<any[]>(`/admin/reviews?status=${status}&page=${page}&limit=20`),
+  adminPending: (page = 1) =>
+    apiFetch<any[]>(`/admin/reviews/pending?page=${page}&limit=20`),
+  adminApprove: (id: string, approve = true) =>
+    apiFetch(`/reviews/${id}/approve`, { method: 'PUT', body: JSON.stringify({ approve }) }),
+  adminDelete: (id: string) =>
+    apiFetch(`/reviews/${id}`, { method: 'DELETE' }),
 };
 
 /* ============ SITE CONTENT ============ */
@@ -496,15 +509,33 @@ export const adsApi = {
 export const uploadApi = {
   direct: async (files: File[]): Promise<string[]> => {
     const formData = new FormData();
-    files.forEach(f => formData.append('images', f));
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api'}/upload/direct`, {
+    files.forEach((f) => formData.append('images', f));
+    const apiBase = getApiBase();
+    let token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+    let res = await fetch(`${apiBase}/upload/direct`, {
       method: 'POST',
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: formData,
     });
+
+    // If unauthorized, attempt token refresh and retry
+    if (res.status === 401 && typeof window !== 'undefined') {
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        token = localStorage.getItem('accessToken');
+        res = await fetch(`${apiBase}/upload/direct`, {
+          method: 'POST',
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: formData,
+        });
+      }
+    }
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Image upload failed');

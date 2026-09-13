@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import {
   createReview, getProductReviews, approveReview,
-  deleteReview, voteHelpful, getPendingReviews,
+  deleteReview, voteHelpful, getPendingReviews, getAllReviewsAdmin,
 } from '../services/review.service';
 import { logError } from '../config/logger';
 
@@ -101,5 +101,27 @@ export const pending = async (req: Request, res: Response): Promise<void> => {
   } catch (err) {
     logError('pending reviews error', err);
     res.status(500).json({ success: false, message: 'Failed to fetch pending reviews' });
+  }
+};
+
+// GET /api/admin/reviews
+export const listAllAdminReviews = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const filter = (req.query.status as 'all' | 'pending' | 'approved') || 'all';
+    const result = await getAllReviewsAdmin(filter, page, limit);
+    res.json({
+      success: true,
+      data: result.reviews,
+      meta: {
+        pendingCount: result.pendingCount,
+        approvedCount: result.approvedCount,
+      },
+      pagination: { page, limit, total: result.total, pages: Math.ceil(result.total / limit) },
+    });
+  } catch (err) {
+    logError('listAllAdminReviews error', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
   }
 };

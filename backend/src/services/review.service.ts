@@ -14,31 +14,43 @@ export const createReview = async (params: {
 }): Promise<IReview> => {
   const { productId, userId, rating, comment, titleAr, titleEn } = params;
 
-  // 1. Check product exists
-  const product = await Product.findById(productId);
+  // 1. Check product exists (by ObjectId or slug/sku)
+  let product = null;
+  if (mongoose.Types.ObjectId.isValid(productId)) {
+    product = await Product.findById(productId);
+  }
+  if (!product) {
+    product = await Product.findOne({
+      $or: [{ slugEn: productId }, { slugAr: productId }, { sku: productId }],
+    });
+  }
   if (!product) throw new Error('Product not found');
 
-  // 2. Verify user has purchased this product (delivered order)
-  const order = await Order.findOne({
-    userId,
-    status: 'delivered',
-    'items.product': new mongoose.Types.ObjectId(productId),
-  });
-  if (!order) throw new Error('You can only review products you have purchased and received');
+  // 2. Check if user has purchased this product (sets verified purchase badge)
+  let order = null;
+  try {
+    order = await Order.findOne({
+      userId,
+      'items.product': product._id,
+    });
+  } catch {
+    order = null;
+  }
+  const isVerifiedPurchase = !!order;
 
-  // 3. One review per product per user (unique index will also catch it)
-  const existing = await Review.findOne({ product: productId, user: userId });
+  // 3. One review per product per user
+  const existing = await Review.findOne({ product: product._id, user: userId });
   if (existing) throw new Error('You have already reviewed this product');
 
   const review = await Review.create({
-    product: productId,
+    product: product._id,
     user:    userId,
-    order:   order._id,
+    order:   order ? order._id : undefined,
     rating,
     comment,
     titleAr,
     titleEn,
-    isVerifiedPurchase: true,
+    isVerifiedPurchase,
     isApproved: false,   // pending admin approval
   });
 
@@ -145,9 +157,35 @@ export const getPendingReviews = async (page = 1, limit = 20): Promise<{ reviews
       .skip(skip)
       .limit(limit)
       .populate('user',    'firstName lastName email')
-      .populate('product', 'nameEn nameAr')
+      .populate('product', 'nameEn nameAr images sku')
       .lean(),
     Review.countDocuments({ isApproved: false }),
   ]);
   return { reviews, total };
+};
+
+// ─── Get all reviews with status filter (admin) ──────────────────────────────
+export const getAllReviewsAdmin = async (
+  filter: 'all' | 'pending' | 'approved' = 'all',
+  page = 1,
+  limit = 20
+): Promise<{ reviews: any[]; total: number; pendingCount: number; approvedCount: number }> => {
+  const query: any = {};
+  if (filter === 'pending') query.isApproved = false;
+  if (filter === 'approved') query.isApproved = true;
+
+  const skip = (page - 1) * limit;
+  const [reviews, total, pendingCount, approvedCount] = await Promise.all([
+    Review.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('user',    'firstName lastName email')
+      .populate('product', 'nameEn nameAr images sku')
+      .lean(),
+    Review.countDocuments(query),
+    Review.countDocuments({ isApproved: false }),
+    Review.countDocuments({ isApproved: true }),
+  ]);
+  return { reviews, total, pendingCount, approvedCount };
 };

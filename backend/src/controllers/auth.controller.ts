@@ -28,40 +28,39 @@ const setTokenCookies = (
   accessToken: string,
   refreshToken: string
 ): void => {
-  // Access token cookie
-  res.cookie('accessToken', accessToken, {
+  const isProd = env.NODE_ENV === 'production';
+  const cookieOptions = {
     httpOnly: true,
-    secure: env.COOKIE_SECURE,
-    sameSite: env.COOKIE_SAME_SITE as 'strict' | 'lax' | 'none',
-    maxAge: 15 * 60 * 1000, // 15 minutes
-    domain: env.COOKIE_DOMAIN,
+    secure: isProd ? true : env.COOKIE_SECURE,
+    sameSite: (isProd ? 'none' : env.COOKIE_SAME_SITE) as 'strict' | 'lax' | 'none',
+    ...(env.COOKIE_DOMAIN ? { domain: env.COOKIE_DOMAIN } : {}),
+  };
+
+  // Access token cookie (24 hours)
+  res.cookie('accessToken', accessToken, {
+    ...cookieOptions,
+    maxAge: 24 * 60 * 60 * 1000,
   });
 
-  // Refresh token cookie
+  // Refresh token cookie (30 days)
   res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: env.COOKIE_SECURE,
-    sameSite: env.COOKIE_SAME_SITE as 'strict' | 'lax' | 'none',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    domain: env.COOKIE_DOMAIN,
+    ...cookieOptions,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 };
 
 // Clear token cookies
 const clearTokenCookies = (res: Response): void => {
-  res.clearCookie('accessToken', {
+  const isProd = env.NODE_ENV === 'production';
+  const cookieOptions = {
     httpOnly: true,
-    secure: env.COOKIE_SECURE,
-    sameSite: env.COOKIE_SAME_SITE as 'strict' | 'lax' | 'none',
-    domain: env.COOKIE_DOMAIN,
-  });
+    secure: isProd ? true : env.COOKIE_SECURE,
+    sameSite: (isProd ? 'none' : env.COOKIE_SAME_SITE) as 'strict' | 'lax' | 'none',
+    ...(env.COOKIE_DOMAIN ? { domain: env.COOKIE_DOMAIN } : {}),
+  };
 
-  res.clearCookie('refreshToken', {
-    httpOnly: true,
-    secure: env.COOKIE_SECURE,
-    sameSite: env.COOKIE_SAME_SITE as 'strict' | 'lax' | 'none',
-    domain: env.COOKIE_DOMAIN,
-  });
+  res.clearCookie('accessToken', cookieOptions);
+  res.clearCookie('refreshToken', cookieOptions);
 };
 
 /**

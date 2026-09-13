@@ -56,20 +56,36 @@ export default function ProductForm({ productId }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.sku.trim()) {
+      showToast('SKU is required / رمز المنتج مطلوب', 'error');
+      return;
+    }
+    if (!form.nameEn.trim() || !form.nameAr.trim()) {
+      showToast('Product name in both English and Arabic is required / اسم المنتج بالعربية والإنجليزية مطلوب', 'error');
+      return;
+    }
+    if (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0) {
+      showToast('Please enter a valid price / يرجى إدخال سعر صحيح', 'error');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
-        sku: form.sku,
-        nameAr: form.nameAr, nameEn: form.nameEn,
-        descriptionAr: form.descriptionAr, descriptionEn: form.descriptionEn,
-        longDescriptionAr: form.longDescriptionAr, longDescriptionEn: form.longDescriptionEn,
+        sku: form.sku.trim(),
+        nameAr: form.nameAr.trim(),
+        nameEn: form.nameEn.trim(),
+        descriptionAr: form.descriptionAr.trim() || form.nameAr.trim(),
+        descriptionEn: form.descriptionEn.trim() || form.nameEn.trim(),
+        longDescriptionAr: form.longDescriptionAr.trim(),
+        longDescriptionEn: form.longDescriptionEn.trim(),
         price: Number(form.price),
         compareAtPrice: form.compareAtPrice ? Number(form.compareAtPrice) : undefined,
-        category: form.category,
+        category: form.category || undefined,
         inventory: {
-          onHandQuantity: Number(form.onHandQuantity),
+          onHandQuantity: Number(form.onHandQuantity) || 0,
           reservedQuantity: 0,
-          lowStockThreshold: Number(form.lowStockThreshold),
+          lowStockThreshold: Number(form.lowStockThreshold) || 5,
         },
         featured: form.featured,
         status: form.status,
@@ -77,10 +93,10 @@ export default function ProductForm({ productId }: Props) {
       };
       if (productId) {
         await productsApi.update(productId, payload as Partial<Product>);
-        showToast('Product updated!', 'success');
+        showToast('Product updated successfully!', 'success');
       } else {
         await productsApi.create(payload as Partial<Product>);
-        showToast('Product created!', 'success');
+        showToast('Product created successfully!', 'success');
         router.push('/admin/products');
       }
     } catch (err: unknown) {
@@ -192,31 +208,38 @@ export default function ProductForm({ productId }: Props) {
         {/* Thumbnail Preview Grid */}
         {form.images && (
           <div className="flex flex-wrap gap-3 mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,.07)' }}>
-            {form.images.split(',').map(s => s.trim()).filter(Boolean).map((url, idx) => (
-              <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-white/10 bg-black/40">
-                <img
-                  src={url.startsWith('/') && !url.startsWith('/uploads') ? url : (url.startsWith('/uploads') ? `http://localhost:5002${url}` : url)}
-                  alt={`Product img ${idx + 1}`}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    // Fallback visual for broken link
-                    (e.currentTarget as HTMLImageElement).src = '/products/cloud-lounger.jpg';
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const list = form.images.split(',').map(s => s.trim()).filter(Boolean);
-                    list.splice(idx, 1);
-                    setForm(f => ({ ...f, images: list.join(', ') }));
-                  }}
-                  className="absolute top-0.5 right-0.5 bg-red-600/80 hover:bg-red-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center"
-                  title="Remove image"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+            {form.images.split(',').map(s => s.trim()).filter(Boolean).map((url, idx) => {
+              const previewSrc = url.startsWith('http')
+                ? url
+                : (url.startsWith('/uploads')
+                  ? `${(process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/?$/, '')}${url}`
+                  : url);
+
+              return (
+                <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                  <img
+                    src={previewSrc}
+                    alt={`Product img ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/products/cloud-lounger.jpg';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const list = form.images.split(',').map(s => s.trim()).filter(Boolean);
+                      list.splice(idx, 1);
+                      setForm(f => ({ ...f, images: list.join(', ') }));
+                    }}
+                    className="absolute top-0.5 right-0.5 bg-red-600/80 hover:bg-red-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center"
+                    title="Remove image"
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

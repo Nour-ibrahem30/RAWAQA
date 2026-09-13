@@ -155,20 +155,42 @@ export const getProductBySku = async (sku: string): Promise<IProduct | null> => 
 
 // Create product
 export const createProduct = async (data: Partial<IProduct>): Promise<IProduct> => {
-  // Validate category exists
-  if (data.category) {
+  // Validate or assign fallback category
+  if (data.category && mongoose.Types.ObjectId.isValid(data.category as any)) {
     const categoryExists = await Category.findById(data.category);
     if (!categoryExists) {
-      throw new Error('Category not found');
+      const fallbackCat = await Category.findOne();
+      data.category = fallbackCat?._id as any;
     }
+  } else {
+    let defaultCat = await Category.findOne();
+    if (!defaultCat) {
+      defaultCat = await Category.create({
+        nameAr: 'عام',
+        nameEn: 'General',
+        slugAr: 'general',
+        slugEn: 'general',
+        isActive: true,
+      });
+    }
+    data.category = defaultCat._id as any;
   }
+
+  // Normalize descriptions so product creation never fails if one language is missing
+  if (!data.descriptionAr && data.descriptionEn) data.descriptionAr = data.descriptionEn;
+  if (!data.descriptionEn && data.descriptionAr) data.descriptionEn = data.descriptionAr;
+  if (!data.descriptionAr) data.descriptionAr = data.nameAr || 'لا يوجد وصف';
+  if (!data.descriptionEn) data.descriptionEn = data.nameEn || 'No description';
 
   // Check SKU uniqueness
   if (data.sku) {
-    const existingProduct = await Product.findOne({ sku: data.sku });
+    const existingProduct = await Product.findOne({ sku: data.sku.toUpperCase() });
     if (existingProduct) {
-      throw new Error('Product with this SKU already exists');
+      throw new Error(`Product with SKU "${data.sku.toUpperCase()}" already exists`);
     }
+    data.sku = data.sku.toUpperCase();
+  } else {
+    data.sku = `SKU-${Date.now()}`;
   }
 
   // Auto-generate slugs if not provided

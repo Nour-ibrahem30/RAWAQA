@@ -15,22 +15,22 @@ router.use(authenticate, requireAdmin);
 
 /**
  * POST /api/upload/direct
- * Upload files directly from device (up to 5 images)
+ * Upload files directly from device (up to 10 images)
  */
 router.post(
   '/direct',
-  upload.array('images', 5),
+  upload.array('images', 10),
   uploadDirect,
   handleMulterError
 );
 
 /**
  * POST /api/upload/products/:id/images
- * Upload up to 5 images for a product
+ * Upload up to 10 images for a product
  */
 router.post(
   '/products/:id/images',
-  upload.array('images', 5),
+  upload.array('images', 10),
   uploadProductImages,
   handleMulterError
 );

@@ -98,11 +98,11 @@ export default function ProductReviews({ productId, locale, productRatings }: Pr
         ...(form.titleAr ? { titleAr: form.titleAr } : {}),
         ...(form.titleEn ? { titleEn: form.titleEn } : {}),
       });
-      showToast(t('review_submitted'), 'success');
+      showToast(isAr ? 'تم إرسال تقييمك بنجاح! سيظهر بعد مراجعة الإدارة.' : 'Review submitted successfully! It will appear once approved by admin.', 'success');
       setShowForm(false);
       setForm({ rating: 0, comment: '', titleAr: '', titleEn: '' });
     } catch (err: unknown) {
-      showToast((err as Error).message || (isAr ? 'حدث خطأ' : 'Error'), 'error');
+      showToast((err as Error).message || (isAr ? 'حدث خطأ أثناء إرسال التقييم' : 'Error submitting review'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -148,7 +148,9 @@ export default function ProductReviews({ productId, locale, productRatings }: Pr
           </button>
         )}
         {!isLoggedIn && (
-          <p style={{ fontSize: '.82rem', color: 'rgba(247,244,236,.35)' }}>{t('review_login_required')}</p>
+          <a href={`/${locale}/login`} style={{ fontSize: '.82rem', color: GOLD, textDecoration: 'underline' }}>
+            {isAr ? 'سجل دخولك لتتمكن من إضافة تقييم ←' : 'Sign in to write a review →'}
+          </a>
         )}
       </div>
 

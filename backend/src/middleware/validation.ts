@@ -185,7 +185,7 @@ export const createReviewSchema = z.object({
   params: z.object({ productId: z.string().min(1) }),
   body: z.object({
     rating:  z.number().int().min(1, 'Rating min 1').max(5, 'Rating max 5'),
-    comment: z.string().min(10, 'Comment must be at least 10 characters').max(1000),
+    comment: z.string().min(3, 'Comment must be at least 3 characters').max(1000),
     titleAr: z.string().max(100).optional(),
     titleEn: z.string().max(100).optional(),
   }),

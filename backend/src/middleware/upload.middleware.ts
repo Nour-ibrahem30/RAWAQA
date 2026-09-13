@@ -76,7 +76,7 @@ const storage = cloudinaryConfigured
 // ─── Multer instance ──────────────────────────────────────────────────────────
 export const upload = multer({
   storage,
-  limits:     { fileSize: env.UPLOAD_MAX_FILE_SIZE || 5 * 1024 * 1024 },
+  limits:     { fileSize: env.UPLOAD_MAX_FILE_SIZE || 15 * 1024 * 1024 },
   fileFilter,
 });
 
@@ -178,11 +178,11 @@ export const handleMulterError = (
       case 'LIMIT_FILE_SIZE':
         res.status(400).json({
           success: false,
-          message: `File too large. Maximum size is ${Math.round((env.UPLOAD_MAX_FILE_SIZE || 5242880) / 1024 / 1024)} MB`,
+          message: `File too large. Maximum size is ${Math.round((env.UPLOAD_MAX_FILE_SIZE || 15728640) / 1024 / 1024)} MB`,
         });
         return;
       case 'LIMIT_FILE_COUNT':
-        res.status(400).json({ success: false, message: 'Too many files. Maximum 5 images per upload' });
+        res.status(400).json({ success: false, message: 'Too many files. Maximum 10 images per upload' });
         return;
       case 'LIMIT_UNEXPECTED_FILE':
         res.status(400).json({ success: false, message: 'Unexpected field name. Use "images" as the field name' });
