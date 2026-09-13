@@ -1,3 +1,4 @@
+console.log('🚀 [STARTUP] server.ts initializing... PID:', process.pid, 'PORT:', process.env.PORT);
 import mongoose from "mongoose";
 import express, { Application, Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
@@ -372,7 +373,7 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
 
 const startServer = async () => {
   // 1. Start HTTP Server immediately on 0.0.0.0 so platform port inspection succeeds instantly
-  const port = Number(process.env.PORT) || env.PORT || 5000;
+  const port = Number(process.env.PORT) || env.PORT || 10000;
   
   console.log('='.repeat(60));
   console.log('🚀 RAWAQA Backend Starting...');

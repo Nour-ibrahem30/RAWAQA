@@ -1,12 +1,14 @@
-services:
+﻿services:
   - type: web
     name: rawaqa-backend
     env: node
     region: frankfurt
     plan: free
+    rootDir: backend
     buildCommand: npm ci && npm run build
     startCommand: node dist/server.js
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
@@ -22,4 +24,3 @@ services:
         value: https://rawaqa-ruby.vercel.app
       - key: ENABLE_WORKERS
         value: true
-
