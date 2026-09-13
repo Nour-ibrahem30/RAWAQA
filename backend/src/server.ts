@@ -372,8 +372,8 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
 // =============================================================================
 
 const startServer = async () => {
-  // 1. Start HTTP Server immediately on 0.0.0.0 so platform port inspection succeeds instantly
-  const port = Number(process.env.PORT) || env.PORT || 3000;
+  const defaultPort = process.env.RENDER ? 10000 : 3000;
+  const port = Number(process.env.PORT) || env.PORT || defaultPort;
   
   console.log('='.repeat(60));
   console.log('🚀 RAWAQA Backend Starting...');
