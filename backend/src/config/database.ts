@@ -2,9 +2,15 @@ import mongoose from 'mongoose';
 import dns from 'dns';
 import logger, { logError, logInfo } from './logger';
 
-try {
-  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
-} catch (_e) {}
+// Only override DNS servers if explicitly provided in environment variables
+if (process.env['DNS_SERVERS']) {
+  try {
+    dns.setServers(process.env['DNS_SERVERS'].split(',').map((s) => s.trim()));
+    logger.info(`Custom DNS servers configured: ${process.env['DNS_SERVERS']}`);
+  } catch (err) {
+    logger.warn('Failed to set custom DNS servers', { error: err });
+  }
+}
 
 interface DatabaseConfig {
   uri: string;
@@ -23,7 +29,8 @@ const getDatabaseConfig = (): DatabaseConfig => {
   const options: mongoose.ConnectOptions = {
     maxPoolSize: parseInt(process.env['MONGODB_MAX_POOL_SIZE'] || '10', 10),
     minPoolSize: parseInt(process.env['MONGODB_MIN_POOL_SIZE'] || '2', 10),
-    socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '45000', 10),
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '30000', 10),
     serverSelectionTimeoutMS: parseInt(
       process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '5000',
       10
@@ -47,6 +54,7 @@ export const connectDatabase = async (): Promise<void> => {
 
     await mongoose.connect(uri, options);
 
+    console.log('✅ Database connected');
     logInfo('MongoDB connected successfully', {
       host: mongoose.connection.host,
       name: mongoose.connection.name,
@@ -55,18 +63,22 @@ export const connectDatabase = async (): Promise<void> => {
 
     // Set up connection event handlers
     mongoose.connection.on('error', (err) => {
+      console.error('❌ MongoDB runtime error:', err.message);
       logError('MongoDB connection error', err);
     });
 
     mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️ MongoDB disconnected');
       logger.warn('MongoDB disconnected');
     });
 
     mongoose.connection.on('reconnected', () => {
+      console.log('🔄 MongoDB reconnected');
       logInfo('MongoDB reconnected');
     });
 
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ Failed to connect to MongoDB:', error?.message || error);
     logError('Failed to connect to MongoDB', error);
     throw error;
   }

@@ -88,6 +88,19 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// =============================================================================
+// HEALTH CHECK ENDPOINT (FASTEST POSSIBLE RESPONSE, EXEMPT FROM RATE LIMITING)
+// =============================================================================
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    environment: env.NODE_ENV,
+    database: database.isConnected() ? 'connected' : 'connecting',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Security Headers
 app.use(
   helmet({
@@ -131,18 +144,6 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // =============================================================================
-// HEALTH CHECK ENDPOINT (CRITICAL FOR RENDER/RAILWAY PORT INSPECTION)
-// =============================================================================
-app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    env: env.NODE_ENV,
-  });
-});
-
-// =============================================================================
 // ROUTES
 // =============================================================================
 
@@ -170,17 +171,6 @@ import { featureFlag } from './middleware/feature-flag.middleware';
 // Serve uploaded files statically
 import path from 'path';
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
-// Health Check
-app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: env.NODE_ENV,
-    database: database.isConnected() ? 'connected' : 'disconnected',
-  });
-});
 
 // API Routes (supports both /api and /api/v1)
 const apiPrefixes = ['/api', '/api/v1'];
@@ -356,11 +346,19 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     query: req.query,
   });
 
-  // Don't leak error details in production
-  const message =
-    env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
+  // Handle Mongoose connection / server selection errors gracefully (prevents 502 gateway timeouts)
+  const isDbError =
+    err.name === 'MongooseServerSelectionError' ||
+    err.name === 'MongoNotConnectedError' ||
+    err.name === 'MongoNetworkError';
+  const status = isDbError ? 503 : (err.status || 500);
 
-  res.status(err.status || 500).json({
+  // Don't leak error details in production
+  const message = isDbError
+    ? 'Service temporarily unavailable — database initializing, please retry shortly'
+    : (env.NODE_ENV === 'production' ? 'Internal server error' : err.message);
+
+  res.status(status).json({
     error: err.name || 'Error',
     message,
     ...(env.NODE_ENV === 'development' && { stack: err.stack }),
@@ -372,37 +370,43 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
 // =============================================================================
 
 const startServer = async () => {
-  const defaultPort = process.env.RENDER ? 10000 : 3000;
-  const port = Number(process.env.PORT) || env.PORT || defaultPort;
+  // Read PORT from process.env.PORT or env.PORT, strictly defaulting to 10000
+  const PORT = Number(process.env.PORT) || env.PORT || 10000;
   
   console.log('='.repeat(60));
   console.log('🚀 RAWAQA Backend Starting...');
   console.log(`PORT from process.env.PORT: ${process.env.PORT}`);
   console.log(`PORT from env.PORT: ${env.PORT}`);
-  console.log(`Final PORT: ${port}`);
-  console.log(`Binding to: 0.0.0.0:${port}`);
+  console.log(`Final PORT: ${PORT}`);
+  console.log(`Binding to: 0.0.0.0:${PORT}`);
   console.log('='.repeat(60));
   
-  const server = app.listen(port, '0.0.0.0', () => {
-    logInfo(`🚀 RAWAQA 2.0 Backend listening on 0.0.0.0:${port}`, {
+  // 1. Start HTTP Server immediately on 0.0.0.0 so platform port discovery succeeds instantly
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server listening on 0.0.0.0:${PORT}`);
+    console.log(`🌍 Environment: ${env.NODE_ENV}`);
+    console.log(`🩺 Health endpoint: /health`);
+    logInfo(`🚀 Server listening on 0.0.0.0:${PORT}`, {
       environment: env.NODE_ENV,
-      port,
+      port: PORT,
       nodeVersion: process.version,
       pid: process.pid,
     });
-    console.log(`✓ RAWAQA Backend is LIVE on port ${port} (0.0.0.0:${port})`);
-    console.log(`✓ Health check: http://0.0.0.0:${port}/health`);
   });
 
   server.on('error', (err: any) => {
-    console.error(`❌ HTTP Server Error on 0.0.0.0:${port}:`, err);
-    logError(`HTTP Server Error on port ${port}`, err);
+    console.error(`❌ HTTP Server Error on 0.0.0.0:${PORT}:`, err);
+    logError(`HTTP Server Error on port ${PORT}`, err);
+    if (err.code === 'EADDRINUSE') {
+      process.exit(1);
+    }
   });
 
-  // 2. Connect to Database asynchronously with background retry
+  // 2. Connect to Database asynchronously in background without blocking port discovery
   const initDbAndWorkers = async (retries = 5, delay = 3000) => {
     try {
       await database.connect();
+      console.log('✅ Database connected');
       logInfo('Database successfully initialized');
 
       // 3. Start background workers AFTER DB is confirmed connected
@@ -414,6 +418,7 @@ const startServer = async () => {
 
         // Restart workers on MongoDB reconnect
         mongoose.connection.on('reconnected', () => {
+          console.log('🔄 MongoDB reconnected — restarting workers');
           logInfo('MongoDB reconnected — restarting workers');
           outboxWorker.stop();
           inventoryReconciliationWorker.stop();
@@ -427,17 +432,20 @@ const startServer = async () => {
 
         // Stop workers on MongoDB disconnect (prevent MongoNotConnectedError)
         mongoose.connection.on('disconnected', () => {
+          console.warn('⚠️ MongoDB disconnected — pausing workers');
           logInfo('MongoDB disconnected — pausing workers');
           outboxWorker.stop();
           inventoryReconciliationWorker.stop();
           autoCancelWorker.stop();
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error(`❌ Database connection attempt failed (${retries} retries left):`, error?.message || error);
       logError(`Database connection attempt failed (${retries} retries left):`, error);
       if (retries > 0) {
         setTimeout(() => initDbAndWorkers(retries - 1, delay * 1.5), delay);
       } else {
+        console.error('⚠️ All database connection retries exhausted. Running server in degraded mode to allow port inspection.');
         logError('All database connection retries exhausted. Running server in degraded mode to allow port inspection.', error);
       }
     }
