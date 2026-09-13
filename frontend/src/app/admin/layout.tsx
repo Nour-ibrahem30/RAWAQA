@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
+import AdminLoadingScreen from '@/components/ui/AdminLoadingScreen';
 import '../globals.css';
 
 // ── i18n strings for admin UI ─────────────────────────────────────────────
@@ -74,19 +75,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   }, [isLoading, isLoggedIn, isAdmin, router]);
 
   if (isLoading || !isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0f0e0a' }}>
-        <div className="text-center">
-          <svg width="40" height="40" viewBox="0 0 60 60" fill="none" className="mx-auto mb-4 animate-pulse">
-            <circle cx="30" cy="30" r="28" stroke="#D2B56A" strokeWidth="1.1" opacity=".5" />
-            <path d="M18 36c0-9 5-16 12-16s12 7 12 16c0 4-5 6-12 6s-12-2-12-6z" stroke="#D2B56A" strokeWidth="1.4" />
-          </svg>
-          <p style={{ color: 'rgba(247,244,236,.4)', fontSize: '.8rem', letterSpacing: '.1em' }}>
-            {t.loading}
-          </p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingScreen lang={lang} isPersistent userName={user?.name || (isAr ? 'المشرف' : 'Admin')} />;
   }
 
   const navItems = [
