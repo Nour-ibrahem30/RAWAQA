@@ -46,6 +46,35 @@ export const listUsers = async (
     User.countDocuments(query),
   ]);
 
+  // Fallback: If user.phone is missing or empty, find phone from their latest Order
+  const missingPhoneUserIds = users.filter((u: any) => !u.phone).map((u: any) => u._id);
+  if (missingPhoneUserIds.length > 0) {
+    const orders = await Order.find({
+      userId: { $in: missingPhoneUserIds },
+      'shippingAddress.phone': { $exists: true, $ne: '' },
+    })
+      .sort({ createdAt: -1 })
+      .select('userId shippingAddress.phone')
+      .lean();
+
+    const orderPhoneMap = new Map<string, string>();
+    for (const o of orders) {
+      const uid = o.userId?.toString();
+      if (uid && !orderPhoneMap.has(uid) && o.shippingAddress?.phone) {
+        orderPhoneMap.set(uid, o.shippingAddress.phone);
+      }
+    }
+
+    for (const u of users) {
+      if (!u.phone) {
+        const fallback = orderPhoneMap.get(u._id.toString());
+        if (fallback) {
+          u.phone = fallback;
+        }
+      }
+    }
+  }
+
   return { users, total };
 };
 

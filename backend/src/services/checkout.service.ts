@@ -221,6 +221,13 @@ export const processCheckout = async (
 
     await order.save(session ? { session } : {});
 
+    // Save/update user's phone from checkout shipping address
+    if (input.shippingAddress?.phone) {
+      await User.findByIdAndUpdate(input.userId, {
+        $set: { phone: input.shippingAddress.phone },
+      }).catch(() => {});
+    }
+
     // 6. Create outbox events
     await createOutboxEvents(order, session);
 

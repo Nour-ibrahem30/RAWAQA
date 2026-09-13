@@ -133,10 +133,8 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
   const { data: whyContent }   = useSiteContent('why', initialContent?.why);
   const { data: ctaContent }   = useSiteContent('cta', initialContent?.cta);
   const { data: statsContent } = useSiteContent('stats', initialContent?.stats);
-  const [featured, setFeatured] = useState<Product[]>(
-    STATIC_PRODUCTS.filter(p => p.featured).slice(0, 4)
-  );
-  const [loading, setLoading]   = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [featured, setFeatured] = useState<Product[]>([]);
+  const [loading, setLoading]   = useState(true);
   const [statsVisible, setStats] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
   const [activeReview, setActiveReview] = useState(0);
@@ -159,9 +157,18 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
   const [reviewsVisible,  setReviewsVisible]  = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     productsApi.featured(locale)
-      .then(r => { if (r.data?.length) setFeatured(r.data.slice(0, 4)); })
-      .catch(() => {/* keep static fallback */});
+      .then(r => {
+        if (r.data?.length) setFeatured(r.data.slice(0, 4));
+        else setFeatured(STATIC_PRODUCTS.filter(p => p.featured).slice(0, 4));
+      })
+      .catch(() => {
+        setFeatured(STATIC_PRODUCTS.filter(p => p.featured).slice(0, 4));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [locale]);
 
   // Fetch recent approved reviews from the most popular product

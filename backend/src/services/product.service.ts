@@ -155,25 +155,36 @@ export const getProductBySku = async (sku: string): Promise<IProduct | null> => 
 
 // Create product
 export const createProduct = async (data: Partial<IProduct>): Promise<IProduct> => {
-  // Validate or assign fallback category
-  if (data.category && mongoose.Types.ObjectId.isValid(data.category as any)) {
-    const categoryExists = await Category.findById(data.category);
-    if (!categoryExists) {
-      const fallbackCat = await Category.findOne();
-      data.category = fallbackCat?._id as any;
+  // Validate or assign category (supports ObjectId or slug)
+  if (data.category) {
+    let catDoc = null;
+    if (mongoose.Types.ObjectId.isValid(data.category as any)) {
+      catDoc = await Category.findById(data.category);
     }
-  } else {
-    let defaultCat = await Category.findOne();
-    if (!defaultCat) {
-      defaultCat = await Category.create({
-        nameAr: 'عام',
-        nameEn: 'General',
-        slugAr: 'general',
-        slugEn: 'general',
-        isActive: true,
+    if (!catDoc) {
+      catDoc = await Category.findOne({
+        $or: [{ slugEn: data.category }, { slugAr: data.category }],
       });
     }
+    if (catDoc) {
+      data.category = catDoc._id as any;
+    } else {
+      delete (data as any).category;
+    }
+  }
+
+  if (!data.category) {
+    let defaultCat = await Category.findOne();
+    if (!defaultCat) {
+      const { DEFAULT_CATEGORIES } = await import('./category.service');
+      defaultCat = await Category.create(DEFAULT_CATEGORIES[0]);
+    }
     data.category = defaultCat._id as any;
+  }
+
+  // Increment product count on assigned category
+  if (data.category) {
+    await Category.findByIdAndUpdate(data.category, { $inc: { productCount: 1 } }).catch(() => {});
   }
 
   // Normalize descriptions so product creation never fails if one language is missing
@@ -255,16 +266,36 @@ export const updateProduct = async (
     throw new Error('Product not found');
   }
 
+  // Resolve category if changed (supports ObjectId or slug)
+  if (data.category) {
+    let catDoc = null;
+    if (mongoose.Types.ObjectId.isValid(data.category as any)) {
+      catDoc = await Category.findById(data.category);
+    }
+    if (!catDoc) {
+      catDoc = await Category.findOne({
+        $or: [{ slugEn: data.category }, { slugAr: data.category }],
+      });
+    }
+    if (catDoc) {
+      data.category = catDoc._id as any;
+    }
+  }
+
   // Validate category if changed
-  if (data.category && data.category.toString() !== existingProduct.category.toString()) {
-    const categoryExists = await Category.findById(data.category);
+  const oldCat = existingProduct.category ? existingProduct.category.toString() : '';
+  const newCat = data.category ? data.category.toString() : '';
+  if (newCat && newCat !== oldCat) {
+    const categoryExists = await Category.findById(newCat);
     if (!categoryExists) {
       throw new Error('Category not found');
     }
 
     // Update category counts
-    await Category.findByIdAndUpdate(existingProduct.category, { $inc: { productCount: -1 } });
-    await Category.findByIdAndUpdate(data.category, { $inc: { productCount: 1 } });
+    if (existingProduct.category) {
+      await Category.findByIdAndUpdate(existingProduct.category, { $inc: { productCount: -1 } });
+    }
+    await Category.findByIdAndUpdate(newCat, { $inc: { productCount: 1 } });
   }
 
   // Check SKU uniqueness if changed
@@ -342,11 +373,21 @@ export const deleteProduct = async (id: string): Promise<IProduct | null> => {
 
 // Get featured products
 export const getFeaturedProducts = async (limit: number = 10): Promise<any[]> => {
-  return Product.find({ featured: true, status: ProductStatus.ACTIVE })
-    .sort({ orderCount: -1, viewCount: -1 })
+  let products = await Product.find({ featured: true, status: ProductStatus.ACTIVE })
+    .sort({ createdAt: -1, orderCount: -1, viewCount: -1 })
     .limit(limit)
     .populate('category', 'nameAr nameEn slugAr slugEn')
     .lean();
+
+  if (!products || products.length === 0) {
+    products = await Product.find({ status: ProductStatus.ACTIVE })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('category', 'nameAr nameEn slugAr slugEn')
+      .lean();
+  }
+
+  return products;
 };
 
 // Get low stock products (admin)

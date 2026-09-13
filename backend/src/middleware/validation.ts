@@ -55,7 +55,10 @@ export const registerSchema = z.object({
       .trim(),
     phone: z
       .string()
-      .regex(/^[\d\s+()-]+$/, 'Invalid phone number format')
+      .refine(
+        (val) => !val || /^(?:\+?20|0020)?0?1[0125]\d{8}$/.test(val.replace(/[\s\-()]/g, '')),
+        { message: 'Please enter a valid Egyptian mobile number (e.g. 01012345678 or +201012345678)' }
+      )
       .optional(),
   }),
 });
@@ -186,8 +189,8 @@ export const createReviewSchema = z.object({
   body: z.object({
     rating:  z.number().int().min(1, 'Rating min 1').max(5, 'Rating max 5'),
     comment: z.string().min(3, 'Comment must be at least 3 characters').max(1000),
-    titleAr: z.string().max(100).optional(),
-    titleEn: z.string().max(100).optional(),
+    titleAr: z.string().max(100).optional().nullable(),
+    titleEn: z.string().max(100).optional().nullable(),
   }),
 });
 
@@ -197,7 +200,10 @@ export const addShippingAddressSchema = z.object({
   body: z.object({
     label:         z.string().max(50).optional(),       // e.g. "Home", "Work"
     recipientName: z.string().min(2).max(100).trim(),
-    phone:         z.string().regex(/^[\d\s+()-]+$/, 'Invalid phone'),
+    phone:         z.string().refine(
+      (val) => /^(?:\+?20|0020)?0?1[0125]\d{8}$/.test(val.replace(/[\s\-()]/g, '')),
+      { message: 'Please enter a valid Egyptian mobile number (e.g. 01012345678 or +201012345678)' }
+    ),
     streetAddress: z.string().min(5).max(200).trim(),
     city:          z.string().min(2).max(100).trim(),
     governorate:   z.string().min(2).max(100).trim(),

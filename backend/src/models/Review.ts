@@ -3,7 +3,7 @@ import mongoose, { Document, Schema, Types } from 'mongoose';
 export interface IReview extends Document {
   product:   Types.ObjectId;
   user:      Types.ObjectId;
-  order:     Types.ObjectId;   // must have purchased the product
+  order?:    Types.ObjectId;   // optional link to order
   rating:    number;           // 1-5
   titleAr?:  string;
   titleEn?:  string;
@@ -19,12 +19,12 @@ const reviewSchema = new Schema<IReview>(
   {
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     user:    { type: Schema.Types.ObjectId, ref: 'User',    required: true },
-    order:   { type: Schema.Types.ObjectId, ref: 'Order',   required: true },
+    order:   { type: Schema.Types.ObjectId, ref: 'Order',   required: false },
     rating:  { type: Number, required: true, min: 1, max: 5 },
     titleAr: { type: String, maxlength: 100, trim: true },
     titleEn: { type: String, maxlength: 100, trim: true },
-    comment: { type: String, required: true, minlength: 10, maxlength: 1000, trim: true },
-    isVerifiedPurchase: { type: Boolean, default: true },
+    comment: { type: String, required: true, minlength: 3, maxlength: 1000, trim: true },
+    isVerifiedPurchase: { type: Boolean, default: false },
     isApproved:         { type: Boolean, default: false },  // admin must approve
     helpfulVotes:       { type: Number, default: 0, min: 0 },
   },

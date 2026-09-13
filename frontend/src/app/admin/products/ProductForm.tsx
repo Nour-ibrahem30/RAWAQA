@@ -27,7 +27,14 @@ export default function ProductForm({ productId }: Props) {
   const [loading, setLoading] = useState(!!productId);
 
   useEffect(() => {
-    categoriesApi.all('en').then(r => setCategories(r.data ?? [])).catch(() => {});
+    categoriesApi.all('ar').then(r => {
+      const raw = r.data ?? [];
+      const list = raw.map((c: any) => ({
+        ...c,
+        id: c.id || c._id,
+      }));
+      setCategories(list);
+    }).catch(() => {});
     if (productId) {
       productsApi.get(productId, 'en').then(r => {
         const p = r.data as Product;
@@ -127,9 +134,16 @@ export default function ProductForm({ productId }: Props) {
         <p className="text-sm font-semibold mb-4" style={{ color: '#D2B56A' }}>Basic Information</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <AdminInput label="SKU *" value={form.sku} onChange={set('sku')} required placeholder="BB-001" />
-          <AdminSelect label="Category" value={form.category} onChange={set('category')}>
-            <option value="">Select category</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.nameEn}</option>)}
+          <AdminSelect label="Category / القسم" value={form.category} onChange={set('category')}>
+            <option value="">Select category / اختر القسم</option>
+            {categories.map((c: any) => {
+              const catId = c.id || c._id;
+              return (
+                <option key={catId} value={catId}>
+                  {c.nameAr ? `${c.nameAr} (${c.nameEn || ''})` : c.nameEn}
+                </option>
+              );
+            })}
           </AdminSelect>
           <AdminInput label="Name (English) *" value={form.nameEn} onChange={set('nameEn')} required />
           <AdminInput label="Name (Arabic) *" value={form.nameAr} onChange={set('nameAr')} required dir="rtl" />

@@ -25,6 +25,7 @@ const router = Router();
  * @access  Public
  */
 router.get('/', listCategories);
+router.get('/active', listCategories);
 
 /**
  * @route   GET /api/categories/slug/:slug
