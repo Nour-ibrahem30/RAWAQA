@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/lib/api';
@@ -30,34 +30,76 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const isAr = locale === 'ar';
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
+  const handleCredentialResponse = useCallback(
+    async (response: { credential: string }) => {
+      if (!response?.credential) return;
+      setLoading(true);
+      setLocalError(null);
+      try {
+        const res = await authApi.googleAuth(response.credential);
+        const { accessToken, refreshToken, user } = res.data;
+        login(accessToken, refreshToken, user as any);
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          router.push(`/${locale}`);
+        }
+      } catch (err: any) {
+        const msg =
+          err.response?.data?.message ||
+          err.message ||
+          (isAr ? 'فشل تسجيل الدخول عبر Google' : 'Google sign-in failed');
+        setLocalError(msg);
+        if (onError) onError(msg);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [isAr, locale, login, onError, onSuccess, router]
+  );
+
+  // 1. Detect OAuth redirect callback via window.location.hash
   useEffect(() => {
     setMounted(true);
-  }, []);
 
-  const handleCredentialResponse = async (response: { credential: string }) => {
-    if (!response?.credential) return;
-    setLoading(true);
-    try {
-      const res = await authApi.googleAuth(response.credential);
-      const { accessToken, refreshToken, user } = res.data;
-      login(accessToken, refreshToken, user as any);
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        router.push(`/${locale}`);
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash;
+    if (!hash) return;
+
+    if (hash.includes('id_token=')) {
+      const params = new URLSearchParams(hash.replace(/^#/, ''));
+      const idToken = params.get('id_token');
+      if (idToken) {
+        // Clean up hash from browser address bar
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        handleCredentialResponse({ credential: idToken });
       }
-    } catch (err: any) {
-      const msg = err.message || (isAr ? 'فشل تسجيل الدخول عبر Google' : 'Google sign-in failed');
-      if (onError) onError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
+    } else if (hash.includes('error=')) {
+      const params = new URLSearchParams(hash.replace(/^#/, ''));
+      const errorType = params.get('error');
+      const errorDesc = params.get('error_description') || '';
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
 
+      let msg = isAr ? 'فشل تسجيل الدخول عبر Google' : 'Google sign-in failed';
+      if (errorType === 'redirect_uri_mismatch') {
+        const currentOrigin = window.location.origin;
+        msg = isAr
+          ? `يجب إضافة الرابط (${currentOrigin}/${locale}/login) إلى Authorized redirect URIs في Google Cloud Console.`
+          : `Please add (${currentOrigin}/${locale}/login) to Authorized redirect URIs in Google Cloud Console.`;
+      } else if (errorDesc) {
+        msg = `${msg}: ${errorDesc}`;
+      }
+      setLocalError(msg);
+      if (onError) onError(msg);
+    }
+  }, [handleCredentialResponse, isAr, locale, onError]);
+
+  // 2. Load Google Identity Services SDK for One Tap
   useEffect(() => {
     if (!mounted || !clientId) return;
 
@@ -72,18 +114,6 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
           auto_select: false,
           cancel_on_tap_outside: true,
         });
-
-        const targetEl = document.getElementById('google-native-btn-container');
-        if (targetEl) {
-          window.google.accounts.id.renderButton(targetEl, {
-            theme: 'filled_black',
-            size: 'large',
-            width: 320,
-            text: 'continue_with',
-            shape: 'pill',
-            locale: isAr ? 'ar' : 'en',
-          });
-        }
       }
     };
 
@@ -98,7 +128,18 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
     } else {
       initGsi();
     }
-  }, [clientId, isAr, mounted]);
+  }, [clientId, handleCredentialResponse, mounted]);
+
+  const redirectToGoogleOAuth = () => {
+    if (typeof window === 'undefined') return;
+    const redirectUri = `${window.location.origin}/${locale}/login`;
+    const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+      clientId
+    )}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&response_type=id_token&scope=openid%20profile%20email&nonce=${Date.now()}`;
+    window.location.href = oauthUrl;
+  };
 
   const handleCustomClick = () => {
     if (loading) return;
@@ -107,33 +148,38 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
       const msg = isAr
         ? 'يرجى إعداد NEXT_PUBLIC_GOOGLE_CLIENT_ID في إعدادات البيئة لتفعيل الدخول بحساب Google'
         : 'Please configure NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment to enable Google Sign-In';
+      setLocalError(msg);
       if (onError) onError(msg);
       return;
     }
 
-    // Direct Google OAuth2 fallback redirect if prompt is blocked or suppressed by browser
+    setLoading(true);
+    setLocalError(null);
+
+    // Try Google prompt first; fallback to direct OAuth redirect if dismissed, blocked, or timed out
     if (window.google?.accounts?.id) {
-      window.google.accounts.id.prompt((notification: any) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          console.warn('Google One Tap suppressed by browser policy. Falling back to OAuth redirect.');
-          const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/${locale}` : '';
-          const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
-            clientId
-          )}&redirect_uri=${encodeURIComponent(
-            redirectUri
-          )}&response_type=id_token&scope=openid%20profile%20email&nonce=${Date.now()}`;
-          window.location.href = oauthUrl;
-        }
-      });
-    } else {
-      const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/${locale}` : '';
-      const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
-        clientId
-      )}&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&response_type=id_token&scope=openid%20profile%20email&nonce=${Date.now()}`;
-      window.location.href = oauthUrl;
+      try {
+        let responded = false;
+        window.google.accounts.id.prompt((notification: any) => {
+          responded = true;
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            redirectToGoogleOAuth();
+          }
+        });
+
+        // If prompt does not trigger within 1.2s (e.g. FedCM cooldown/suppressed), redirect directly
+        setTimeout(() => {
+          if (!responded) {
+            redirectToGoogleOAuth();
+          }
+        }, 1200);
+        return;
+      } catch (err) {
+        console.warn('Google prompt failed, falling back to direct OAuth redirect:', err);
+      }
     }
+
+    redirectToGoogleOAuth();
   };
 
   if (!mounted) {
@@ -144,7 +190,7 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
 
   return (
     <div className="w-full relative flex flex-col items-center">
-      {/* Luxury Styled Button (Visible Design) */}
+      {/* Luxury Styled Button */}
       <button
         type="button"
         onClick={handleCustomClick}
@@ -196,16 +242,50 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
             />
           </svg>
         )}
-        <span>{isAr ? 'المتابعة باستخدام Google' : 'Continue with Google'}</span>
+        <span>
+          {loading
+            ? isAr
+              ? 'جارٍ المتابعة مع Google...'
+              : 'Connecting to Google...'
+            : isAr
+            ? 'المتابعة باستخدام Google'
+            : 'Continue with Google'}
+        </span>
       </button>
 
-      {/* Native Google Button overlay (Guarantees Google sign-in works without browser blocking) */}
-      {clientId && (
+      {/* Immediate Visible Feedback / Error notice */}
+      {localError && (
         <div
-          id="google-native-btn-container"
-          className="absolute inset-0 opacity-0 overflow-hidden cursor-pointer"
-          style={{ zIndex: 10 }}
-        />
+          style={{
+            marginTop: '.75rem',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '.5rem',
+            background: 'rgba(248,113,113,.1)',
+            border: '1px solid rgba(248,113,113,.25)',
+            borderRadius: 12,
+            padding: '.6rem .8rem',
+            animation: 'fadeSlideUp 300ms ease',
+          }}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#f87171"
+            strokeWidth="2"
+            style={{ flexShrink: 0 }}
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <p style={{ fontSize: '.78rem', color: '#f87171', lineHeight: 1.4, margin: 0 }}>
+            {localError}
+          </p>
+        </div>
       )}
     </div>
   );
