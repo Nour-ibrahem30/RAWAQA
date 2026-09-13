@@ -314,7 +314,7 @@ export default function ProductDetailPage() {
                 <button onClick={handleBuyNow} disabled={!available} className="btn btn-line-dark btn-block" style={{ flex: 1 }}>
                   {isLoggedIn ? t('buy_now') : (isAr ? 'اشتري الآن' : 'Buy Now')}
                 </button>
-                <WishlistButton productId={id} variant="icon" size={18} />
+                <WishlistButton productId={product?.id || id} variant="icon" size={18} />
               </div>
             </div>
 
@@ -348,9 +348,9 @@ export default function ProductDetailPage() {
 
         {/* ── Reviews ── */}
         <ProductReviews
-          productId={id}
+          productId={product?.id || id}
           locale={locale}
-          productRatings={(product as any).ratings}
+          productRatings={(product as any)?.ratings}
         />
 
         {/* ── Related products carousel ── */}

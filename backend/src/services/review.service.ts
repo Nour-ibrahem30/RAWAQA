@@ -38,9 +38,18 @@ export const createReview = async (params: {
   }
   const isVerifiedPurchase = !!order;
 
-  // 3. One review per product per user
+  // 3. One review per product per user (update if already exists)
   const existing = await Review.findOne({ product: product._id, user: userId });
-  if (existing) throw new Error('You have already reviewed this product');
+  if (existing) {
+    existing.rating = rating;
+    existing.comment = comment;
+    if (titleAr !== undefined) existing.titleAr = titleAr;
+    if (titleEn !== undefined) existing.titleEn = titleEn;
+    existing.isApproved = false; // re-submit for admin moderation
+    existing.isVerifiedPurchase = isVerifiedPurchase;
+    await existing.save();
+    return existing;
+  }
 
   const review = await Review.create({
     product: product._id,
@@ -64,7 +73,28 @@ export const getProductReviews = async (
   limit: number = 10,
   approvedOnly: boolean = true
 ): Promise<{ reviews: any[]; total: number; avgRating: number; distribution: Record<number, number> }> => {
-  const query: any = { product: productId };
+  let targetProductId: mongoose.Types.ObjectId | null = null;
+  if (mongoose.Types.ObjectId.isValid(productId)) {
+    targetProductId = new mongoose.Types.ObjectId(productId);
+  } else {
+    const prod = await Product.findOne({
+      $or: [{ slugEn: productId }, { slugAr: productId }, { sku: productId }],
+    }).select('_id');
+    if (prod) {
+      targetProductId = prod._id as mongoose.Types.ObjectId;
+    }
+  }
+
+  if (!targetProductId) {
+    return {
+      reviews: [],
+      total: 0,
+      avgRating: 0,
+      distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    };
+  }
+
+  const query: any = { product: targetProductId };
   if (approvedOnly) query.isApproved = true;
 
   const skip = (page - 1) * limit;
@@ -78,7 +108,7 @@ export const getProductReviews = async (
       .lean(),
     Review.countDocuments(query),
     Review.aggregate([
-      { $match: { product: new mongoose.Types.ObjectId(productId), isApproved: true } },
+      { $match: { product: targetProductId, isApproved: true } },
       {
         $group: {
           _id: null,

@@ -1,5 +1,17 @@
 import { Wishlist } from '../models/Wishlist';
+import { Product } from '../models/Product';
 import mongoose from 'mongoose';
+
+// Helper to resolve product ObjectId from id or slug/sku
+const resolveProductId = async (productId: string): Promise<mongoose.Types.ObjectId | null> => {
+  if (mongoose.Types.ObjectId.isValid(productId)) {
+    return new mongoose.Types.ObjectId(productId);
+  }
+  const prod = await Product.findOne({
+    $or: [{ slugEn: productId }, { slugAr: productId }, { sku: productId }],
+  }).select('_id');
+  return prod ? (prod._id as mongoose.Types.ObjectId) : null;
+};
 
 // ─── Get wishlist ─────────────────────────────────────────────────────────────
 export const getWishlist = async (userId: string): Promise<any> => {
@@ -11,18 +23,24 @@ export const getWishlist = async (userId: string): Promise<any> => {
 
 // ─── Add product ──────────────────────────────────────────────────────────────
 export const addToWishlist = async (userId: string, productId: string): Promise<void> => {
+  const pid = await resolveProductId(productId);
+  if (!pid) return;
+
   await Wishlist.findOneAndUpdate(
     { user: userId },
-    { $addToSet: { products: new mongoose.Types.ObjectId(productId) } },
+    { $addToSet: { products: pid } },
     { upsert: true, new: true }
   );
 };
 
 // ─── Remove product ───────────────────────────────────────────────────────────
 export const removeFromWishlist = async (userId: string, productId: string): Promise<void> => {
+  const pid = await resolveProductId(productId);
+  if (!pid) return;
+
   await Wishlist.findOneAndUpdate(
     { user: userId },
-    { $pull: { products: new mongoose.Types.ObjectId(productId) } }
+    { $pull: { products: pid } }
   );
 };
 
@@ -31,24 +49,29 @@ export const toggleWishlist = async (
   userId:    string,
   productId: string
 ): Promise<{ added: boolean }> => {
+  const pid = await resolveProductId(productId);
+  if (!pid) return { added: false };
+
   const wishlist = await Wishlist.findOne({ user: userId });
-  const pid      = new mongoose.Types.ObjectId(productId);
   const exists   = wishlist?.products.some((p) => p.equals(pid));
 
   if (exists) {
-    await removeFromWishlist(userId, productId);
+    await removeFromWishlist(userId, pid.toString());
     return { added: false };
   } else {
-    await addToWishlist(userId, productId);
+    await addToWishlist(userId, pid.toString());
     return { added: true };
   }
 };
 
 // ─── Check if product is in wishlist ─────────────────────────────────────────
 export const isInWishlist = async (userId: string, productId: string): Promise<boolean> => {
+  const pid = await resolveProductId(productId);
+  if (!pid) return false;
+
   const wishlist = await Wishlist.findOne({
     user:     userId,
-    products: new mongoose.Types.ObjectId(productId),
+    products: pid,
   });
   return !!wishlist;
 };

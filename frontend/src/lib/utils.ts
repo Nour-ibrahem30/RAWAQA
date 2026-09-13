@@ -14,8 +14,9 @@ export function loc(ar: string | undefined, en: string | undefined, locale: stri
 /** Format EGP price */
 export function formatPrice(amount: number | undefined | null, locale: string): string {
   const n = typeof amount === 'number' && isFinite(amount) ? amount : 0;
-  if (locale === 'ar') return `${n.toLocaleString('ar-EG')} ج.م`;
-  return `EGP ${n.toLocaleString('en-EG')}`;
+  const formatted = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  if (locale === 'ar') return `${formatted} ج.م`;
+  return `EGP ${formatted}`;
 }
 
 /** Egyptian phone E.164 normalization */

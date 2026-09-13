@@ -367,13 +367,21 @@ export const getRelatedProducts = async (
   productId: string,
   limit: number = 6
 ): Promise<any[]> => {
-  const product = await Product.findById(productId);
+  let product: any = null;
+  if (mongoose.Types.ObjectId.isValid(productId)) {
+    product = await Product.findById(productId);
+  }
+  if (!product) {
+    product = await Product.findOne({
+      $or: [{ slugEn: productId }, { slugAr: productId }, { sku: productId }],
+    });
+  }
   if (!product) {
     return [];
   }
 
   return Product.find({
-    _id: { $ne: productId },
+    _id: { $ne: product._id },
     category: product.category,
     status: ProductStatus.ACTIVE,
   })

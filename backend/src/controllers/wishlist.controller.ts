@@ -64,11 +64,15 @@ export const check = async (req: Request, res: Response): Promise<void> => {
   try {
     const { productId } = req.params;
     if (!productId) { res.status(400).json({ success: false, message: 'productId required' }); return; }
-    const inWishlist = await isInWishlist(req.user!.userId, productId);
+    if (!req.user?.userId) {
+      res.json({ success: true, data: { inWishlist: false } });
+      return;
+    }
+    const inWishlist = await isInWishlist(req.user.userId, productId);
     res.json({ success: true, data: { inWishlist } });
   } catch (err) {
     logError('isInWishlist error', err);
-    res.status(500).json({ success: false, message: 'Failed to check wishlist' });
+    res.json({ success: true, data: { inWishlist: false } });
   }
 };
 
