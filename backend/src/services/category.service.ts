@@ -53,12 +53,22 @@ const formatCategory = (c: any) => ({
 
 // Get all categories
 export const getCategories = async (includeInactive: boolean = false): Promise<any[]> => {
-  const count = await Category.countDocuments();
-  if (count === 0) {
-    try {
-      await Category.insertMany(DEFAULT_CATEGORIES);
-    } catch {
-      // ignore concurrent seed race condition
+  // Ensure default essential categories always exist in DB
+  for (const defCat of DEFAULT_CATEGORIES) {
+    const exists = await Category.findOne({
+      $or: [
+        { slugEn: defCat.slugEn },
+        { slugAr: defCat.slugAr },
+        { nameEn: defCat.nameEn },
+        { nameAr: defCat.nameAr },
+      ],
+    });
+    if (!exists) {
+      try {
+        await Category.create(defCat);
+      } catch {
+        // ignore concurrent duplicate key race condition
+      }
     }
   }
 

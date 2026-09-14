@@ -41,6 +41,7 @@ async function apiFetch<T>(
   }
 
   const res = await fetch(`${apiBase}${path}`, {
+    cache: 'no-store',
     ...fetchOptions,
     headers,
   });
@@ -445,6 +446,7 @@ export interface Review {
 }
 
 export const reviewsApi = {
+  recent: (limit = 6) => apiFetch<Review[]>(`/reviews/recent?limit=${limit}`),
   list: (productId: string, page = 1, locale = 'ar') =>
     apiFetch<Review[]>(`/products/${productId}/reviews?page=${page}&limit=10`, { locale }),
   add: (productId: string, payload: { rating: number; comment: string; titleAr?: string; titleEn?: string }) =>

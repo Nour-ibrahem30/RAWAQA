@@ -231,3 +231,18 @@ export const getAllReviewsAdmin = async (
   }));
   return { reviews, total, pendingCount, approvedCount };
 };
+
+// ─── Get recent approved reviews across all products (public for home page) ──
+export const getRecentApprovedReviews = async (limit = 10): Promise<any[]> => {
+  const rawReviews = await Review.find({ isApproved: true })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .populate('user', 'firstName lastName')
+    .populate('product', 'nameAr nameEn images slugEn')
+    .lean();
+
+  return rawReviews.map((r: any) => ({
+    ...r,
+    id: (r._id as any).toString(),
+  }));
+};

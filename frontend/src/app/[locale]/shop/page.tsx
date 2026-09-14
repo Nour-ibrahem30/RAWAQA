@@ -239,9 +239,9 @@ export default function ShopPage() {
                     </button>
                   </li>
                   {categories.map((cat, idx) => {
-                    const catSlug = cat.slug || (cat as any).slugEn || (cat as any).slugAr || '';
+                    const catSlug = cat.slug || (cat as any).slugEn || (cat as any).slugAr || cat.id || (cat as any)._id || '';
                     const catKey = cat.id || (cat as any)._id || catSlug || idx;
-                    const isSelected = category === catSlug;
+                    const isSelected = category === catSlug || (cat.id && category === cat.id) || ((cat as any)._id && category === (cat as any)._id);
                     return (
                       <li key={catKey}>
                         <button

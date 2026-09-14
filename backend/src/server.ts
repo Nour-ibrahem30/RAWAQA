@@ -197,10 +197,12 @@ apiPrefixes.forEach(prefix => {
   app.use(`${prefix}/admin/export`,  exportRoutes);
 });
 
-// Standalone review actions (delete, approve, helpful)
-import { removeReview, approve, markHelpful } from './controllers/review.controller';
+// Standalone review actions (delete, approve, helpful, recent)
+import { removeReview, approve, markHelpful, getRecentReviews } from './controllers/review.controller';
 import { authenticate, requireAdmin } from './middleware/auth.middleware';
 apiPrefixes.forEach(prefix => {
+  app.get(   `${prefix}/reviews/recent`,      getRecentReviews);
+  app.get(   `${prefix}/reviews`,             getRecentReviews);
   app.delete(`${prefix}/reviews/:id`,         authenticate, removeReview);
   app.put(   `${prefix}/reviews/:id/approve`, authenticate, requireAdmin, approve);
   app.post(  `${prefix}/reviews/:id/helpful`, featureFlag('FEATURE_REVIEWS'), markHelpful);

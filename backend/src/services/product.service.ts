@@ -38,19 +38,26 @@ export const getProducts = async (
   const filter: FilterQuery<IProduct> = {};
 
   if (category) {
-    const categoryIds: mongoose.Types.ObjectId[] = [];
-    if (mongoose.Types.ObjectId.isValid(category)) {
-      categoryIds.push(new mongoose.Types.ObjectId(category));
+    let cleanCat = category.trim();
+    try {
+      cleanCat = decodeURIComponent(category).trim();
+    } catch {
+      cleanCat = category.trim();
     }
-    const matchedCategories = await Category.find({
-      $or: [
-        { slugEn: new RegExp(`^${category}$`, 'i') },
-        { slugAr: new RegExp(`^${category}$`, 'i') },
-        { nameEn: new RegExp(`^${category}$`, 'i') },
-        { nameAr: category },
-        ...(mongoose.Types.ObjectId.isValid(category) ? [{ _id: new mongoose.Types.ObjectId(category) }] : []),
-      ],
-    }).select('_id');
+    const categoryIds: mongoose.Types.ObjectId[] = [];
+    if (mongoose.Types.ObjectId.isValid(cleanCat)) {
+      categoryIds.push(new mongoose.Types.ObjectId(cleanCat));
+    }
+    const orQueries: any[] = [
+      { slugEn: new RegExp(`^${cleanCat}$`, 'i') },
+      { slugAr: new RegExp(`^${cleanCat}$`, 'i') },
+      { nameEn: new RegExp(`^${cleanCat}$`, 'i') },
+      { nameAr: new RegExp(`^${cleanCat}$`, 'i') },
+    ];
+    if (mongoose.Types.ObjectId.isValid(cleanCat)) {
+      orQueries.push({ _id: new mongoose.Types.ObjectId(cleanCat) });
+    }
+    const matchedCategories = await Category.find({ $or: orQueries }).select('_id');
 
     matchedCategories.forEach((c) => {
       const oid = c._id as mongoose.Types.ObjectId;
@@ -301,7 +308,7 @@ export const updateProduct = async (
     throw new Error('Product not found');
   }
 
-  // Resolve category if changed (supports ObjectId or slug)
+  // Resolve category if changed (supports ObjectId, slug, or name)
   if (data.category) {
     let catDoc = null;
     if (mongoose.Types.ObjectId.isValid(data.category as any)) {
@@ -309,11 +316,18 @@ export const updateProduct = async (
     }
     if (!catDoc) {
       catDoc = await Category.findOne({
-        $or: [{ slugEn: data.category }, { slugAr: data.category }],
+        $or: [
+          { slugEn: data.category },
+          { slugAr: data.category },
+          { nameEn: new RegExp(`^${data.category}$`, 'i') },
+          { nameAr: data.category },
+        ],
       });
     }
     if (catDoc) {
       data.category = catDoc._id as any;
+    } else {
+      delete (data as any).category;
     }
   }
 
@@ -321,16 +335,11 @@ export const updateProduct = async (
   const oldCat = existingProduct.category ? existingProduct.category.toString() : '';
   const newCat = data.category ? data.category.toString() : '';
   if (newCat && newCat !== oldCat) {
-    const categoryExists = await Category.findById(newCat);
-    if (!categoryExists) {
-      throw new Error('Category not found');
-    }
-
     // Update category counts
     if (existingProduct.category) {
-      await Category.findByIdAndUpdate(existingProduct.category, { $inc: { productCount: -1 } });
+      await Category.findByIdAndUpdate(existingProduct.category, { $inc: { productCount: -1 } }).catch(() => {});
     }
-    await Category.findByIdAndUpdate(newCat, { $inc: { productCount: 1 } });
+    await Category.findByIdAndUpdate(newCat, { $inc: { productCount: 1 } }).catch(() => {});
   }
 
   // Check SKU uniqueness if changed

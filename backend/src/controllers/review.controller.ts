@@ -125,3 +125,16 @@ export const listAllAdminReviews = async (req: Request, res: Response): Promise<
     res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
   }
 };
+
+// GET /api/reviews/recent (public for home page)
+export const getRecentReviews = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 6;
+    const { getRecentApprovedReviews } = await import('../services/review.service');
+    const reviews = await getRecentApprovedReviews(limit);
+    res.json({ success: true, data: reviews });
+  } catch (err) {
+    logError('getRecentReviews error', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch recent reviews' });
+  }
+};

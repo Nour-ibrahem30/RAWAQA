@@ -166,30 +166,29 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
       });
   }, [locale]);
 
-  // Fetch recent approved reviews from the most popular product
+  // Fetch recent approved customer reviews across all products
   useEffect(() => {
-    // Try to get featured products first, then fetch reviews for the first one
-    const fetchReviews = async () => {
-      try {
-        const prods = await productsApi.featured(locale);
-        const firstId = prods.data?.[0]?.id;
-        if (!firstId) return;
-        const r = await reviewsApi.list(firstId, 1, locale);
-        const apiReviews = (r.data ?? []).slice(0, 3);
+    reviewsApi.recent(6)
+      .then(r => {
+        const apiReviews = r.data ?? [];
         if (apiReviews.length > 0) {
-          setReviews(apiReviews.map((rv: Review) => ({
-            name:    rv.user?.name || (locale === 'ar' ? 'عميل' : 'Customer'),
-            nameEn:  rv.user?.name || 'Customer',
-            rating:  rv.rating,
-            textAr:  rv.comment,
-            textEn:  rv.comment,
-          })));
+          setReviews(apiReviews.map((rv: any) => {
+            const userName = rv.user?.name ||
+              (rv.user?.firstName ? `${rv.user.firstName} ${rv.user.lastName || ''}`.trim() : '') ||
+              (locale === 'ar' ? 'عميل راوقة' : 'Customer');
+            return {
+              name:   userName,
+              nameEn: userName,
+              rating: rv.rating || 5,
+              textAr: rv.comment,
+              textEn: rv.comment,
+            };
+          }));
         }
-      } catch {
-        // keep FALLBACK_REVIEWS
-      }
-    };
-    fetchReviews();
+      })
+      .catch(() => {
+        // keep fallback reviews
+      });
   }, [locale]);
 
   useEffect(() => {
