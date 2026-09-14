@@ -78,7 +78,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-8">
           {[
             { label: t('shop'), href: `/${locale}/shop` },
-            { label: t('collections'), href: `/${locale}/shop` },
+            { label: t('collections'), href: `/${locale}#collections` },
             { label: t('track'), href: `/${locale}/track` },
           ].map((l) => (
             <Link
@@ -100,6 +100,18 @@ export default function Navbar() {
           >
             {otherLocale.toUpperCase()}
           </button>
+
+          {/* Wishlist */}
+          <Link
+            href={`/${locale}/wishlist`}
+            className="relative inline-flex items-center justify-center w-10 h-10 rounded-full text-ivory/90 hover:text-[var(--gold-light)] hover:bg-white/5 transition-all"
+            aria-label="Wishlist"
+            title={locale === 'ar' ? 'المفضلة' : 'Wishlist'}
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          </Link>
 
           {/* Cart */}
           <Link
@@ -181,6 +193,8 @@ export default function Navbar() {
           <nav className="flex flex-col gap-1 p-6">
             {[
               { label: t('shop'), href: `/${locale}/shop` },
+              { label: t('collections'), href: `/${locale}#collections` },
+              { label: locale === 'ar' ? 'المفضلة' : 'Wishlist', href: `/${locale}/wishlist` },
               { label: t('track'), href: `/${locale}/track` },
               { label: t('cart'), href: `/${locale}/cart` },
               ...(isLoggedIn ? [{ label: t('account'), href: `/${locale}/account` }] : [{ label: t('login'), href: `/${locale}/login` }]),

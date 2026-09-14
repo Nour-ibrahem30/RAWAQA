@@ -43,7 +43,7 @@ export default function WishlistButton({ productId, variant = 'icon', size = 18 
     setLoading(true);
     try {
       const res = await wishlistApi.toggle(productId);
-      const nowIn = res.data?.inWishlist ?? !inWishlist;
+      const nowIn = (res.data as any)?.inWishlist ?? (res.data as any)?.added ?? !inWishlist;
       setInWishlist(nowIn);
       showToast(
         nowIn
@@ -70,39 +70,42 @@ export default function WishlistButton({ productId, variant = 'icon', size = 18 
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '.35rem',
-        background: inWishlist ? 'rgba(210,181,106,.12)' : 'rgba(255,255,255,.04)',
-        border: `1px solid ${inWishlist ? 'rgba(210,181,106,.35)' : BORDER}`,
+        justifyContent: 'center',
+        gap: variant === 'text' ? '.35rem' : 0,
+        background: inWishlist ? 'rgba(210,181,106,.15)' : 'rgba(255,255,255,.06)',
+        border: `1px solid ${inWishlist ? 'rgba(210,181,106,.4)' : BORDER}`,
         borderRadius: variant === 'text' ? 12 : '50%',
-        width: variant === 'icon' ? size + 14 : 'auto',
-        height: variant === 'icon' ? size + 14 : 'auto',
-        padding: variant === 'text' ? '.55rem .9rem' : undefined,
+        width: variant === 'icon' ? size + 16 : 'auto',
+        height: variant === 'icon' ? size + 16 : 'auto',
+        padding: variant === 'text' ? '.55rem .9rem' : 0,
+        margin: 0,
         cursor: loading ? 'default' : 'pointer',
         transition: 'all 250ms ease',
-        color: inWishlist ? GOLD : 'rgba(247,244,236,.45)',
+        color: inWishlist ? GOLD : 'rgba(247,244,236,.6)',
         flexShrink: 0,
+        lineHeight: 1,
       }}
       onMouseEnter={e => {
         if (!loading) {
           e.currentTarget.style.borderColor = 'rgba(210,181,106,.5)';
-          e.currentTarget.style.background = 'rgba(210,181,106,.1)';
+          e.currentTarget.style.background = 'rgba(210,181,106,.12)';
         }
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = inWishlist ? 'rgba(210,181,106,.35)' : BORDER;
-        e.currentTarget.style.background = inWishlist ? 'rgba(210,181,106,.12)' : 'rgba(255,255,255,.04)';
+        e.currentTarget.style.borderColor = inWishlist ? 'rgba(210,181,106,.4)' : BORDER;
+        e.currentTarget.style.background = inWishlist ? 'rgba(210,181,106,.15)' : 'rgba(255,255,255,.06)';
       }}
     >
       {loading ? (
         <svg width={size - 2} height={size - 2} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-          style={{ animation: 'rotateSlow .8s linear infinite', display: 'block' }}>
+          style={{ animation: 'rotateSlow .8s linear infinite', display: 'block', margin: 'auto' }}>
           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
         </svg>
       ) : (
         <svg width={size} height={size} viewBox="0 0 24 24"
           fill={inWishlist ? 'currentColor' : 'none'}
           stroke="currentColor" strokeWidth="1.8"
-          style={{ display: 'block', transition: 'fill 200ms ease' }}>
+          style={{ display: 'block', margin: 'auto', transition: 'fill 200ms ease' }}>
           <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
         </svg>
       )}

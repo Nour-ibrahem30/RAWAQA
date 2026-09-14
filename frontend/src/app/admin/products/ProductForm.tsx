@@ -100,11 +100,14 @@ export default function ProductForm({ productId }: Props) {
       };
       if (productId) {
         await productsApi.update(productId, payload as Partial<Product>);
-        showToast('Product updated successfully!', 'success');
+        showToast('Product updated successfully! / تم حفظ التعديلات بنجاح', 'success');
+        router.push('/admin/products');
+        router.refresh();
       } else {
         await productsApi.create(payload as Partial<Product>);
-        showToast('Product created successfully!', 'success');
+        showToast('Product created successfully! / تم إنشاء المنتج بنجاح', 'success');
         router.push('/admin/products');
+        router.refresh();
       }
     } catch (err: unknown) {
       showToast((err as Error).message || 'Error saving product', 'error');

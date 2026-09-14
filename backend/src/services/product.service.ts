@@ -38,7 +38,27 @@ export const getProducts = async (
   const filter: FilterQuery<IProduct> = {};
 
   if (category) {
-    filter.category = category;
+    const categoryIds: any[] = [];
+    if (mongoose.Types.ObjectId.isValid(category)) {
+      categoryIds.push(new mongoose.Types.ObjectId(category));
+    }
+    const matchedCategories = await Category.find({
+      $or: [
+        { slugEn: category.toLowerCase() },
+        { slugAr: category.toLowerCase() },
+        { nameEn: new RegExp(`^${category}$`, 'i') },
+        { nameAr: category },
+        ...(mongoose.Types.ObjectId.isValid(category) ? [{ _id: category }] : []),
+      ],
+    }).select('_id');
+
+    matchedCategories.forEach((c) => categoryIds.push(c._id));
+
+    if (categoryIds.length > 0) {
+      filter.category = { $in: [...categoryIds, category] as any };
+    } else {
+      filter.category = category as any;
+    }
   }
 
   if (status) {
@@ -70,7 +90,9 @@ export const getProducts = async (
 
   // Build sort
   const sort: { [key: string]: SortOrder } = {};
-  sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+  const actualSortBy = sortBy || 'createdAt';
+  const actualSortOrder = sortOrder === 'asc' ? 1 : -1;
+  sort[actualSortBy] = actualSortOrder;
 
   // Execute query
   const skip = (page - 1) * limit;
@@ -260,8 +282,16 @@ export const updateProduct = async (
   id: string,
   data: Partial<IProduct>
 ): Promise<IProduct | null> => {
-  // Check if product exists
-  const existingProduct = await Product.findById(id);
+  // Check if product exists (supports ObjectId, slug, or SKU)
+  let existingProduct = null;
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    existingProduct = await Product.findById(id);
+  }
+  if (!existingProduct) {
+    existingProduct = await Product.findOne({
+      $or: [{ slugEn: id }, { slugAr: id }, { sku: id }],
+    });
+  }
   if (!existingProduct) {
     throw new Error('Product not found');
   }
@@ -342,10 +372,27 @@ export const updateProduct = async (
       }
     } else if (key === 'inventory' && typeof (data as any).inventory === 'object') {
       Object.assign(existingProduct.inventory, data.inventory);
+    } else if (key === 'images' && Array.isArray(data.images)) {
+      existingProduct.images = data.images as any;
+      existingProduct.markModified('images');
     } else {
       (existingProduct as any)[key] = (data as any)[key];
     }
   });
+
+  // Ensure required descriptions exist to avoid validation error on save
+  if (!existingProduct.descriptionAr && existingProduct.descriptionEn) {
+    existingProduct.descriptionAr = existingProduct.descriptionEn;
+  }
+  if (!existingProduct.descriptionEn && existingProduct.descriptionAr) {
+    existingProduct.descriptionEn = existingProduct.descriptionAr;
+  }
+  if (!existingProduct.slugEn) {
+    existingProduct.slugEn = existingProduct.sku?.toLowerCase() || `prod-${Date.now()}`;
+  }
+  if (!existingProduct.slugAr) {
+    existingProduct.slugAr = existingProduct.slugEn;
+  }
 
   if (existingProduct.inventory) {
     existingProduct.updateAvailableQuantity();
@@ -357,8 +404,12 @@ export const updateProduct = async (
 
 // Delete product (soft delete - set status to archived)
 export const deleteProduct = async (id: string): Promise<IProduct | null> => {
-  const product = await Product.findByIdAndUpdate(
-    id,
+  let query: any = { _id: id };
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    query = { $or: [{ slugEn: id }, { slugAr: id }, { sku: id }] };
+  }
+  const product = await Product.findOneAndUpdate(
+    query,
     { status: ProductStatus.ARCHIVED },
     { new: true }
   );

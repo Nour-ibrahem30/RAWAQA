@@ -19,7 +19,7 @@ export default function ShopPage() {
   const isAr = locale === 'ar';
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>(STATIC_CATEGORIES as Category[]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -38,7 +38,17 @@ export default function ShopPage() {
 
   // Load categories once
   useEffect(() => {
-    categoriesApi.list(locale).then(r => setCategories(r.data ?? [])).catch(() => {});
+    categoriesApi.list(locale)
+      .then(r => {
+        if (r.data && r.data.length > 0) {
+          setCategories(r.data);
+        } else {
+          setCategories(STATIC_CATEGORIES as Category[]);
+        }
+      })
+      .catch(() => {
+        setCategories(STATIC_CATEGORIES as Category[]);
+      });
   }, [locale]);
 
   const fetchProducts = useCallback(async (pg = 1, reset = true) => {
@@ -228,24 +238,29 @@ export default function ShopPage() {
                       {t('all')}
                     </button>
                   </li>
-                  {categories.map(cat => (
-                    <li key={cat.id}>
-                      <button
-                        onClick={() => setCategory(cat.slug)}
-                        style={{
-                          width: '100%', textAlign: isAr ? 'right' : 'left',
-                          fontSize: '.85rem', padding: '.45rem .75rem', borderRadius: 10,
-                          cursor: 'pointer', border: 'none',
-                          background: category === cat.slug ? 'rgba(210,181,106,.15)' : 'transparent',
-                          color: category === cat.slug ? 'var(--gold-light)' : 'rgba(247,244,236,.55)',
-                          fontWeight: category === cat.slug ? 700 : 400,
-                          transition: 'all 250ms ease',
-                        }}
-                      >
-                        {loc(cat.nameAr, cat.nameEn, locale)}
-                      </button>
-                    </li>
-                  ))}
+                  {categories.map((cat, idx) => {
+                    const catSlug = cat.slug || (cat as any).slugEn || (cat as any).slugAr || '';
+                    const catKey = cat.id || (cat as any)._id || catSlug || idx;
+                    const isSelected = category === catSlug;
+                    return (
+                      <li key={catKey}>
+                        <button
+                          onClick={() => setCategory(catSlug)}
+                          style={{
+                            width: '100%', textAlign: isAr ? 'right' : 'left',
+                            fontSize: '.85rem', padding: '.45rem .75rem', borderRadius: 10,
+                            cursor: 'pointer', border: 'none',
+                            background: isSelected ? 'rgba(210,181,106,.15)' : 'transparent',
+                            color: isSelected ? 'var(--gold-light)' : 'rgba(247,244,236,.55)',
+                            fontWeight: isSelected ? 700 : 400,
+                            transition: 'all 250ms ease',
+                          }}
+                        >
+                          {loc(cat.nameAr, cat.nameEn, locale)}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
 

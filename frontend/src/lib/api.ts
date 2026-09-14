@@ -169,16 +169,23 @@ export const productsApi = {
     minPrice?: number;
     maxPrice?: number;
     inStock?: boolean;
+    _t?: number;
   } = {}, locale = 'ar') => {
     try {
       const q = new URLSearchParams();
       Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
+      if (params.sort) {
+        q.set('sortBy', params.sort);
+      }
+      if (params.order) {
+        q.set('sortOrder', params.order);
+      }
       return await apiFetch<Product[]>(`/products?${q}`, { locale });
     } catch {
       // Fallback to static data
       const { STATIC_PRODUCTS } = await import('./staticProducts');
       let data = [...STATIC_PRODUCTS];
-      if (params.category) data = data.filter(p => p.category.slug === params.category);
+      if (params.category) data = data.filter(p => p.category?.slug === params.category || (p.category as any) === params.category);
       if (params.search) {
         const q = params.search.toLowerCase();
         data = data.filter(p => p.nameEn.toLowerCase().includes(q) || p.nameAr.includes(q));
@@ -186,6 +193,7 @@ export const productsApi = {
       if (params.inStock) data = data.filter(p => (p.inventory?.availableQuantity ?? 0) > 0);
       if (params.sort === 'price' && params.order === 'asc') data.sort((a, b) => a.price - b.price);
       if (params.sort === 'price' && params.order === 'desc') data.sort((a, b) => b.price - a.price);
+      if (params.sort === 'createdAt' && params.order === 'asc') data.reverse();
       const page = params.page ?? 1;
       const limit = params.limit ?? 12;
       const start = (page - 1) * limit;

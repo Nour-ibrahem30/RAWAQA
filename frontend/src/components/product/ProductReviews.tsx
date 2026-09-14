@@ -86,17 +86,25 @@ export default function ProductReviews({ productId, locale, productRatings }: Pr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLoggedIn) {
+      showToast(isAr ? 'يرجى تسجيل الدخول أولاً لإضافة تقييم' : 'Please sign in to submit a review', 'error');
+      return;
+    }
     if (form.rating === 0) {
       showToast(isAr ? 'اختر تقييمك أولاً' : 'Please select a rating', 'error');
+      return;
+    }
+    if (!form.comment.trim()) {
+      showToast(isAr ? 'يرجى كتابة تعليقك' : 'Please write your comment', 'error');
       return;
     }
     setSubmitting(true);
     try {
       await reviewsApi.add(productId, {
         rating: form.rating,
-        comment: form.comment,
-        ...(form.titleAr ? { titleAr: form.titleAr } : {}),
-        ...(form.titleEn ? { titleEn: form.titleEn } : {}),
+        comment: form.comment.trim(),
+        ...(form.titleAr?.trim() ? { titleAr: form.titleAr.trim() } : {}),
+        ...(form.titleEn?.trim() ? { titleEn: form.titleEn.trim() } : {}),
       });
       showToast(isAr ? 'تم إرسال تقييمك بنجاح! سيظهر بعد مراجعة الإدارة.' : 'Review submitted successfully! It will appear once approved by admin.', 'success');
       setShowForm(false);

@@ -391,6 +391,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
           CATEGORIES — 3D tilt
       ═══════════════════════════════════════════════ */}
       <section
+        id="collections"
         ref={categoriesRef}
         style={{
           padding: '5.5rem 0',

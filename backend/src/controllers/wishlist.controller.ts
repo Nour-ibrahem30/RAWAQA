@@ -5,11 +5,57 @@ import {
 } from '../services/wishlist.service';
 import { logError } from '../config/logger';
 
+// Helper to transform populated products for frontend
+const transformProduct = (p: any): any => {
+  if (!p) return p;
+  const doc = typeof p.toObject === 'function' ? p.toObject() : p;
+  const images = Array.isArray(doc.images)
+    ? doc.images
+        .sort((a: any, b: any) => {
+          if (a.isPrimary && !b.isPrimary) return -1;
+          if (!a.isPrimary && b.isPrimary) return 1;
+          return (a.order ?? 0) - (b.order ?? 0);
+        })
+        .map((img: any) => (typeof img === 'string' ? img : img.url))
+        .filter(Boolean)
+    : [];
+
+  const cat = doc.category;
+  const category = cat && typeof cat === 'object' ? {
+    id:     (cat._id ?? cat.id)?.toString() ?? cat.slug,
+    nameAr: cat.nameAr,
+    nameEn: cat.nameEn,
+    slug:   cat.slugEn ?? cat.slug,
+  } : cat;
+
+  return {
+    ...doc,
+    id:       (doc._id ?? doc.id)?.toString(),
+    images,
+    category,
+    inventory: {
+      onHandQuantity:   doc.inventory?.onHandQuantity   ?? 0,
+      reservedQuantity: doc.inventory?.reservedQuantity ?? 0,
+      availableQuantity: doc.inventory?.availableQuantity ?? 0,
+      lowStockThreshold: doc.inventory?.lowStockThreshold ?? 5,
+    },
+    ratings: doc.ratings ?? { average: 0, count: 0 },
+  };
+};
+
 // GET /api/wishlist
 export const get = async (req: Request, res: Response): Promise<void> => {
   try {
     const wishlist = await getWishlist(req.user!.userId);
-    res.json({ success: true, data: wishlist });
+    const rawProducts = wishlist?.products ?? [];
+    const products = Array.isArray(rawProducts) ? rawProducts.map(transformProduct) : [];
+    res.json({
+      success: true,
+      data: {
+        ...wishlist,
+        products,
+      },
+    });
   } catch (err) {
     logError('getWishlist error', err);
     res.status(500).json({ success: false, message: 'Failed to fetch wishlist' });
@@ -51,7 +97,10 @@ export const toggle = async (req: Request, res: Response): Promise<void> => {
     res.json({
       success: true,
       message: result.added ? 'Added to wishlist' : 'Removed from wishlist',
-      data:    result,
+      data: {
+        added: result.added,
+        inWishlist: result.added,
+      },
     });
   } catch (err) {
     logError('toggleWishlist error', err);

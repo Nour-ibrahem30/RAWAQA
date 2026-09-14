@@ -128,7 +128,18 @@ export const queryProductsSchema = z.object({
     minPrice: z.string().regex(/^\d+(\.\d+)?$/).transform(Number).optional(),
     maxPrice: z.string().regex(/^\d+(\.\d+)?$/).transform(Number).optional(),
     inStock: z.string().transform((val) => val === 'true').optional(),
-    sortBy: z.enum(['createdAt', 'price', 'nameAr', 'nameEn', 'orderCount', 'viewCount']).default('createdAt'),
-    sortOrder: z.enum(['asc', 'desc']).default('desc'),
+    sort: z.string().optional(),
+    order: z.string().optional(),
+    sortBy: z.enum(['createdAt', 'price', 'nameAr', 'nameEn', 'orderCount', 'viewCount']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).optional(),
+  }).transform((data) => {
+    const validSortKeys = ['createdAt', 'price', 'nameAr', 'nameEn', 'orderCount', 'viewCount'];
+    const chosenSort = data.sortBy || (data.sort && validSortKeys.includes(data.sort) ? data.sort : 'createdAt');
+    const chosenOrder = data.sortOrder || (data.order === 'asc' ? 'asc' : 'desc');
+    return {
+      ...data,
+      sortBy: chosenSort as 'createdAt' | 'price' | 'nameAr' | 'nameEn' | 'orderCount' | 'viewCount',
+      sortOrder: chosenOrder as 'asc' | 'desc',
+    };
   }),
 });

@@ -2,14 +2,17 @@ import { Request, Response, NextFunction } from 'express';
 import { z, ZodError } from 'zod';
 
 // Generic validation middleware
-export const validate = (schema: z.ZodObject<any, any>) => {
+export const validate = (schema: z.ZodTypeAny) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
-      schema.parse({
+      const parsed: any = schema.parse({
         body: req.body,
         query: req.query,
         params: req.params,
       });
+      if (parsed.body !== undefined) req.body = parsed.body;
+      if (parsed.query !== undefined) req.query = parsed.query;
+      if (parsed.params !== undefined) req.params = parsed.params;
       next();
     } catch (error) {
       if (error instanceof ZodError) {
@@ -183,14 +186,13 @@ export const applyCouponSchema = z.object({
 });
 
 // ─── Review Validation ────────────────────────────────────────────────────────
-
 export const createReviewSchema = z.object({
   params: z.object({ productId: z.string().min(1) }),
   body: z.object({
-    rating:  z.number().int().min(1, 'Rating min 1').max(5, 'Rating max 5'),
-    comment: z.string().min(3, 'Comment must be at least 3 characters').max(1000),
-    titleAr: z.string().max(100).optional().nullable(),
-    titleEn: z.string().max(100).optional().nullable(),
+    rating:  z.coerce.number().int().min(1, 'Rating min 1').max(5, 'Rating max 5'),
+    comment: z.string().min(1, 'Comment is required').max(1000),
+    titleAr: z.string().max(100).optional().nullable().or(z.literal('')),
+    titleEn: z.string().max(100).optional().nullable().or(z.literal('')),
   }),
 });
 

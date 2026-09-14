@@ -159,7 +159,7 @@ export default function ProductCard({ product }: { product: Product }) {
         {/* Wishlist button */}
         <div style={{ position: 'absolute', top: '0.65rem', [isAr ? 'left' : 'right']: '0.65rem', zIndex: 2 }}
           onClick={e => e.preventDefault()}>
-          <WishlistButton productId={product.id} variant="icon" size={15} />
+          <WishlistButton productId={product.id || (product as any)._id || (product as any).slugEn || product.sku || ''} variant="icon" size={15} />
         </div>
 
         {/* Out of stock overlay */}

@@ -16,7 +16,12 @@ const resolveProductId = async (productId: string): Promise<mongoose.Types.Objec
 // ─── Get wishlist ─────────────────────────────────────────────────────────────
 export const getWishlist = async (userId: string): Promise<any> => {
   const wishlist = await Wishlist.findOne({ user: userId })
-    .populate('products', 'nameAr nameEn price compareAtPrice images ratings inventory.availableQuantity status');
+    .populate({
+      path: 'products',
+      select: 'nameAr nameEn price compareAtPrice images ratings inventory status slugEn slugAr sku category',
+      populate: { path: 'category', select: 'nameAr nameEn slugAr slugEn' },
+    })
+    .lean();
 
   return wishlist ?? { user: userId, products: [] };
 };

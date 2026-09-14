@@ -254,7 +254,13 @@ export default function AccountPage() {
 
         {/* Header */}
         <h1 className="display-3" style={{ color: IVORY, marginBottom: '.5rem' }}>{t('title')}</h1>
-        <p style={{ color: 'rgba(247,244,236,.4)', marginBottom: '2rem' }}>{user.email}</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
+          <p style={{ color: 'rgba(247,244,236,.4)', margin: 0 }}>{user.email}</p>
+          <Link href={`/${locale}/wishlist`} className="btn btn-line-dark btn-sm inline-flex items-center gap-1.5" style={{ fontSize: '.78rem' }}>
+            <span>❤️</span>
+            <span>{isAr ? 'قائمتي المفضلة' : 'My Wishlist'}</span>
+          </Link>
+        </div>
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${BORDER}`, marginBottom: '2rem', overflowX: 'auto' }}>
@@ -270,6 +276,25 @@ export default function AccountPage() {
               {label}
             </button>
           ))}
+          <Link
+            href={`/${locale}/wishlist`}
+            style={{
+              padding: '.65rem 1.25rem', fontSize: '.85rem', fontWeight: 600,
+              cursor: 'pointer', background: 'none', border: 'none', whiteSpace: 'nowrap',
+              color: 'rgba(247,244,236,.45)',
+              borderBottom: '2px solid transparent',
+              marginBottom: -1, transition: 'all 250ms ease',
+              textDecoration: 'none',
+              display: 'inline-flex', alignItems: 'center', gap: '.4rem',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
+            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(247,244,236,.45)')}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+            <span>{isAr ? 'المفضلة' : 'Wishlist'}</span>
+          </Link>
         </div>
 
         {/* ── ORDERS ─────────────────────────────────────────────── */}

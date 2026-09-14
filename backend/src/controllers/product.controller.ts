@@ -67,7 +67,15 @@ const transformProducts = (products: any[]): any[] =>
  */
 export const listProducts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const query: IProductQuery = req.query as any;
+    const q: any = req.query || {};
+    const validSortKeys = ['createdAt', 'price', 'nameAr', 'nameEn', 'orderCount', 'viewCount'];
+    const sortBy = q.sortBy || (q.sort && validSortKeys.includes(q.sort) ? q.sort : 'createdAt');
+    const sortOrder = q.sortOrder || (q.order === 'asc' ? 'asc' : 'desc');
+    const query: IProductQuery = {
+      ...q,
+      sortBy,
+      sortOrder,
+    };
     const result = await getProducts(query);
 
     res.status(200).json({

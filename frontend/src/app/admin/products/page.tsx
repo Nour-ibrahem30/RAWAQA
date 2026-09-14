@@ -16,7 +16,7 @@ export default function AdminProductsPage() {
 
   const load = () => {
     setLoading(true);
-    productsApi.list({ limit: 50, search: search || undefined }, 'en')
+    productsApi.list({ limit: 50, search: search || undefined, _t: Date.now() as any }, 'en')
       .then(r => setProducts(r.data ?? []))
       .catch(() => setProducts([]))
       .finally(() => setLoading(false));
