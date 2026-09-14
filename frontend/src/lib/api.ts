@@ -40,11 +40,20 @@ async function apiFetch<T>(
     if (sessionId && !token) headers['X-Session-ID'] = sessionId;
   }
 
-  const res = await fetch(`${apiBase}${path}`, {
-    cache: 'no-store',
-    ...fetchOptions,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), (fetchOptions as any)?.timeout || 8000);
+
+  let res: Response;
+  try {
+    res = await fetch(`${apiBase}${path}`, {
+      cache: 'no-store',
+      signal: fetchOptions.signal || controller.signal,
+      ...fetchOptions,
+      headers,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   // Token expired — try refresh
   if (res.status === 401 && typeof window !== 'undefined') {

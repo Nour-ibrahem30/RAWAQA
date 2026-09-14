@@ -559,6 +559,8 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                   src="/hero/hero-1.jpg"
                   alt="RAWAQA bean bag in warm home setting"
                   fill
+                  loading="lazy"
+                  quality={70}
                   style={{ objectFit:'cover', objectPosition:'center' }}
                   sizes="(max-width:768px) 100vw, 45vw"
                 />
@@ -743,36 +745,40 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                 </div>
 
                 {/* Slider Nav Buttons & Dots */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   {/* Dots */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5">
                     {reviews.map((_: unknown, i: number) => (
                       <button
                         key={i}
                         onClick={() => setActiveReview(i)}
-                        className="transition-all duration-300 rounded-full block !p-0 !m-0 !border-0"
-                        style={{
-                          width: i === activeReview ? 14 : 5,
-                          height: 5,
-                          background: i === activeReview ? 'var(--gold-light)' : 'rgba(255,255,255,.25)',
-                        }}
+                        className="w-8 h-8 flex items-center justify-center p-0 m-0 border-0 bg-transparent cursor-pointer"
                         aria-label={`Go to slide ${i + 1}`}
-                      />
+                      >
+                        <span
+                          className="transition-all duration-300 rounded-full block"
+                          style={{
+                            width: i === activeReview ? 14 : 5,
+                            height: 5,
+                            background: i === activeReview ? 'var(--gold-light)' : 'rgba(255,255,255,.25)',
+                          }}
+                        />
+                      </button>
                     ))}
                   </div>
 
                   {/* Arrows */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => setActiveReview(prev => (prev - 1 + reviews.length) % reviews.length)}
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-ivory/60 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-[10px]"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-ivory/70 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-xs"
                       aria-label="Previous review"
                     >
                       {isAr ? '→' : '←'}
                     </button>
                     <button
                       onClick={() => setActiveReview(prev => (prev + 1) % reviews.length)}
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-ivory/60 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-[10px]"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-ivory/70 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-xs"
                       aria-label="Next review"
                     >
                       {isAr ? '←' : '→'}

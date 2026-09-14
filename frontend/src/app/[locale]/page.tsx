@@ -2,8 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import HomeClient from './HomeClient';
 import { contentApi } from '@/lib/api';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 60;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -18,7 +17,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   let initialContent: Record<string, any> = {};
   try {
-    const res = await contentApi.getAll();
+    const fetchPromise = contentApi.getAll();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('SSR timeout')), 1200)
+    );
+    const res = (await Promise.race([fetchPromise, timeoutPromise])) as any;
     initialContent = res?.data || res || {};
   } catch {
     // fallback to client-side fetching / defaults

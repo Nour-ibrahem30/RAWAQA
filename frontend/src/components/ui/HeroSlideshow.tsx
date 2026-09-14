@@ -117,8 +117,8 @@ export default function HeroSlideshow({ className = '', style }: Props) {
 
       {/* ── Dot indicators ── */}
       <div style={{
-        position: 'absolute', bottom: '1.25rem', left: '50%',
-        transform: 'translateX(-50%)', display: 'flex', gap: '.45rem', zIndex: 10,
+        position: 'absolute', bottom: '0.75rem', left: '50%',
+        transform: 'translateX(-50%)', display: 'flex', gap: '0.15rem', zIndex: 10,
       }}>
         {SLIDES.map((_, i) => (
           <button
@@ -126,15 +126,29 @@ export default function HeroSlideshow({ className = '', style }: Props) {
             aria-label={`Slide ${i + 1}`}
             onClick={() => goTo(i)}
             style={{
-              width: i === currentIdx ? 24 : 7,
-              height: 7,
-              borderRadius: 999,
-              background: i === currentIdx ? 'var(--gold-light)' : 'rgba(247,244,236,.3)',
-              border: 'none', cursor: 'pointer', padding: 0,
-              transition: 'width 380ms cubic-bezier(.34,1.56,.64,1), background 300ms ease',
-              boxShadow: i === currentIdx ? '0 0 10px rgba(210,181,106,.55)' : 'none',
+              width: 44,
+              height: 44,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
             }}
-          />
+          >
+            <span
+              style={{
+                width: i === currentIdx ? 24 : 7,
+                height: 7,
+                borderRadius: 999,
+                background: i === currentIdx ? 'var(--gold-light)' : 'rgba(247,244,236,.35)',
+                transition: 'all 300ms ease',
+                boxShadow: i === currentIdx ? '0 0 10px rgba(210,181,106,.55)' : 'none',
+                display: 'block',
+              }}
+            />
+          </button>
         ))}
       </div>
 

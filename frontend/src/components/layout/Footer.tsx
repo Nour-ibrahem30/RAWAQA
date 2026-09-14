@@ -65,7 +65,7 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="flex flex-col items-center md:items-start max-w-sm">
             <Link href={`/${locale}`} className="inline-flex items-center gap-3 mb-3">
-              <Image src="/logo.png" alt="RAWAQA" width={38} height={38} style={{ objectFit: 'contain', borderRadius: 8 }} />
+              <Image src="/logo.png" alt="" aria-hidden="true" width={38} height={38} style={{ objectFit: 'contain', borderRadius: 8 }} />
               <span style={{ fontFamily: 'var(--font-fraunces, serif)', fontSize: '1.25rem', letterSpacing: '.14em', color: 'var(--ivory)', fontWeight: 600 }}>
                 RAWAQA
               </span>

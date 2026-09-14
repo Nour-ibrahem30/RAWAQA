@@ -188,9 +188,9 @@ export default function AdPopup({ locale }: Props) {
               {isAr ? 'تسوق الآن ←' : 'Shop Now →'}
             </Link>
             <button onClick={close}
-              style={{ background: 'none', border: '1px solid rgba(210,181,106,.2)', color: 'rgba(247,244,236,.45)', fontSize: '.82rem', padding: '.65rem 1.1rem', borderRadius: 999, cursor: 'pointer', transition: 'all 200ms ease' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(210,181,106,.5)'; e.currentTarget.style.color = 'rgba(247,244,236,.7)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(210,181,106,.2)'; e.currentTarget.style.color = 'rgba(247,244,236,.45)'; }}>
+              style={{ background: 'none', border: '1px solid rgba(210,181,106,.35)', color: 'rgba(247,244,236,.85)', fontSize: '.82rem', padding: '.65rem 1.1rem', borderRadius: 999, cursor: 'pointer', transition: 'all 200ms ease' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(210,181,106,.7)'; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(210,181,106,.35)'; e.currentTarget.style.color = 'rgba(247,244,236,.85)'; }}>
               {isAr ? 'لاحقاً' : 'Maybe Later'}
             </button>
           </div>

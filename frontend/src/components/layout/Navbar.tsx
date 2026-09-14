@@ -57,7 +57,8 @@ export default function Navbar() {
         <Link href={`/${locale}`} style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
           <Image
             src="/logo.png"
-            alt="RAWAQA"
+            alt=""
+            aria-hidden="true"
             width={44}
             height={44}
             style={{ objectFit: 'contain', borderRadius: 10, filter: solid ? 'none' : 'brightness(1.1)' }}
@@ -184,7 +185,7 @@ export default function Navbar() {
         <div className="fixed inset-0 z-[200] flex flex-col" style={{ background: 'var(--charcoal)', color: 'var(--ivory)' }}>
           <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--charcoal-line)]">
             <Link href={`/${locale}`} onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-              <Image src="/logo.png" alt="RAWAQA" width={36} height={36} style={{ objectFit: 'contain', borderRadius: 8 }} />
+              <Image src="/logo.png" alt="" aria-hidden="true" width={36} height={36} style={{ objectFit: 'contain', borderRadius: 8 }} />
               <span style={{ fontFamily: 'var(--font-fraunces, serif)', fontSize: '1rem', letterSpacing: '.14em', color: 'var(--ivory)' }}>RAWAQA</span>
             </Link>
             <button onClick={() => setMenuOpen(false)} className="text-ivory/60 hover:text-ivory text-2xl">✕</button>
