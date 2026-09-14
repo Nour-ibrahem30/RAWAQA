@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { productsApi, categoriesApi, uploadApi } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { AdminInput, AdminTextarea, AdminSelect } from '@/components/admin/AdminInput';
+import { resolveProductImageUrl } from '@/lib/utils';
 import type { Category, Product } from '@/lib/types';
 
 interface Props { productId?: string; }
@@ -215,22 +216,19 @@ export default function ProductForm({ productId }: Props) {
           </label>
         </div>
 
-        <AdminInput
+        <AdminTextarea
           label="Image URLs (comma separated or uploaded from computer)"
           value={form.images}
           onChange={set('images')}
-          placeholder="https://cdn.example.com/img1.jpg, /uploads/products/123.jpg"
+          rows={3}
+          placeholder="https://cdn.example.com/img1.jpg, /products/chair-lounge-new/img-1.jpg"
         />
 
         {/* Thumbnail Preview Grid */}
         {form.images && (
           <div className="flex flex-wrap gap-3 mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,.07)' }}>
-            {form.images.split(',').map(s => s.trim()).filter(Boolean).map((url, idx) => {
-              const previewSrc = url.startsWith('http')
-                ? url
-                : (url.startsWith('/uploads')
-                  ? `${(process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/?$/, '')}${url}`
-                  : url);
+            {form.images.split(',').map(s => s.trim()).filter(Boolean).map((rawUrl, idx) => {
+              const previewSrc = resolveProductImageUrl(rawUrl);
 
               return (
                 <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-white/10 bg-black/40">
@@ -238,8 +236,11 @@ export default function ProductForm({ productId }: Props) {
                     src={previewSrc}
                     alt={`Product img ${idx + 1}`}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                     onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = '/products/cloud-lounger.jpg';
+                      const target = e.currentTarget as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = '/products/cloud-lounger.jpg';
                     }}
                   />
                   <button
@@ -249,7 +250,7 @@ export default function ProductForm({ productId }: Props) {
                       list.splice(idx, 1);
                       setForm(f => ({ ...f, images: list.join(', ') }));
                     }}
-                    className="absolute top-0.5 right-0.5 bg-red-600/80 hover:bg-red-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center"
+                    className="absolute top-0.5 right-0.5 bg-red-600/80 hover:bg-red-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center cursor-pointer shadow-sm"
                     title="Remove image"
                   >
                     ✕

@@ -13,7 +13,7 @@ import { STATIC_PRODUCTS } from '@/lib/staticProducts';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
-import { loc, formatPrice } from '@/lib/utils';
+import { loc, formatPrice, resolveProductImageUrl } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 
 // Force dynamic rendering (client component with dynamic params)
@@ -178,7 +178,7 @@ export default function ProductDetailPage() {
               {images.map((img, idx) => (
                 <Image
                   key={img + idx}
-                  src={img}
+                  src={resolveProductImageUrl(img)}
                   alt={`${name} — ${isAr ? 'صورة' : 'image'} ${idx + 1}`}
                   fill
                   style={{
@@ -242,7 +242,7 @@ export default function ProductDetailPage() {
                       boxShadow: i === activeImage ? `0 0 12px rgba(210,181,106,.4)` : 'none',
                     }}
                   >
-                    <Image src={img} alt={`${name} ${i + 1}`} fill style={{ objectFit: 'cover' }} sizes="60px" />
+                    <Image src={resolveProductImageUrl(img)} alt={`${name} ${i + 1}`} fill style={{ objectFit: 'cover' }} sizes="60px" />
                   </button>
                 ))}
               </div>

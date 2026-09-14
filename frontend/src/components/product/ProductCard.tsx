@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
-import { loc, formatPrice } from '@/lib/utils';
+import { loc, formatPrice, resolveProductImageUrl } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 import WishlistButton from './WishlistButton';
 
@@ -20,16 +20,20 @@ const BAG_SVG: Record<string, string> = {
 };
 
 function ProductImage({ src, name, product }: { src?: string; name: string; product: Product }) {
-  if (src) {
+  const [imgError, setImgError] = useState(false);
+  const resolved = resolveProductImageUrl(src);
+
+  if (src && !imgError) {
     return (
       <Image
-        src={src}
+        src={resolved}
         alt={name}
         fill
         quality={72}
         className="object-cover card-img"
         sizes="(max-width: 640px) 92vw, (max-width: 1024px) 45vw, 360px"
         style={{ transition: 'transform 500ms cubic-bezier(.22,.61,.36,1)' }}
+        onError={() => setImgError(true)}
       />
     );
   }

@@ -87,3 +87,20 @@ export function applyColors(colors: Record<string, string>) {
     );
   }
 }
+
+/** Resolves any image URL safely (handles localhost, /uploads, Cloudinary, fallback) */
+export function resolveProductImageUrl(url: string | undefined | null): string {
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return '/products/cloud-lounger.jpg';
+  }
+  const clean = url.trim();
+  const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/?$/, '');
+
+  if (clean.includes('localhost:5002') || clean.includes('127.0.0.1:5002')) {
+    return clean.replace(/https?:\/\/(?:localhost|127\.0\.0\.1):5002/, apiOrigin);
+  }
+  if (clean.startsWith('/uploads')) {
+    return `${apiOrigin}${clean}`;
+  }
+  return clean;
+}
