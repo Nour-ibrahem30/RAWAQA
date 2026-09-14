@@ -78,7 +78,6 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-8">
           {[
             { label: t('shop'), href: `/${locale}/shop` },
-            { label: t('collections'), href: `/${locale}#collections` },
             { label: t('track'), href: `/${locale}/track` },
           ].map((l) => (
             <Link
@@ -193,7 +192,6 @@ export default function Navbar() {
           <nav className="flex flex-col gap-1 p-6">
             {[
               { label: t('shop'), href: `/${locale}/shop` },
-              { label: t('collections'), href: `/${locale}#collections` },
               { label: locale === 'ar' ? 'المفضلة' : 'Wishlist', href: `/${locale}/wishlist` },
               { label: t('track'), href: `/${locale}/track` },
               { label: t('cart'), href: `/${locale}/cart` },

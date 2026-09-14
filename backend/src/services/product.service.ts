@@ -38,26 +38,31 @@ export const getProducts = async (
   const filter: FilterQuery<IProduct> = {};
 
   if (category) {
-    const categoryIds: any[] = [];
+    const categoryIds: mongoose.Types.ObjectId[] = [];
     if (mongoose.Types.ObjectId.isValid(category)) {
       categoryIds.push(new mongoose.Types.ObjectId(category));
     }
     const matchedCategories = await Category.find({
       $or: [
-        { slugEn: category.toLowerCase() },
-        { slugAr: category.toLowerCase() },
+        { slugEn: new RegExp(`^${category}$`, 'i') },
+        { slugAr: new RegExp(`^${category}$`, 'i') },
         { nameEn: new RegExp(`^${category}$`, 'i') },
         { nameAr: category },
-        ...(mongoose.Types.ObjectId.isValid(category) ? [{ _id: category }] : []),
+        ...(mongoose.Types.ObjectId.isValid(category) ? [{ _id: new mongoose.Types.ObjectId(category) }] : []),
       ],
     }).select('_id');
 
-    matchedCategories.forEach((c) => categoryIds.push(c._id));
+    matchedCategories.forEach((c) => {
+      const oid = c._id as mongoose.Types.ObjectId;
+      if (!categoryIds.some((id) => id.toString() === oid.toString())) {
+        categoryIds.push(oid);
+      }
+    });
 
     if (categoryIds.length > 0) {
-      filter.category = { $in: [...categoryIds, category] as any };
+      filter.category = { $in: categoryIds };
     } else {
-      filter.category = category as any;
+      filter.category = new mongoose.Types.ObjectId('000000000000000000000000');
     }
   }
 

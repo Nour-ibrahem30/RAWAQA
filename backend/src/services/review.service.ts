@@ -45,7 +45,7 @@ export const createReview = async (params: {
     existing.comment = comment;
     if (titleAr !== undefined) existing.titleAr = titleAr;
     if (titleEn !== undefined) existing.titleEn = titleEn;
-    existing.isApproved = false; // re-submit for admin moderation
+    existing.isApproved = false; // Pending admin approval
     existing.isVerifiedPurchase = isVerifiedPurchase;
     await existing.save();
     return existing;
@@ -60,7 +60,7 @@ export const createReview = async (params: {
     titleAr,
     titleEn,
     isVerifiedPurchase,
-    isApproved: false,   // pending admin approval
+    isApproved: false,   // Pending admin approval
   });
 
   return review;
@@ -99,7 +99,7 @@ export const getProductReviews = async (
 
   const skip = (page - 1) * limit;
 
-  const [reviews, total, stats] = await Promise.all([
+  const [rawReviews, total, stats] = await Promise.all([
     Review.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -124,6 +124,10 @@ export const getProductReviews = async (
   ]);
 
   const s = stats[0] || { avgRating: 0, dist1: 0, dist2: 0, dist3: 0, dist4: 0, dist5: 0 };
+  const reviews = rawReviews.map((r: any) => ({
+    ...r,
+    id: (r._id as any).toString(),
+  }));
 
   return {
     reviews,
@@ -181,7 +185,7 @@ export const syncProductRating = async (productId: string): Promise<void> => {
 // ─── Get pending reviews (admin) ──────────────────────────────────────────────
 export const getPendingReviews = async (page = 1, limit = 20): Promise<{ reviews: any[]; total: number }> => {
   const skip = (page - 1) * limit;
-  const [reviews, total] = await Promise.all([
+  const [rawReviews, total] = await Promise.all([
     Review.find({ isApproved: false })
       .sort({ createdAt: 1 })
       .skip(skip)
@@ -191,6 +195,10 @@ export const getPendingReviews = async (page = 1, limit = 20): Promise<{ reviews
       .lean(),
     Review.countDocuments({ isApproved: false }),
   ]);
+  const reviews = rawReviews.map((r: any) => ({
+    ...r,
+    id: (r._id as any).toString(),
+  }));
   return { reviews, total };
 };
 
@@ -205,7 +213,7 @@ export const getAllReviewsAdmin = async (
   if (filter === 'approved') query.isApproved = true;
 
   const skip = (page - 1) * limit;
-  const [reviews, total, pendingCount, approvedCount] = await Promise.all([
+  const [rawReviews, total, pendingCount, approvedCount] = await Promise.all([
     Review.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -217,5 +225,9 @@ export const getAllReviewsAdmin = async (
     Review.countDocuments({ isApproved: false }),
     Review.countDocuments({ isApproved: true }),
   ]);
+  const reviews = rawReviews.map((r: any) => ({
+    ...r,
+    id: (r._id as any).toString(),
+  }));
   return { reviews, total, pendingCount, approvedCount };
 };

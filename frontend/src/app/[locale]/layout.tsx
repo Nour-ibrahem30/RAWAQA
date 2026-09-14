@@ -77,7 +77,6 @@ export default async function LocaleLayout({
       <AuthProvider>
         <CartProvider>
           <ToastProvider>
-            <ScrollProgress />
             <Navbar />
             <ColorLoader />
             <ScrollReveal />

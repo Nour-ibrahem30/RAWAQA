@@ -106,9 +106,15 @@ export default function ProductReviews({ productId, locale, productRatings }: Pr
         ...(form.titleAr?.trim() ? { titleAr: form.titleAr.trim() } : {}),
         ...(form.titleEn?.trim() ? { titleEn: form.titleEn.trim() } : {}),
       });
-      showToast(isAr ? 'تم إرسال تقييمك بنجاح! سيظهر بعد مراجعة الإدارة.' : 'Review submitted successfully! It will appear once approved by admin.', 'success');
+      showToast(isAr ? 'تم إرسال تقييمك بنجاح! شكراً لمشاركتك رأيك، سيتم نشره قريباً.' : 'Review submitted successfully! Thank you for your feedback, it will appear shortly.', 'success');
       setShowForm(false);
       setForm({ rating: 0, comment: '', titleAr: '', titleEn: '' });
+      try {
+        const r = await reviewsApi.list(productId, 1, locale);
+        if (r.data) setReviews(r.data);
+      } catch {
+        // Keep current reviews
+      }
     } catch (err: unknown) {
       showToast((err as Error).message || (isAr ? 'حدث خطأ أثناء إرسال التقييم' : 'Error submitting review'), 'error');
     } finally {

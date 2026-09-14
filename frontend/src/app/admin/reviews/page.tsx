@@ -63,7 +63,7 @@ export default function AdminReviewsPage() {
     try {
       await reviewsApi.adminApprove(id);
       showToast('Review approved successfully / تم قبول التقييم بنجاح', 'success');
-      setReviews(prev => prev.map(r => r.id === id ? { ...r, isApproved: true } : r));
+      setReviews(prev => prev.map(r => ((r.id || (r as any)._id) === id) ? { ...r, isApproved: true } : r));
     } catch (err: unknown) {
       showToast((err as Error).message || 'Failed to approve review', 'error');
     } finally {
@@ -79,7 +79,7 @@ export default function AdminReviewsPage() {
     try {
       await reviewsApi.adminDelete(id);
       showToast('Review deleted / تم حذف التقييم', 'success');
-      setReviews(prev => prev.filter(r => r.id !== id));
+      setReviews(prev => prev.filter(r => (r.id || (r as any)._id) !== id));
     } catch (err: unknown) {
       showToast((err as Error).message || 'Failed to delete review', 'error');
     } finally {
@@ -189,12 +189,13 @@ export default function AdminReviewsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {filteredReviews.map(r => {
+            const revId = (r.id || (r as any)._id || '').toString();
             const product = typeof r.product === 'object' && r.product ? r.product : null;
             const productName = product ? (product.nameEn || product.nameAr || 'Product') : 'Product';
             const user = r.user;
 
             return (
-              <div key={r.id} style={CARD} className="p-5 flex flex-col gap-3">
+              <div key={revId} style={CARD} className="p-5 flex flex-col gap-3">
                 {/* Header row: Product & Status */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
                   <div className="flex items-center gap-3">
@@ -203,9 +204,9 @@ export default function AdminReviewsPage() {
                       color: r.isApproved ? '#34d399' : '#fbbf24',
                       border: r.isApproved ? '1px solid rgba(16,185,129,.3)' : '1px solid rgba(245,158,11,.3)',
                     }}>
-                      {r.isApproved ? '✓ Approved' : '⏳ Pending Moderation'}
+                      {r.isApproved ? '✓ Approved' : '⏳ Pending Approval'}
                     </span>
-                    <span className="text-xs font-semibold" style={{ color: GOLD }}>
+                    <span className="text-xs font-semibold" style={{ color: IVORY }}>
                       {productName}
                     </span>
                   </div>
@@ -256,20 +257,20 @@ export default function AdminReviewsPage() {
                 <div className="flex items-center justify-end gap-2 pt-1">
                   {!r.isApproved && (
                     <button
-                      onClick={() => handleApprove(r.id)}
-                      disabled={actionLoading === r.id}
+                      onClick={() => handleApprove(revId)}
+                      disabled={actionLoading === revId}
                       className="text-xs font-semibold px-4 py-1.5 rounded-pill transition-opacity bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
                     >
-                      {actionLoading === r.id ? 'Approving...' : '✓ Approve Review'}
+                      {actionLoading === revId ? 'Approving...' : '✓ Approve Review'}
                     </button>
                   )}
                   <button
-                    onClick={() => handleDelete(r.id)}
-                    disabled={actionLoading === r.id}
+                    onClick={() => handleDelete(revId)}
+                    disabled={actionLoading === revId}
                     className="text-xs font-semibold px-3 py-1.5 rounded-pill transition-opacity text-red-400 hover:text-red-300 hover:bg-red-500/10 disabled:opacity-50"
                     style={{ border: '1px solid rgba(239,68,68,.3)' }}
                   >
-                    {actionLoading === r.id ? 'Deleting...' : '🗑 Delete'}
+                    {actionLoading === revId ? 'Deleting...' : '🗑 Delete'}
                   </button>
                 </div>
               </div>

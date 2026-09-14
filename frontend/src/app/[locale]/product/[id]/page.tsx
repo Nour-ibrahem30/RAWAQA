@@ -175,17 +175,23 @@ export default function ProductDetailPage() {
               background: CARD, border: `1px solid ${BORDER}`,
               boxShadow: '0 20px 60px rgba(0,0,0,.4)',
             }}>
-              {images[activeImage] ? (
+              {images.map((img, idx) => (
                 <Image
-                  key={activeImage}
-                  src={images[activeImage]}
-                  alt={`${name} — ${isAr ? 'صورة' : 'image'} ${activeImage + 1}`}
+                  key={img + idx}
+                  src={img}
+                  alt={`${name} — ${isAr ? 'صورة' : 'image'} ${idx + 1}`}
                   fill
-                  style={{ objectFit: 'cover', transition: 'opacity 350ms ease' }}
-                  priority={activeImage === 0}
+                  style={{
+                    objectFit: 'cover',
+                    opacity: idx === activeImage ? 1 : 0,
+                    transition: 'opacity 300ms ease',
+                    pointerEvents: idx === activeImage ? 'auto' : 'none',
+                  }}
+                  priority={idx < 2}
                   sizes="(max-width: 1024px) 100vw, 50vw"
                 />
-              ) : (
+              ))}
+              {images.length === 0 && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="65%" height="65%" viewBox="0 0 400 400" fill={GOLD} style={{ filter: `drop-shadow(0 20px 40px ${GOLD}55)` }}>
                     <path d="M80 300 C30 220 60 110 165 75 C270 40 360 120 350 220 C342 300 270 355 190 355 C130 355 115 345 80 300Z" />

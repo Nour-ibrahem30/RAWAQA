@@ -42,9 +42,9 @@ const envSchema = z.object({
 
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: z.coerce.number().positive().default(900000),
-  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().positive().default(100),
+  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().positive().default(1000),
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().positive().default(900000),
-  AUTH_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().positive().default(5),
+  AUTH_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().positive().default(20),
 
   // Email (SMTP)
   SMTP_HOST:   z.string().optional(),
@@ -144,7 +144,7 @@ const envSchema = z.object({
 
   // Security
   HELMET_CSP_ENABLED: z.string().transform((val) => val === 'true').default('true'),
-  TRUST_PROXY: z.string().transform((val) => val === 'true').default('false'),
+  TRUST_PROXY: z.string().transform((val) => val === 'true').default('true'),
 
   // Monitoring
   SENTRY_DSN: z.string().optional(),
