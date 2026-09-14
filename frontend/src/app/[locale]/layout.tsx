@@ -48,6 +48,17 @@ const cairo = Cairo({
 export const metadata: Metadata = {
   title: 'RAWAQA — Crafted Comfort. Designed for Life.',
   description: 'Premium bean bags and relaxed seating for the Egyptian home.',
+  icons: {
+    icon: [
+      { url: '/logo.png', type: 'image/png' },
+      { url: '/logo.png', sizes: '32x32', type: 'image/png' },
+      { url: '/logo.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/logo.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/logo.png',
+  },
 };
 
 const fontClasses = [
