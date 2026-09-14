@@ -97,7 +97,7 @@ export default function ProductForm({ productId }: Props) {
         },
         featured: form.featured,
         status: form.status,
-        images: form.images.split(',').map(s => s.trim()).filter(Boolean),
+        images: form.images.split(/[\n,]+/).map(s => s.trim()).filter(Boolean),
       };
       if (productId) {
         await productsApi.update(productId, payload as Partial<Product>);
@@ -202,7 +202,7 @@ export default function ProductForm({ productId }: Props) {
                 setUploading(true);
                 try {
                   const uploadedUrls = await uploadApi.direct(Array.from(files));
-                  const currentUrls = form.images ? form.images.split(',').map(s => s.trim()).filter(Boolean) : [];
+                  const currentUrls = form.images ? form.images.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
                   const combined = [...currentUrls, ...uploadedUrls];
                   setForm(f => ({ ...f, images: combined.join(', ') }));
                   showToast(`${uploadedUrls.length} image(s) uploaded successfully!`, 'success');
@@ -217,7 +217,7 @@ export default function ProductForm({ productId }: Props) {
         </div>
 
         <AdminTextarea
-          label="Image URLs (comma separated or uploaded from computer)"
+          label="Image URLs (comma separated, new line per image, or uploaded from computer)"
           value={form.images}
           onChange={set('images')}
           rows={3}
@@ -227,7 +227,7 @@ export default function ProductForm({ productId }: Props) {
         {/* Thumbnail Preview Grid */}
         {form.images && (
           <div className="flex flex-wrap gap-3 mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,.07)' }}>
-            {form.images.split(',').map(s => s.trim()).filter(Boolean).map((rawUrl, idx) => {
+            {form.images.split(/[\n,]+/).map(s => s.trim()).filter(Boolean).map((rawUrl, idx) => {
               const previewSrc = resolveProductImageUrl(rawUrl);
 
               return (
@@ -246,7 +246,7 @@ export default function ProductForm({ productId }: Props) {
                   <button
                     type="button"
                     onClick={() => {
-                      const list = form.images.split(',').map(s => s.trim()).filter(Boolean);
+                      const list = form.images.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
                       list.splice(idx, 1);
                       setForm(f => ({ ...f, images: list.join(', ') }));
                     }}
