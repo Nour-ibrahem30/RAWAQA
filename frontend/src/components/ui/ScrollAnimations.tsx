@@ -5,6 +5,17 @@ import { useEffect, useRef } from 'react';
 /* ─── Intersection Observer — reveal on scroll ─── */
 export function ScrollReveal() {
   useEffect(() => {
+    const revealAll = () => {
+      document.querySelectorAll('[data-reveal], [data-stagger]').forEach((el) => {
+        el.classList.add('revealed');
+      });
+    };
+
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) {
+      revealAll();
+      return;
+    }
+
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
@@ -14,14 +25,24 @@ export function ScrollReveal() {
           }
         });
       },
-      { threshold: 0.1, rootMargin: '0px 0px -60px 0px' }
+      { threshold: 0.01, rootMargin: '100px 0px 100px 0px' }
     );
 
-    document.querySelectorAll('[data-reveal], [data-stagger]').forEach((el) =>
-      io.observe(el)
-    );
+    const observe = () => {
+      document.querySelectorAll('[data-reveal]:not(.revealed), [data-stagger]:not(.revealed)').forEach((el) =>
+        io.observe(el)
+      );
+    };
 
-    return () => io.disconnect();
+    observe();
+    const t1 = setTimeout(observe, 200);
+    const t2 = setTimeout(revealAll, 1200);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      io.disconnect();
+    };
   }, []);
 
   return null;

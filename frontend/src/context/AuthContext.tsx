@@ -91,11 +91,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    const refreshToken = localStorage.getItem('refreshToken') || '';
-    try { await authApi.logout(refreshToken); } catch { /* ignore */ }
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('rawaqa_user');
+    const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+    if (refreshToken) {
+      try { await authApi.logout(refreshToken); } catch { /* ignore */ }
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('rawaqa_user');
+    }
     setUser(null);
   }, []);
 

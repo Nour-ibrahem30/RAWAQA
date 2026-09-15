@@ -150,11 +150,11 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
   const aboutRef      = useRef<HTMLElement>(null);
   const whyRef        = useRef<HTMLElement>(null);
   const reviewsRef    = useRef<HTMLElement>(null);
-  const [catsVisible,     setCatsVisible]     = useState(false);
-  const [featuredVisible, setFeaturedVisible] = useState(false);
-  const [aboutVisible,    setAboutVisible]    = useState(false);
-  const [whyVisible,      setWhyVisible]      = useState(false);
-  const [reviewsVisible,  setReviewsVisible]  = useState(false);
+  const [catsVisible,     setCatsVisible]     = useState(true);
+  const [featuredVisible, setFeaturedVisible] = useState(true);
+  const [aboutVisible,    setAboutVisible]    = useState(true);
+  const [whyVisible,      setWhyVisible]      = useState(true);
+  const [reviewsVisible,  setReviewsVisible]  = useState(true);
 
   useEffect(() => {
     productsApi.featured(locale)
