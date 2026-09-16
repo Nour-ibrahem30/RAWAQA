@@ -102,7 +102,8 @@ export const listFeaturedProducts = async (
   res: Response
 ): Promise<void> => {
   try {
-    const limit = parseInt(_req.query.limit as string) || 10;
+    const parsed = parseInt(_req.query.limit as string, 10);
+    const limit = Math.min(Math.max(1, isNaN(parsed) ? 10 : parsed), 50);
     const products = await getFeaturedProducts(limit);
 
     res.status(200).json({

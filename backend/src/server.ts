@@ -385,10 +385,21 @@ app.use((req: Request, res: Response) => {
 
 // Global Error Handler
 app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+  let sanitizedBody: any = req.body;
+  if (req.body && typeof req.body === 'object') {
+    sanitizedBody = { ...req.body };
+    const sensitiveKeys = ['password', 'confirmPassword', 'currentPassword', 'newPassword', 'token', 'refreshToken', 'secret', 'otp'];
+    sensitiveKeys.forEach((key) => {
+      if (key in sanitizedBody) {
+        sanitizedBody[key] = '[REDACTED]';
+      }
+    });
+  }
+
   logError('Unhandled error', err, {
     method: req.method,
     path: req.path,
-    body: req.body,
+    body: sanitizedBody,
     query: req.query,
   });
 

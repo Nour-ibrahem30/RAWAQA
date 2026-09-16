@@ -465,28 +465,34 @@ export const deleteProduct = async (id: string): Promise<IProduct | null> => {
   return product;
 };
 
-// Get featured products (pure read with 60s TTL cache)
+// Get featured products (pure read with 60s TTL cache, bounded to max 50 items and 10 cache slots)
 export const getFeaturedProducts = async (limit: number = 10): Promise<any[]> => {
+  const safeLimit = Math.min(Math.max(1, Math.floor(limit || 10)), 50);
   const now = Date.now();
-  if (featuredCache[limit] && featuredCache[limit].expiresAt > now) {
-    return featuredCache[limit].data;
+  if (featuredCache[safeLimit] && featuredCache[safeLimit].expiresAt > now) {
+    return featuredCache[safeLimit].data;
   }
 
   let products = await Product.find({ featured: true, status: ProductStatus.ACTIVE })
     .sort({ createdAt: -1, orderCount: -1, viewCount: -1 })
-    .limit(limit)
+    .limit(safeLimit)
     .populate('category', 'nameAr nameEn slugAr slugEn')
     .lean();
 
   if (!products || products.length === 0) {
     products = await Product.find({ status: ProductStatus.ACTIVE })
       .sort({ createdAt: -1 })
-      .limit(limit)
+      .limit(safeLimit)
       .populate('category', 'nameAr nameEn slugAr slugEn')
       .lean();
   }
 
-  featuredCache[limit] = {
+  // Memory safety: keep cache bounded to at most 10 active keys
+  if (Object.keys(featuredCache).length >= 10) {
+    featuredCache = {};
+  }
+
+  featuredCache[safeLimit] = {
     data: products,
     expiresAt: now + 60_000,
   };
