@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+logs
+uploads
+*.log
+*.tsbuildinfo
+dist/**/*.map
+src/**/*.test.ts
+src/__tests__

@@ -1,0 +1,10 @@
+.git
+.github
+.gitignore
+frontend
+node_modules
+.next
+logs
+uploads
+*.log
+*.tsbuildinfo
