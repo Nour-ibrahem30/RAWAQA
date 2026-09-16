@@ -2,9 +2,14 @@
 .github
 .gitignore
 frontend
+ai
+docs
+scratch
 node_modules
 .next
 logs
 uploads
 *.log
 *.tsbuildinfo
+*.md
+
