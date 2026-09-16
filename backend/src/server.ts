@@ -103,14 +103,26 @@ app.get('/health/live', (_req: Request, res: Response) => {
   });
 });
 
-// Readiness probe: returns 200 if MongoDB is connected, 503 if not ready
-app.get('/health/ready', (_req: Request, res: Response) => {
+// Readiness probe: returns 200 if MongoDB is connected, 503 if not ready (includes safe redacted diagnostic when disconnected)
+app.get('/health/ready', async (req: Request, res: Response) => {
   const isReady = database.isConnected();
+  const runProbes = req.query['probe'] === 'true';
+  const diagnostic = !isReady || req.query['diagnostic'] === 'true'
+    ? await database.getDiagnosticInfo(runProbes)
+    : undefined;
+
   res.status(isReady ? 200 : 503).json({
     status: isReady ? 'ready' : 'not_ready',
     database: isReady ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
+    ...(diagnostic && { diagnostic }),
   });
+});
+
+// Dedicated safe non-destructive MongoDB diagnostic probe endpoint
+app.get('/health/db-diagnostic', async (_req: Request, res: Response) => {
+  const diag = await database.getDiagnosticInfo(true);
+  res.status(200).json(diag);
 });
 
 // Standard health check (backward-compatible; returns 503 if database disconnected)

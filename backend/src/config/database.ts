@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 import dns from 'dns';
+import net from 'net';
 import logger, { logError, logInfo } from './logger';
+
+// Store last connection error for non-destructive diagnostics
+export let lastConnectionError: any = null;
 
 // Only override DNS servers if explicitly provided in environment variables
 if (process.env['DNS_SERVERS']) {
@@ -78,6 +82,7 @@ export const connectDatabase = async (): Promise<void> => {
     });
 
   } catch (error: any) {
+    lastConnectionError = error;
     console.error('❌ Failed to connect to MongoDB:', error?.message || error);
     logError('Failed to connect to MongoDB', error);
     throw error;
@@ -109,6 +114,127 @@ export const getDatabaseStats = () => {
   };
 };
 
+// Non-destructive TCP probe helper
+const probeTcp = (host: string, port: number, timeoutMs = 3000): Promise<{ host: string; port: number; status: string; error?: string }> => {
+  return new Promise((resolve) => {
+    const s = net.createConnection({ host, port, timeout: timeoutMs });
+    s.on('connect', () => {
+      s.destroy();
+      resolve({ host, port, status: 'CONNECTED_OPEN' });
+    });
+    s.on('timeout', () => {
+      s.destroy();
+      resolve({ host, port, status: 'TIMED_OUT' });
+    });
+    s.on('error', (err: any) => {
+      resolve({ host, port, status: 'ERROR', error: err.code || err.message });
+    });
+  });
+};
+
+// Comprehensive, safe diagnostic collector (NO secrets, NO passwords exposed)
+export const getDiagnosticInfo = async (runActiveProbes = false) => {
+  const rawUri = process.env['NODE_ENV'] === 'test' 
+    ? process.env['MONGODB_URI_TEST'] 
+    : process.env['MONGODB_URI'];
+
+  let sanitizedConfig: any = { exists: Boolean(rawUri) };
+  if (rawUri) {
+    try {
+      const protocolMatch = rawUri.match(/^([^:]+):\/\//);
+      const protocol = protocolMatch ? protocolMatch[1] : 'unknown';
+      const withoutProtocol = rawUri.replace(/^[^:]+:\/\//, '');
+      const withoutAuth = withoutProtocol.replace(/^[^@]+@/, '');
+      const [hostPart, queryPart] = withoutAuth.split('?');
+      const [hosts, dbName] = hostPart ? hostPart.split('/') : ['', ''];
+      sanitizedConfig = {
+        exists: true,
+        protocol,
+        hosts: hosts ? hosts.split(',') : [],
+        database: dbName || null,
+        hasCredentials: rawUri.includes('@'),
+        isLocalhost: hosts ? (hosts.includes('localhost') || hosts.includes('127.0.0.1')) : false,
+        queryParams: queryPart ? queryPart.split('&').map((p) => p.split('=')[0]) : [],
+      };
+    } catch (e: any) {
+      sanitizedConfig = { exists: true, parseError: e.message };
+    }
+  }
+
+  const serializedError: any = lastConnectionError ? {
+    name: lastConnectionError.name || 'Error',
+    message: lastConnectionError.message ? String(lastConnectionError.message).replace(/:([^:@]+)@/, ':****@') : 'Unknown error',
+    code: lastConnectionError.code || null,
+    topologyType: lastConnectionError.reason?.type || null,
+    servers: [] as any[],
+  } : null;
+
+  if (lastConnectionError?.reason?.servers) {
+    try {
+      const serverEntries: any[] = lastConnectionError.reason.servers instanceof Map
+        ? Array.from(lastConnectionError.reason.servers.entries())
+        : Object.entries(lastConnectionError.reason.servers);
+      serializedError.servers = serverEntries.map((entry: any) => {
+        const addr = entry[0];
+        const server = entry[1] || {};
+        return {
+          address: addr,
+          type: server.type || 'Unknown',
+          errorName: server.error?.name || null,
+          errorMessage: server.error?.message ? String(server.error.message).replace(/:([^:@]+)@/, ':****@') : null,
+          errorCode: server.error?.code || null,
+        };
+      });
+    } catch (_e) {}
+  }
+
+  const diagnostic: any = {
+    timestamp: new Date().toISOString(),
+    isDatabaseConnected: isDatabaseConnected(),
+    environment: process.env['NODE_ENV'] || 'unknown',
+    mongooseVersion: mongoose.version,
+    configuredDnsServers: dns.getServers(),
+    uriConfig: sanitizedConfig,
+    connectionTimeouts: {
+      serverSelectionTimeoutMS: parseInt(process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '5000', 10),
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '45000', 10),
+    },
+    lastConnectionError: serializedError,
+  };
+
+  if (runActiveProbes && sanitizedConfig.hosts?.length) {
+    const activeProbes: any = { dnsSrv: null, dnsLookup: null, tcpPorts: [] };
+    const primaryHost = sanitizedConfig.hosts[0];
+    if (sanitizedConfig.protocol === 'mongodb+srv') {
+      try {
+        const srv = await dns.promises.resolveSrv('_mongodb._tcp.' + primaryHost);
+        activeProbes.dnsSrv = { status: 'success', records: srv.map((r) => ({ name: r.name, port: r.port })) };
+        for (const record of srv) {
+          const tcpStatus = await probeTcp(record.name, record.port, 3000);
+          activeProbes.tcpPorts.push(tcpStatus);
+        }
+      } catch (err: any) {
+        activeProbes.dnsSrv = { status: 'failed', code: err.code || 'UNKNOWN', message: err.message };
+      }
+    } else {
+      const [h, p] = primaryHost.split(':');
+      const port = parseInt(p || '27017', 10);
+      try {
+        const lookup = await dns.promises.lookup(h, { all: true });
+        activeProbes.dnsLookup = { status: 'success', addresses: lookup };
+      } catch (err: any) {
+        activeProbes.dnsLookup = { status: 'failed', code: err.code || 'UNKNOWN', message: err.message };
+      }
+      const tcpStatus = await probeTcp(h, port, 3000);
+      activeProbes.tcpPorts.push(tcpStatus);
+    }
+    diagnostic.activeProbes = activeProbes;
+  }
+
+  return diagnostic;
+};
+
 // Helper to check if transactions are supported by MongoDB topology
 export const supportsTransactions = (): boolean => {
   try {
@@ -130,4 +256,5 @@ export default {
   isConnected: isDatabaseConnected,
   supportsTransactions,
   getStats: getDatabaseStats,
+  getDiagnosticInfo,
 };
