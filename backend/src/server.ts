@@ -185,6 +185,7 @@ if (env.NODE_ENV === 'development') {
   app.use(
     morgan('combined', {
       stream: logger.stream as any,
+      skip: (req) => req.url.startsWith('/health'),
     })
   );
 }

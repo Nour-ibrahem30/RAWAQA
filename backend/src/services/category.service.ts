@@ -1,5 +1,6 @@
 import { Category, ICategory } from '../models/Category';
 import { Product } from '../models/Product';
+import { invalidateProductsCache } from './product.service';
 
 export const DEFAULT_CATEGORIES = [
   {
@@ -92,6 +93,7 @@ let categoriesCache: { active?: CategoryCacheEntry; all?: CategoryCacheEntry } =
 
 export const invalidateCategoryCache = (): void => {
   categoriesCache = {};
+  invalidateProductsCache();
 };
 
 // Get all categories (pure read with 60s TTL cache)

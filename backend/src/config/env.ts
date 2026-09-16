@@ -13,7 +13,7 @@ const envSchema = z.object({
   // Database
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/rawaqa'),
   MONGODB_URI_TEST: z.string().optional(),
-  MONGODB_MAX_POOL_SIZE: z.coerce.number().positive().default(10),
+  MONGODB_MAX_POOL_SIZE: z.coerce.number().positive().default(50),
   MONGODB_MIN_POOL_SIZE: z.coerce.number().positive().default(2),
   MONGODB_SOCKET_TIMEOUT: z.coerce.number().positive().default(45000),
   MONGODB_SERVER_SELECTION_TIMEOUT: z.coerce.number().positive().default(5000),

@@ -9,8 +9,26 @@ interface FeaturedCacheEntry {
 }
 let featuredCache: Record<number, FeaturedCacheEntry> = {};
 
+interface ProductsCacheEntry {
+  data: IPaginatedProducts;
+  expiresAt: number;
+}
+const productsCache = new Map<string, ProductsCacheEntry>();
+const inFlightProductQueries = new Map<string, Promise<IPaginatedProducts>>();
+const MAX_PRODUCTS_CACHE_ENTRIES = 50;
+const PRODUCTS_CACHE_TTL_MS = 30_000; // 30 seconds
+
 export const invalidateFeaturedCache = (): void => {
   featuredCache = {};
+};
+
+export const invalidateProductsCache = (): void => {
+  productsCache.clear();
+};
+
+export const invalidateProductCaches = (): void => {
+  featuredCache = {};
+  productsCache.clear();
 };
 
 // Query parameters interface
@@ -39,120 +57,161 @@ export interface IPaginatedProducts {
   };
 }
 
-// Get all products with filters and pagination
+// Get all products with filters and pagination (with 30s bounded cache and single-flight coalescing for public reads)
 export const getProducts = async (
   query: IProductQuery
 ): Promise<IPaginatedProducts> => {
   const { page, limit, category, status, featured, search, minPrice, maxPrice, inStock, sortBy, sortOrder } = query;
 
-  // Build filter
-  const filter: FilterQuery<IProduct> = {};
-
-  if (category) {
-    let cleanCat = category.trim();
-    try {
-      cleanCat = decodeURIComponent(category).trim();
-    } catch {
-      cleanCat = category.trim();
-    }
-    const categoryIds: mongoose.Types.ObjectId[] = [];
-    if (mongoose.Types.ObjectId.isValid(cleanCat)) {
-      categoryIds.push(new mongoose.Types.ObjectId(cleanCat));
-    }
-    // Fast path: try exact/lowercased match against indexed slugs and names
-    let matchedCategories = await Category.find({
-      $or: [
-        { slugEn: cleanCat.toLowerCase() },
-        { slugAr: cleanCat.toLowerCase() },
-        { nameEn: cleanCat },
-        { nameAr: cleanCat },
-        ...(mongoose.Types.ObjectId.isValid(cleanCat) ? [{ _id: new mongoose.Types.ObjectId(cleanCat) }] : []),
-      ],
-    }).select('_id').lean();
-
-    // Fallback: case-insensitive regex only if exact lookup finds nothing
-    if (matchedCategories.length === 0) {
-      const orQueries: any[] = [
-        { slugEn: new RegExp(`^${cleanCat}$`, 'i') },
-        { slugAr: new RegExp(`^${cleanCat}$`, 'i') },
-        { nameEn: new RegExp(`^${cleanCat}$`, 'i') },
-        { nameAr: new RegExp(`^${cleanCat}$`, 'i') },
-      ];
-      if (mongoose.Types.ObjectId.isValid(cleanCat)) {
-        orQueries.push({ _id: new mongoose.Types.ObjectId(cleanCat) });
-      }
-      matchedCategories = await Category.find({ $or: orQueries }).select('_id').lean();
-    }
-
-    matchedCategories.forEach((c) => {
-      const oid = c._id as mongoose.Types.ObjectId;
-      if (!categoryIds.some((id) => id.toString() === oid.toString())) {
-        categoryIds.push(oid);
-      }
-    });
-
-    if (categoryIds.length > 0) {
-      filter.category = { $in: categoryIds };
-    } else {
-      filter.category = new mongoose.Types.ObjectId('000000000000000000000000');
-    }
-  }
-
-  if (status) {
-    filter.status = status;
-  }
-
-  if (featured !== undefined) {
-    filter.featured = featured;
-  }
-
-  if (minPrice !== undefined || maxPrice !== undefined) {
-    filter.price = {};
-    if (minPrice !== undefined) {
-      filter.price.$gte = minPrice;
-    }
-    if (maxPrice !== undefined) {
-      filter.price.$lte = maxPrice;
-    }
-  }
-
-  if (inStock !== undefined && inStock) {
-    filter['inventory.availableQuantity'] = { $gt: 0 };
-  }
-
-  // Text search
-  if (search) {
-    filter.$text = { $search: search };
-  }
-
-  // Build sort
-  const sort: { [key: string]: SortOrder } = {};
   const actualSortBy = sortBy || 'createdAt';
   const actualSortOrder = sortOrder === 'asc' ? 1 : -1;
-  sort[actualSortBy] = actualSortOrder;
+  const isCacheable = !status || status === ProductStatus.ACTIVE;
+  const cacheKey = isCacheable
+    ? `${page || 1}|${limit || 10}|${category || ''}|${featured !== undefined ? featured : ''}|${search || ''}|${minPrice ?? ''}|${maxPrice ?? ''}|${inStock ? 1 : 0}|${actualSortBy}|${actualSortOrder}`
+    : '';
 
-  // Execute query
-  const skip = (page - 1) * limit;
-  
-  const [products, total] = await Promise.all([
-    Product.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .populate('category', 'nameAr nameEn slugAr slugEn')
-      .lean(),
-    Product.countDocuments(filter),
-  ]);
+  if (isCacheable && cacheKey) {
+    const cached = productsCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.data;
+    }
+    const inFlight = inFlightProductQueries.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
+    }
+  }
 
-  return {
-    products: products as any,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
-    },
+  const executeQuery = async (): Promise<IPaginatedProducts> => {
+    // Build filter
+    const filter: FilterQuery<IProduct> = {};
+
+    if (category) {
+      let cleanCat = category.trim();
+      try {
+        cleanCat = decodeURIComponent(category).trim();
+      } catch {
+        cleanCat = category.trim();
+      }
+      const categoryIds: mongoose.Types.ObjectId[] = [];
+      if (mongoose.Types.ObjectId.isValid(cleanCat)) {
+        categoryIds.push(new mongoose.Types.ObjectId(cleanCat));
+      }
+      // Fast path: try exact/lowercased match against indexed slugs and names
+      let matchedCategories = await Category.find({
+        $or: [
+          { slugEn: cleanCat.toLowerCase() },
+          { slugAr: cleanCat.toLowerCase() },
+          { nameEn: cleanCat },
+          { nameAr: cleanCat },
+          ...(mongoose.Types.ObjectId.isValid(cleanCat) ? [{ _id: new mongoose.Types.ObjectId(cleanCat) }] : []),
+        ],
+      }).select('_id').lean();
+
+      // Fallback: case-insensitive regex only if exact lookup finds nothing
+      if (matchedCategories.length === 0) {
+        const orQueries: any[] = [
+          { slugEn: new RegExp(`^${cleanCat}$`, 'i') },
+          { slugAr: new RegExp(`^${cleanCat}$`, 'i') },
+          { nameEn: new RegExp(`^${cleanCat}$`, 'i') },
+          { nameAr: new RegExp(`^${cleanCat}$`, 'i') },
+        ];
+        if (mongoose.Types.ObjectId.isValid(cleanCat)) {
+          orQueries.push({ _id: new mongoose.Types.ObjectId(cleanCat) });
+        }
+        matchedCategories = await Category.find({ $or: orQueries }).select('_id').lean();
+      }
+
+      matchedCategories.forEach((c) => {
+        const oid = c._id as mongoose.Types.ObjectId;
+        if (!categoryIds.some((id) => id.toString() === oid.toString())) {
+          categoryIds.push(oid);
+        }
+      });
+
+      if (categoryIds.length > 0) {
+        filter.category = { $in: categoryIds };
+      } else {
+        filter.category = new mongoose.Types.ObjectId('000000000000000000000000');
+      }
+    }
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (featured !== undefined) {
+      filter.featured = featured;
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      filter.price = {};
+      if (minPrice !== undefined) {
+        filter.price.$gte = minPrice;
+      }
+      if (maxPrice !== undefined) {
+        filter.price.$lte = maxPrice;
+      }
+    }
+
+    if (inStock !== undefined && inStock) {
+      filter['inventory.availableQuantity'] = { $gt: 0 };
+    }
+
+    // Text search
+    if (search) {
+      filter.$text = { $search: search };
+    }
+
+    // Build sort
+    const sort: { [key: string]: SortOrder } = {};
+    sort[actualSortBy] = actualSortOrder;
+
+    // Execute query
+    const skip = (page - 1) * limit;
+    
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate('category', 'nameAr nameEn slugAr slugEn')
+        .lean(),
+      Product.countDocuments(filter),
+    ]);
+
+    const result: IPaginatedProducts = {
+      products: products as any,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
+
+    if (isCacheable && cacheKey) {
+      if (productsCache.size >= MAX_PRODUCTS_CACHE_ENTRIES) {
+        const oldestKey = productsCache.keys().next().value;
+        if (oldestKey) productsCache.delete(oldestKey);
+      }
+      productsCache.set(cacheKey, {
+        data: result,
+        expiresAt: Date.now() + PRODUCTS_CACHE_TTL_MS,
+      });
+    }
+
+    return result;
   };
+
+  if (isCacheable && cacheKey) {
+    const promise = executeQuery().finally(() => {
+      inFlightProductQueries.delete(cacheKey);
+    });
+    inFlightProductQueries.set(cacheKey, promise);
+    return promise;
+  }
+
+  return executeQuery();
 };
 
 // Get single product by ID (supports ObjectId, slug, or SKU)
@@ -312,7 +371,7 @@ export const createProduct = async (data: Partial<IProduct>): Promise<IProduct> 
     await Category.findByIdAndUpdate(data.category, { $inc: { productCount: 1 } });
   }
 
-  invalidateFeaturedCache();
+  invalidateProductCaches();
   return product;
 };
 
@@ -440,7 +499,7 @@ export const updateProduct = async (
   }
 
   const product = await existingProduct.save();
-  invalidateFeaturedCache();
+  invalidateProductCaches();
   return product;
 };
 
@@ -461,7 +520,7 @@ export const deleteProduct = async (id: string): Promise<IProduct | null> => {
     await Category.findByIdAndUpdate(product.category, { $inc: { productCount: -1 } });
   }
 
-  invalidateFeaturedCache();
+  invalidateProductCaches();
   return product;
 };
 
@@ -578,6 +637,6 @@ export const adjustInventory = async (
   product.inventory.lastSyncedAt = new Date();
 
   await product.save();
-  invalidateFeaturedCache();
+  invalidateProductCaches();
   return product;
 };

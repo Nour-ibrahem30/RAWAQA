@@ -355,10 +355,12 @@ productSchema.index({ status: 1, featured: 1 });
 productSchema.index({ status: 1, createdAt: -1 });
 productSchema.index({ status: 1, featured: 1, createdAt: -1 });
 productSchema.index({ category: 1, status: 1 });
+productSchema.index({ category: 1, status: 1, createdAt: -1 });
 productSchema.index({ slugAr: 1, status: 1 });
 productSchema.index({ slugEn: 1, status: 1 });
 productSchema.index({ 'inventory.availableQuantity': 1, status: 1 });
 productSchema.index({ price: 1, status: 1 });
+productSchema.index({ status: 1, price: 1 });
 productSchema.index({ tags: 1, status: 1 });
 
 // Text search index for bilingual search

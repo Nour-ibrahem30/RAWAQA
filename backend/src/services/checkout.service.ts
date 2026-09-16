@@ -6,6 +6,7 @@ import { User } from '../models/User';
 import { IdempotencyKey } from '../models/IdempotencyKey';
 import { OutboxEvent } from '../models/OutboxEvent';
 import { applyCoupon, recordCouponUsage } from './coupon.service';
+import { invalidateProductsCache } from './product.service';
 import crypto from 'crypto';
 
 interface CheckoutInput {
@@ -254,6 +255,9 @@ export const processCheckout = async (
     if (session) {
       await session.commitTransaction();
     }
+
+    // Invalidate product catalog cache to immediately reflect inventory decrement
+    invalidateProductsCache();
 
     // 9. Record coupon usage AFTER commit (non-critical, outside transaction)
     if (couponCode && couponDiscount > 0) {

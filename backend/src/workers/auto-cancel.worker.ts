@@ -9,6 +9,7 @@ import cron from 'node-cron';
 import mongoose from 'mongoose';
 import { Order, OrderStatus, PaymentStatus, PaymentMethod } from '../models/Order';import { Product } from '../models/Product';
 import { OutboxEvent } from '../models/OutboxEvent';
+import { invalidateProductsCache } from '../services/product.service';
 import { env } from '../config/env';
 import { logInfo, logError, logWarn } from '../config/logger';
 
@@ -112,6 +113,7 @@ class AutoCancelWorker {
       );
 
       await session.commitTransaction();
+      invalidateProductsCache();
       logInfo(`Auto-cancelled order ${order.orderNumber}`);
     } catch (err) {
       await session.abortTransaction();
