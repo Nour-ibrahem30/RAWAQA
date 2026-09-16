@@ -8,20 +8,16 @@ import { logInfo, logWarn } from './logger';
 
 let Sentry: any = null;
 
-try {
-  Sentry = require('@sentry/node');
-} catch (err) {
-  // Sentry not installed — monitoring will be disabled
-}
-
 export function initSentry(): void {
-  if (!Sentry) {
-    logWarn('Sentry not installed — error monitoring disabled');
+  if (!env.SENTRY_DSN) {
+    // Sentry DSN not configured — avoid loading heavy OpenTelemetry dependencies
     return;
   }
 
-  if (!env.SENTRY_DSN) {
-    logWarn('Sentry DSN not configured — error monitoring disabled');
+  try {
+    Sentry = require('@sentry/node');
+  } catch (err) {
+    logWarn('Sentry not installed — error monitoring disabled');
     return;
   }
 

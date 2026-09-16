@@ -4,11 +4,13 @@
  * Files are streamed directly — nothing is written to disk.
  */
 import { Request, Response } from 'express';
-import ExcelJS from 'exceljs';
+import type * as ExcelJSType from 'exceljs';
 import { Order } from '../models/Order';
 import { Product } from '../models/Product';
 import { User } from '../models/User';
 import { logError, logInfo } from '../config/logger';
+
+const getExcelJS = (): typeof import('exceljs') => require('exceljs');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -16,10 +18,10 @@ const BRAND_COLOR   = 'AD8A4C';  // gold
 const BRAND_DARK    = '15130F';  // charcoal
 const HEADER_FONT   = { name: 'Calibri', bold: true, size: 11, color: { argb: 'FFFFFFFF' } } as const;
 const BODY_FONT     = { name: 'Calibri', size: 10 } as const;
-const BORDER: ExcelJS.Border = { style: 'thin', color: { argb: 'FFE0D8C8' } };
+const BORDER: ExcelJSType.Border = { style: 'thin', color: { argb: 'FFE0D8C8' } };
 const ALL_BORDERS   = { top: BORDER, left: BORDER, bottom: BORDER, right: BORDER };
 
-function styleHeader(_sheet: ExcelJS.Worksheet, row: ExcelJS.Row) {
+function styleHeader(_sheet: ExcelJSType.Worksheet, row: ExcelJSType.Row) {
   row.eachCell(cell => {
     cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND_DARK } };
     cell.font   = HEADER_FONT;
@@ -29,7 +31,7 @@ function styleHeader(_sheet: ExcelJS.Worksheet, row: ExcelJS.Row) {
   row.height = 22;
 }
 
-function styleDataRow(row: ExcelJS.Row, isEven: boolean) {
+function styleDataRow(row: ExcelJSType.Row, isEven: boolean) {
   row.eachCell(cell => {
     cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: isEven ? 'FFF7F4EC' : 'FFFDFCF9' } };
     cell.font   = BODY_FONT;
@@ -38,7 +40,7 @@ function styleDataRow(row: ExcelJS.Row, isEven: boolean) {
   });
 }
 
-function addTitle(sheet: ExcelJS.Worksheet, title: string, subtitle: string, colCount: number) {
+function addTitle(sheet: ExcelJSType.Worksheet, title: string, subtitle: string, colCount: number) {
   // Title row
   const titleRow = sheet.addRow([title]);
   sheet.mergeCells(`A1:${String.fromCharCode(64 + colCount)}1`);
@@ -86,6 +88,7 @@ export const exportOrders = async (req: Request, res: Response): Promise<void> =
 
     logInfo(`Export: ${orders.length} orders requested by admin ${req.user?.userId}`);
 
+    const ExcelJS = getExcelJS();
     const wb = new ExcelJS.Workbook();
     wb.creator  = 'RAWAQA Admin';
     wb.created  = new Date();
@@ -214,6 +217,7 @@ export const exportAnalytics = async (req: Request, res: Response): Promise<void
 
     logInfo(`Export: analytics requested by admin ${req.user?.userId}`);
 
+    const ExcelJS = getExcelJS();
     const wb = new ExcelJS.Workbook();
     wb.creator  = 'RAWAQA Admin';
     wb.created  = new Date();
