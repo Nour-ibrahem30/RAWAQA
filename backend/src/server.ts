@@ -17,6 +17,7 @@ import database from './config/database';
 import { outboxWorker } from './workers/outbox.worker';
 import { inventoryReconciliationWorker } from './workers/inventory-reconciliation.worker';
 import { autoCancelWorker } from './workers/auto-cancel.worker';
+import { ensureDefaultCategories } from './services/category.service';
 
 // Express app
 const app: Application = express();
@@ -89,13 +90,36 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // =============================================================================
-// HEALTH CHECK ENDPOINT (FASTEST POSSIBLE RESPONSE, EXEMPT FROM RATE LIMITING)
+// HEALTH & READINESS ENDPOINTS (FASTEST POSSIBLE RESPONSE, EXEMPT FROM RATE LIMITING)
 // =============================================================================
-app.get('/health', (_req: Request, res: Response) => {
+
+// Liveness probe: returns 200 as long as Node.js event loop is running
+app.get('/health/live', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
     environment: env.NODE_ENV,
-    database: database.isConnected() ? 'connected' : 'connecting',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Readiness probe: returns 200 if MongoDB is connected, 503 if not ready
+app.get('/health/ready', (_req: Request, res: Response) => {
+  const isReady = database.isConnected();
+  res.status(isReady ? 200 : 503).json({
+    status: isReady ? 'ready' : 'not_ready',
+    database: isReady ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Standard health check (backward-compatible; returns 503 if database disconnected)
+app.get('/health', (_req: Request, res: Response) => {
+  const isDbConnected = database.isConnected();
+  res.status(isDbConnected ? 200 : 503).json({
+    status: isDbConnected ? 'ok' : 'degraded',
+    environment: env.NODE_ENV,
+    database: isDbConnected ? 'connected' : 'connecting',
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
@@ -114,6 +138,26 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Cookie Parser
 app.use(cookieParser());
+
+// Request Timeout Protection (Resource protection: 25s maximum execution time for non-upload API requests)
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.path.includes('/upload')) {
+    return next();
+  }
+  const timer = setTimeout(() => {
+    if (!res.headersSent) {
+      logError('Request timeout exceeded (25s)', new Error(`Timeout: ${req.method} ${req.originalUrl}`));
+      res.status(504).json({
+        error: 'Gateway Timeout',
+        message: 'The request took too long to complete. Please retry.',
+      });
+    }
+  }, 25000);
+
+  res.on('finish', () => clearTimeout(timer));
+  res.on('close', () => clearTimeout(timer));
+  next();
+});
 
 // Sanitize NoSQL injection
 app.use(mongoSanitize());
@@ -410,6 +454,9 @@ const startServer = async () => {
       await database.connect();
       console.log('✅ Database connected');
       logInfo('Database successfully initialized');
+
+      // Initialize default essential categories once at startup (idempotent, never inside request path)
+      await ensureDefaultCategories();
 
       // 3. Start background workers AFTER DB is confirmed connected
       if (env.ENABLE_WORKERS) {

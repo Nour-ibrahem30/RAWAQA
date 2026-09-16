@@ -51,25 +51,55 @@ const formatCategory = (c: any) => ({
   status: c.isActive ? 'active' : 'inactive',
 });
 
-// Get all categories
-export const getCategories = async (includeInactive: boolean = false): Promise<any[]> => {
-  // Ensure default essential categories always exist in DB
-  for (const defCat of DEFAULT_CATEGORIES) {
-    const exists = await Category.findOne({
-      $or: [
-        { slugEn: defCat.slugEn },
-        { slugAr: defCat.slugAr },
-        { nameEn: defCat.nameEn },
-        { nameAr: defCat.nameAr },
-      ],
-    });
-    if (!exists) {
-      try {
-        await Category.create(defCat);
-      } catch {
-        // ignore concurrent duplicate key race condition
+let defaultCategoriesSeeded = false;
+
+/**
+ * Idempotent startup initialization of default categories.
+ * Executed ONCE at server startup after database connection.
+ * NEVER called inside public GET requests.
+ */
+export const ensureDefaultCategories = async (): Promise<void> => {
+  if (defaultCategoriesSeeded) return;
+  try {
+    for (const defCat of DEFAULT_CATEGORIES) {
+      const exists = await Category.findOne({
+        $or: [
+          { slugEn: defCat.slugEn },
+          { slugAr: defCat.slugAr },
+          { nameEn: defCat.nameEn },
+          { nameAr: defCat.nameAr },
+        ],
+      }).select('_id').lean();
+      if (!exists) {
+        try {
+          await Category.create(defCat);
+        } catch {
+          // ignore concurrent duplicate key race condition
+        }
       }
     }
+    defaultCategoriesSeeded = true;
+  } catch (_err) {
+    // Non-fatal on startup; will retry on next check
+  }
+};
+
+interface CategoryCacheEntry {
+  data: any[];
+  expiresAt: number;
+}
+let categoriesCache: { active?: CategoryCacheEntry; all?: CategoryCacheEntry } = {};
+
+export const invalidateCategoryCache = (): void => {
+  categoriesCache = {};
+};
+
+// Get all categories (pure read with 60s TTL cache)
+export const getCategories = async (includeInactive: boolean = false): Promise<any[]> => {
+  const cacheKey = includeInactive ? 'all' : 'active';
+  const now = Date.now();
+  if (categoriesCache[cacheKey] && categoriesCache[cacheKey]!.expiresAt > now) {
+    return categoriesCache[cacheKey]!.data;
   }
 
   const filter = includeInactive ? {} : { isActive: true };
@@ -78,7 +108,13 @@ export const getCategories = async (includeInactive: boolean = false): Promise<a
     .sort({ order: 1, nameEn: 1 })
     .lean();
 
-  return cats.map(formatCategory);
+  const result = cats.map(formatCategory);
+  categoriesCache[cacheKey] = {
+    data: result,
+    expiresAt: now + 60_000, // 60s TTL
+  };
+
+  return result;
 };
 
 // Get single category by ID
@@ -167,6 +203,7 @@ export const createCategory = async (data: any): Promise<any> => {
   const category = new Category(data);
   await category.save();
 
+  invalidateCategoryCache();
   return formatCategory(category.toObject ? category.toObject() : category);
 };
 
@@ -209,6 +246,7 @@ export const updateCategory = async (
     runValidators: true,
   });
 
+  invalidateCategoryCache();
   return category ? formatCategory(category.toObject ? category.toObject() : category) : null;
 };
 
@@ -224,6 +262,7 @@ export const deleteCategory = async (id: string): Promise<ICategory | null> => {
   }
 
   const category = await Category.findByIdAndDelete(id);
+  invalidateCategoryCache();
   return category;
 };
 
@@ -239,6 +278,7 @@ export const reorderCategories = async (
   }));
 
   await Category.bulkWrite(bulkOps);
+  invalidateCategoryCache();
 };
 
 // Update product count (internal use)

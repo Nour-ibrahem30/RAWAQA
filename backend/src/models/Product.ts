@@ -352,6 +352,8 @@ const productSchema = new Schema<IProduct>(
 
 // Compound indexes for common queries
 productSchema.index({ status: 1, featured: 1 });
+productSchema.index({ status: 1, createdAt: -1 });
+productSchema.index({ status: 1, featured: 1, createdAt: -1 });
 productSchema.index({ category: 1, status: 1 });
 productSchema.index({ slugAr: 1, status: 1 });
 productSchema.index({ slugEn: 1, status: 1 });

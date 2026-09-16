@@ -1,6 +1,17 @@
 import { Product, IProduct, ProductStatus } from '../models/Product';
 import { Category } from '../models/Category';
 import mongoose, { FilterQuery, SortOrder } from 'mongoose';
+import { logError } from '../config/logger';
+
+interface FeaturedCacheEntry {
+  data: any[];
+  expiresAt: number;
+}
+let featuredCache: Record<number, FeaturedCacheEntry> = {};
+
+export const invalidateFeaturedCache = (): void => {
+  featuredCache = {};
+};
 
 // Query parameters interface
 export interface IProductQuery {
@@ -48,16 +59,30 @@ export const getProducts = async (
     if (mongoose.Types.ObjectId.isValid(cleanCat)) {
       categoryIds.push(new mongoose.Types.ObjectId(cleanCat));
     }
-    const orQueries: any[] = [
-      { slugEn: new RegExp(`^${cleanCat}$`, 'i') },
-      { slugAr: new RegExp(`^${cleanCat}$`, 'i') },
-      { nameEn: new RegExp(`^${cleanCat}$`, 'i') },
-      { nameAr: new RegExp(`^${cleanCat}$`, 'i') },
-    ];
-    if (mongoose.Types.ObjectId.isValid(cleanCat)) {
-      orQueries.push({ _id: new mongoose.Types.ObjectId(cleanCat) });
+    // Fast path: try exact/lowercased match against indexed slugs and names
+    let matchedCategories = await Category.find({
+      $or: [
+        { slugEn: cleanCat.toLowerCase() },
+        { slugAr: cleanCat.toLowerCase() },
+        { nameEn: cleanCat },
+        { nameAr: cleanCat },
+        ...(mongoose.Types.ObjectId.isValid(cleanCat) ? [{ _id: new mongoose.Types.ObjectId(cleanCat) }] : []),
+      ],
+    }).select('_id').lean();
+
+    // Fallback: case-insensitive regex only if exact lookup finds nothing
+    if (matchedCategories.length === 0) {
+      const orQueries: any[] = [
+        { slugEn: new RegExp(`^${cleanCat}$`, 'i') },
+        { slugAr: new RegExp(`^${cleanCat}$`, 'i') },
+        { nameEn: new RegExp(`^${cleanCat}$`, 'i') },
+        { nameAr: new RegExp(`^${cleanCat}$`, 'i') },
+      ];
+      if (mongoose.Types.ObjectId.isValid(cleanCat)) {
+        orQueries.push({ _id: new mongoose.Types.ObjectId(cleanCat) });
+      }
+      matchedCategories = await Category.find({ $or: orQueries }).select('_id').lean();
     }
-    const matchedCategories = await Category.find({ $or: orQueries }).select('_id');
 
     matchedCategories.forEach((c) => {
       const oid = c._id as mongoose.Types.ObjectId;
@@ -132,28 +157,28 @@ export const getProducts = async (
 
 // Get single product by ID (supports ObjectId, slug, or SKU)
 export const getProductById = async (id: string): Promise<IProduct | null> => {
+  let product: any = null;
   if (mongoose.Types.ObjectId.isValid(id)) {
-    const product = await Product.findById(id).populate('category', 'nameAr nameEn slugAr slugEn');
-    if (product) {
-      product.viewCount += 1;
-      await product.save();
-      return product;
-    }
+    product = await Product.findById(id).populate('category', 'nameAr nameEn slugAr slugEn').lean();
   }
 
-  // Fallback to slug or SKU
-  const product = await Product.findOne({
-    $or: [
-      { slugEn: id },
-      { slugAr: id },
-      { sku: id.toUpperCase() },
-      { sku: id },
-    ],
-  }).populate('category', 'nameAr nameEn slugAr slugEn');
+  if (!product) {
+    // Fallback to slug or SKU
+    product = await Product.findOne({
+      $or: [
+        { slugEn: id },
+        { slugAr: id },
+        { sku: id.toUpperCase() },
+        { sku: id },
+      ],
+    }).populate('category', 'nameAr nameEn slugAr slugEn').lean();
+  }
 
   if (product) {
-    product.viewCount += 1;
-    await product.save();
+    // Non-blocking atomic increment: does NOT block response or trigger pre-save hooks
+    Product.updateOne({ _id: product._id }, { $inc: { viewCount: 1 } }).catch((err) => {
+      logError('Failed to increment viewCount asynchronously', err);
+    });
     return product;
   }
 
@@ -166,14 +191,15 @@ export const getProductBySlug = async (
   locale: 'ar' | 'en'
 ): Promise<IProduct | null> => {
   const slugField = locale === 'ar' ? 'slugAr' : 'slugEn';
-  const product = await Product.findOne({ [slugField]: slug }).populate(
-    'category',
-    'nameAr nameEn slugAr slugEn'
-  );
+  const product: any = await Product.findOne({ [slugField]: slug })
+    .populate('category', 'nameAr nameEn slugAr slugEn')
+    .lean();
 
   if (product) {
-    product.viewCount += 1;
-    await product.save();
+    // Non-blocking atomic increment: does NOT block response or trigger pre-save hooks
+    Product.updateOne({ _id: product._id }, { $inc: { viewCount: 1 } }).catch((err) => {
+      logError('Failed to increment viewCount asynchronously', err);
+    });
   }
 
   return product;
@@ -286,6 +312,7 @@ export const createProduct = async (data: Partial<IProduct>): Promise<IProduct> 
     await Category.findByIdAndUpdate(data.category, { $inc: { productCount: 1 } });
   }
 
+  invalidateFeaturedCache();
   return product;
 };
 
@@ -413,6 +440,7 @@ export const updateProduct = async (
   }
 
   const product = await existingProduct.save();
+  invalidateFeaturedCache();
   return product;
 };
 
@@ -433,11 +461,17 @@ export const deleteProduct = async (id: string): Promise<IProduct | null> => {
     await Category.findByIdAndUpdate(product.category, { $inc: { productCount: -1 } });
   }
 
+  invalidateFeaturedCache();
   return product;
 };
 
-// Get featured products
+// Get featured products (pure read with 60s TTL cache)
 export const getFeaturedProducts = async (limit: number = 10): Promise<any[]> => {
+  const now = Date.now();
+  if (featuredCache[limit] && featuredCache[limit].expiresAt > now) {
+    return featuredCache[limit].data;
+  }
+
   let products = await Product.find({ featured: true, status: ProductStatus.ACTIVE })
     .sort({ createdAt: -1, orderCount: -1, viewCount: -1 })
     .limit(limit)
@@ -451,6 +485,11 @@ export const getFeaturedProducts = async (limit: number = 10): Promise<any[]> =>
       .populate('category', 'nameAr nameEn slugAr slugEn')
       .lean();
   }
+
+  featuredCache[limit] = {
+    data: products,
+    expiresAt: now + 60_000,
+  };
 
   return products;
 };
@@ -533,5 +572,6 @@ export const adjustInventory = async (
   product.inventory.lastSyncedAt = new Date();
 
   await product.save();
+  invalidateFeaturedCache();
   return product;
 };
