@@ -24,6 +24,9 @@ const config: Config = {
       testEnvironment: 'node',
       testMatch:       ['<rootDir>/src/__tests__/unit/**/*.test.ts'],
       transform:       tsTransform,
+      moduleNameMapper: {
+        '^@vonage/server-sdk$': '<rootDir>/src/__tests__/setup/mockVonage.ts',
+      },
     },
 
     // ── Integration tests — in-memory MongoDB ─────────────────────────────
@@ -35,6 +38,9 @@ const config: Config = {
       globalSetup:     '<rootDir>/src/__tests__/setup/globalSetup.ts',
       globalTeardown:  '<rootDir>/src/__tests__/setup/globalTeardown.ts',
       transform:       tsTransform,
+      moduleNameMapper: {
+        '^@vonage/server-sdk$': '<rootDir>/src/__tests__/setup/mockVonage.ts',
+      },
     },
   ],
 };

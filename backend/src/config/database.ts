@@ -23,6 +23,9 @@ try {
   logger.warn('Failed to set DNS servers', { error: err });
 }
 
+// Disable Mongoose command buffering to prevent dangerous operation queuing when disconnected
+mongoose.set('bufferCommands', false);
+
 interface DatabaseConfig {
   uri: string;
   options: mongoose.ConnectOptions;
@@ -41,11 +44,13 @@ const getDatabaseConfig = (): DatabaseConfig => {
     maxPoolSize: parseInt(process.env['MONGODB_MAX_POOL_SIZE'] || '50', 10),
     minPoolSize: parseInt(process.env['MONGODB_MIN_POOL_SIZE'] || '5', 10),
     connectTimeoutMS: 10000,
-    socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '45000', 10),
+    socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '20000', 10),
     serverSelectionTimeoutMS: parseInt(
       process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '5000',
       10
     ),
+    waitQueueTimeoutMS: parseInt(process.env['MONGODB_WAIT_QUEUE_TIMEOUT'] || '5000', 10),
+    maxIdleTimeMS: parseInt(process.env['MONGODB_MAX_IDLE_TIME_MS'] || '60000', 10),
     // Recommended settings for production
     retryWrites: true,
     retryReads: true,
@@ -205,7 +210,9 @@ export const getDiagnosticInfo = async (runActiveProbes = false) => {
     connectionTimeouts: {
       serverSelectionTimeoutMS: parseInt(process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '5000', 10),
       connectTimeoutMS: 10000,
-      socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '45000', 10),
+      socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '20000', 10),
+      waitQueueTimeoutMS: parseInt(process.env['MONGODB_WAIT_QUEUE_TIMEOUT'] || '5000', 10),
+      maxIdleTimeMS: parseInt(process.env['MONGODB_MAX_IDLE_TIME_MS'] || '60000', 10),
     },
     lastConnectionError: serializedError,
   };

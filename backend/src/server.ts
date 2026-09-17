@@ -97,18 +97,18 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // HEALTH & READINESS ENDPOINTS (FASTEST POSSIBLE RESPONSE, EXEMPT FROM RATE LIMITING)
 // =============================================================================
 
-// Liveness probe: returns 200 as long as Node.js event loop is running
-app.get('/health/live', (_req: Request, res: Response) => {
+// Liveness probe: returns 200 as long as Node.js event loop is running (never touches MongoDB)
+export const liveHealthHandler = (_req: Request, res: Response): void => {
   res.status(200).json({
     status: 'ok',
     environment: env.NODE_ENV,
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
-});
+};
 
 // Readiness probe: returns 200 if MongoDB is connected, 503 if not ready (includes safe redacted diagnostic when disconnected)
-app.get('/health/ready', async (req: Request, res: Response) => {
+export const readyHealthHandler = async (req: Request, res: Response): Promise<void> => {
   const isReady = database.isConnected();
   const runProbes = req.query['probe'] === 'true';
   const diagnostic = !isReady || req.query['diagnostic'] === 'true'
@@ -121,27 +121,31 @@ app.get('/health/ready', async (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     ...(diagnostic && { diagnostic }),
   });
-});
+};
 
 // Dedicated safe non-destructive MongoDB diagnostic probe endpoint
-app.get('/health/db-diagnostic', async (_req: Request, res: Response) => {
+export const dbDiagnosticHandler = async (_req: Request, res: Response): Promise<void> => {
   const diag = await database.getDiagnosticInfo(true);
   res.status(200).json(diag);
-});
+};
 
-// Standard health check (returns 200 on healthy or during startup grace period to allow Render port discovery)
-app.get('/health', (_req: Request, res: Response) => {
+// Standard health check (returns 200 if database connected, 503 if disconnected)
+export const standardHealthHandler = (_req: Request, res: Response): void => {
   const isDbConnected = database.isConnected();
-  const isStartupGrace = process.uptime() < 60;
-  const statusCode = (isDbConnected || isStartupGrace) ? 200 : 503;
-  res.status(statusCode).json({
+  res.status(isDbConnected ? 200 : 503).json({
     status: isDbConnected ? 'ok' : 'degraded',
     environment: env.NODE_ENV,
-    database: isDbConnected ? 'connected' : 'connecting',
+    database: isDbConnected ? 'connected' : 'disconnected',
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
-});
+};
+
+// Mount root health endpoints
+app.get('/health/live', liveHealthHandler);
+app.get('/health/ready', readyHealthHandler);
+app.get('/health/db-diagnostic', dbDiagnosticHandler);
+app.get('/health', standardHealthHandler);
 
 // Security Headers
 app.use(
@@ -235,9 +239,48 @@ import { featureFlag } from './middleware/feature-flag.middleware';
 import path from 'path';
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// =============================================================================
+// DATABASE GATEKEEPER (FAIL-FAST ADMISSION CONTROL)
+// Protects the Node.js event loop, sockets, and memory from operation queuing.
+// Rejects DB-dependent API requests immediately (<1ms) with HTTP 503 if MongoDB
+// is disconnected or connecting. Never allows un-opened Mongoose queries to hang.
+// =============================================================================
+export const dbGatekeeper = (req: Request, res: Response, next: NextFunction): void => {
+  // Always allow health checks and documentation through
+  const path = req.originalUrl || req.url || req.path;
+  if (
+    path.includes('/health') ||
+    path.includes('/docs')
+  ) {
+    return next();
+  }
+
+  // Check live Mongoose connection readyState (1 = connected)
+  if (!database.isConnected()) {
+    res.setHeader('Retry-After', '2');
+    res.status(503).json({
+      success: false,
+      error: 'Service Unavailable',
+      message: 'Database is currently connecting or unavailable. Please retry shortly.',
+    });
+    return;
+  }
+
+  next();
+};
+
 // API Routes (supports both /api and /api/v1)
 const apiPrefixes = ['/api', '/api/v1'];
 apiPrefixes.forEach(prefix => {
+  // Mount health endpoints under API prefixes so /api/health/live, /api/v1/health/ready etc. work
+  app.get(`${prefix}/health/live`, liveHealthHandler);
+  app.get(`${prefix}/health/ready`, readyHealthHandler);
+  app.get(`${prefix}/health/db-diagnostic`, dbDiagnosticHandler);
+  app.get(`${prefix}/health`, standardHealthHandler);
+
+  // Apply gatekeeper to all DB-dependent routes under this prefix
+  app.use(prefix, dbGatekeeper);
+
   app.use(`${prefix}/auth`,          authRoutes);
   app.use(`${prefix}/products`,      productRoutes);
   app.use(`${prefix}/categories`,    categoryRoutes);
@@ -590,8 +633,10 @@ const startServer = async () => {
   });
 };
 
-// Start the server
-startServer();
+// Start the server (only when not running under unit/integration test runner)
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
 
 // Export app for testing
 export default app;
