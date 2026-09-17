@@ -42,7 +42,7 @@ function ProductImage({ src, name, product }: { src?: string; name: string; prod
   const color = ext._colors?.[0] || 'var(--gold-light)';
   const svgPath = BAG_SVG[shape] || BAG_SVG['bag-2'];
   return (
-    <div className="absolute inset-0 flex items-center justify-center card-img" style={{ background: color + '18' }}>
+    <div className="absolute inset-0 flex items-center justify-center card-img" style={{ background: color + '18' }} aria-hidden>
       <svg width="62%" height="62%" viewBox="0 0 400 400" fill={color}
         style={{ filter: `drop-shadow(0 12px 24px ${color}55)`, transition: 'transform 500ms ease' }}>
         <path d={svgPath} />
@@ -68,11 +68,10 @@ export default function ProductCard({ product }: { product: Product }) {
     .filter(Boolean);
 
   const name        = loc(product.nameAr, product.nameEn, locale);
-  const description = loc(product.descriptionAr, product.descriptionEn, locale);
   const available   = product.inventory.availableQuantity > 0;
   const isLow       = available && product.inventory.availableQuantity <= product.inventory.lowStockThreshold;
 
-  const handleAdd = async (e: React.MouseEvent) => {
+  const handleAdd = async (e: React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!isLoggedIn) {
@@ -88,11 +87,11 @@ export default function ProductCard({ product }: { product: Product }) {
   };
 
   const prodId = product.id || (product as any)._id;
+  const href = `/${locale}/product/${prodId}`;
 
   return (
-    <Link
-      href={`/${locale}/product/${prodId}`}
-      className="product-card-3d"
+    <article
+      className="product-card-3d group"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -100,8 +99,6 @@ export default function ProductCard({ product }: { product: Product }) {
         border: '1px solid rgba(210,181,106,.12)',
         borderRadius: 20,
         overflow: 'hidden',
-        cursor: 'pointer',
-        textDecoration: 'none',
         backdropFilter: 'blur(8px)',
       }}
     >
@@ -115,27 +112,32 @@ export default function ProductCard({ product }: { product: Product }) {
           overflow: 'hidden',
         }}
       >
-        <ProductImage src={images[imgIdx] ?? images[0]} name={name} product={product} />
+        <Link href={href} aria-label={name} className="absolute inset-0 block">
+          <ProductImage src={images[imgIdx] ?? images[0]} name={name} product={product} />
+        </Link>
 
         {/* Image dots */}
         {images.length > 1 && (
-          <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-1.5 z-10 pointer-events-auto">
+          <div className="absolute bottom-2 inset-inline-0 flex items-center justify-center gap-1.5 z-10">
             {images.map((_, i) => (
               <button
                 key={i}
+                type="button"
                 onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIdx(i); }}
-                onMouseEnter={e => { e.preventDefault(); e.stopPropagation(); setImgIdx(i); }}
-                className="transition-all duration-300 rounded-full !p-0 !m-0 !border-0 block flex-shrink-0"
-                style={{
-                  width: i === imgIdx ? 14 : 5,
-                  height: 5,
-                  minHeight: 5,
-                  maxHeight: 5,
-                  background: i === imgIdx ? 'var(--gold-light)' : 'rgba(255,255,255,.4)',
-                  boxShadow: i === imgIdx ? '0 0 6px rgba(210,181,106,.6)' : 'none',
-                }}
-                aria-label={`Show image ${i + 1}`}
-              />
+                className="touch-target inline-flex items-center justify-center rounded-full border-0 bg-transparent p-0"
+                aria-label={t('show_image', { n: i + 1, name })}
+                aria-current={i === imgIdx ? 'true' : undefined}
+              >
+                <span
+                  className="rounded-full block"
+                  style={{
+                    width: i === imgIdx ? 14 : 5,
+                    height: 5,
+                    background: i === imgIdx ? 'var(--gold-light)' : 'rgba(255,255,255,.4)',
+                    boxShadow: i === imgIdx ? '0 0 6px rgba(210,181,106,.6)' : 'none',
+                  }}
+                />
+              </button>
             ))}
           </div>
         )}
@@ -145,7 +147,7 @@ export default function ProductCard({ product }: { product: Product }) {
           <span style={{
             position: 'absolute',
             top: '0.65rem',
-            [isAr ? 'right' : 'left']: '0.65rem',
+            insetInlineStart: '0.65rem',
             background: 'var(--gold-light)',
             color: 'var(--charcoal)',
             fontSize: '.58rem',
@@ -155,14 +157,15 @@ export default function ProductCard({ product }: { product: Product }) {
             padding: '.25rem .65rem',
             borderRadius: 999,
             boxShadow: '0 2px 10px rgba(210,181,106,.35)',
+            zIndex: 2,
+            pointerEvents: 'none',
           }}>
             {isAr ? 'مميز' : 'Featured'}
           </span>
         )}
 
         {/* Wishlist button */}
-        <div style={{ position: 'absolute', top: '0.65rem', [isAr ? 'left' : 'right']: '0.65rem', zIndex: 2 }}
-          onClick={e => e.preventDefault()}>
+        <div style={{ position: 'absolute', top: '0.65rem', insetInlineEnd: '0.65rem', zIndex: 2 }}>
           <WishlistButton productId={product.id || (product as any)._id || (product as any).slugEn || product.sku || ''} variant="icon" size={15} />
         </div>
 
@@ -172,27 +175,13 @@ export default function ProductCard({ product }: { product: Product }) {
             position: 'absolute', inset: 0,
             background: 'rgba(21,19,15,.6)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
+            zIndex: 1,
           }}>
             <span style={{ color: 'rgba(247,244,236,.85)', fontSize: '.78rem', fontWeight: 600, letterSpacing: '.04em' }}>
               {t('out_of_stock')}
             </span>
           </div>
-        )}
-
-        {/* Quick add — hover */}
-        {available && (
-          <button
-            onClick={handleAdd}
-            style={{
-              position: 'absolute',
-              bottom: '0.65rem',
-              left: '0.65rem',
-              right: '0.65rem',
-            }}
-            className="btn btn-gold btn-sm opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 text-xs py-1.5"
-          >
-            {t('add_to_cart')}
-          </button>
         )}
       </div>
 
@@ -204,7 +193,6 @@ export default function ProductCard({ product }: { product: Product }) {
         gap: '0.35rem',
         flexGrow: 1,
       }}>
-        {/* Category */}
         <p style={{
           fontSize: '.6rem',
           letterSpacing: '.12em',
@@ -215,7 +203,6 @@ export default function ProductCard({ product }: { product: Product }) {
           {loc(product.category?.nameAr, product.category?.nameEn, locale)}
         </p>
 
-        {/* Name */}
         <h3 style={{
           fontWeight: 700,
           fontSize: '.875rem',
@@ -225,12 +212,12 @@ export default function ProductCard({ product }: { product: Product }) {
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          transition: 'color 300ms ease',
         }}>
-          {name}
+          <Link href={href} style={{ color: 'inherit' }}>
+            {name}
+          </Link>
         </h3>
 
-        {/* Price row */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -274,17 +261,18 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
         </div>
 
-        {/* Mobile add button */}
         {available && (
           <button
+            type="button"
             onClick={handleAdd}
-            className="btn btn-gold btn-sm md:hidden text-xs py-1.5 mt-1"
-            style={{ width: '100%' }}
+            className="btn btn-gold btn-sm product-card-add text-xs py-1.5 mt-1"
+            style={{ width: '100%', minHeight: 44 }}
+            aria-label={`${t('add_to_cart')}: ${name}`}
           >
             {t('add_to_cart')}
           </button>
         )}
       </div>
-    </Link>
+    </article>
   );
 }

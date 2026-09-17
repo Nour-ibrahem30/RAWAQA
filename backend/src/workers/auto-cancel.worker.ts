@@ -21,10 +21,13 @@ class AutoCancelWorker {
     if (this.isRunning) return;
     this.isRunning = true;
 
-    // Run every 30 minutes
-    this.task = cron.schedule('*/30 * * * *', () => {
-      this.cancelExpiredOrders();
-    });
+    if (this.task) {
+      this.task.start();
+    } else {
+      this.task = cron.schedule('*/30 * * * *', () => {
+        this.cancelExpiredOrders();
+      });
+    }
 
     logInfo('Auto-cancel worker started (runs every 30 min)');
 

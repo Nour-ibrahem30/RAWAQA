@@ -2,6 +2,10 @@
   "nav": {
     "shop": "Shop",
     "collections": "Collections",
+    "home": "RAWAQA home",
+    "menu": "Menu",
+    "close_menu": "Close menu",
+    "switch_language": "Switch language to {lang}",
     "why": "Why Rawaqa",
     "about": "About",
     "track": "Track Order",
@@ -45,7 +49,10 @@
       "d5": "Not satisfied? We guarantee a refund within 14 days."
     },
     "reviews": {
-      "title": "What Our Customers Say"
+      "title": "What Our Customers Say",
+      "prev": "Previous review",
+      "next": "Next review",
+      "go_to": "Go to review {n}"
     },
     "cta": {
       "title": "Start Your Comfort Journey",
@@ -72,6 +79,7 @@
   },
   "product": {
     "add_to_cart": "Add to Cart",
+    "show_image": "Show image {n} of {name}",
     "buy_now": "Buy Now",
     "in_stock": "In Stock",
     "out_of_stock": "Out of Stock",

@@ -5,6 +5,22 @@ function cn(...inputs: (string | undefined | null | boolean)[]): string {
 
 export { cn };
 
+/** Shop filter value from a live category document. Never invents slugs. */
+export function categoryFilterParam(cat: {
+  slug?: string;
+  slugEn?: string;
+  slugAr?: string;
+  id?: string;
+  _id?: string;
+} | null | undefined): string | null {
+  if (!cat) return null;
+  const slug = cat.slug || cat.slugEn || cat.slugAr;
+  if (typeof slug === 'string' && slug.trim()) return slug.trim();
+  const id = cat.id || cat._id;
+  if (id) return String(id);
+  return null;
+}
+
 /** Pick localized string based on locale */
 export function loc(ar: string | undefined, en: string | undefined, locale: string): string {
   if (locale === 'ar') return ar || en || '';

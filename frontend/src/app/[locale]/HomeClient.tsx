@@ -10,66 +10,43 @@ import { Tilt3D } from '@/components/ui/ScrollAnimations';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import HeroSlideshow from '@/components/ui/HeroSlideshow';
 import AdPopup from '@/components/ui/AdPopup';
-import { productsApi, reviewsApi, type Review } from '@/lib/api';
+import { categoriesApi, productsApi, reviewsApi } from '@/lib/api';
 import { useSiteContent, locContent } from '@/lib/useSiteContent';
-import { STATIC_PRODUCTS } from '@/lib/staticProducts';
-import type { Product } from '@/lib/types';
+import { categoryFilterParam, loc } from '@/lib/utils';
+import type { Category, Product } from '@/lib/types';
 
-/* ─── Category config ─────────────────────────────────────── */
-const CATS = [
-  { key: 'relax',   color: '#A8543A', icon: '🛋️', image: 'https://res.cloudinary.com/dr5welrvq/image/upload/v1788812671/rawaqa/products/chair-lounge-new/img-1.jpg' },
-  { key: 'game',    color: '#3B5578', icon: '🎮', image: 'https://res.cloudinary.com/dr5welrvq/image/upload/v1788812686/rawaqa/products/8ball-new/img-1.jpg' },
-  { key: 'kids',    color: '#BE8F2E', icon: '🧸', image: 'https://res.cloudinary.com/dr5welrvq/image/upload/v1788812750/rawaqa/products/football-new/img-1.jpg' },
-  { key: 'outdoor', color: '#4B5B45', icon: '🌿', image: 'https://res.cloudinary.com/dr5welrvq/image/upload/v1788812766/rawaqa/products/football-new/img-5.jpg' },
-];
+const TILE_COLORS = ['#A8543A', '#3B5578', '#BE8F2E', '#4B5B45'];
 
-/* ─── Reviews — static fallback (used when API returns no approved reviews) ── */
-const FALLBACK_REVIEWS = [
-  { name: 'أحمد محمد', nameEn: 'Ahmed Mohamed', rating: 5,
-    textAr: 'جودة رائعة وراحة لا تُصدق. أنصح به بشدة!',
-    textEn: 'Amazing quality and incredible comfort. Highly recommended!' },
-  { name: 'سارة علي', nameEn: 'Sara Ali', rating: 5,
-    textAr: 'وصل بسرعة والتغليف ممتاز. الكرسي جميل جداً في غرفتي.',
-    textEn: 'Arrived fast with excellent packaging. The chair looks beautiful in my room.' },
-  { name: 'محمود حسن', nameEn: 'Mahmoud Hassan', rating: 5,
-    textAr: 'اشتريت واحد لابني وأصبح لا يفارقه. مواد عالية الجودة.',
-    textEn: 'Bought one for my son and he never leaves it. High quality materials.' },
-];
+interface HomeReview {
+  name: string;
+  rating: number;
+  text: string;
+  verified: boolean;
+}
 
-/* ─── Floating Particles (rich golden system) ────────────────── */
-function Particles() {
-  // Rising particles — varied sizes, gold + white
-  const rising = Array.from({ length: 22 }, (_, i) => ({
-    left:     `${5 + (i * 4.3) % 91}%`,
-    size:     i % 5 === 0 ? 4 : i % 3 === 0 ? 3 : i % 2 === 0 ? 2 : 1.5,
-    dur:      `${11 + (i * 2.7) % 16}s`,
-    delay:    `${(i * 1.8) % 12}s`,
-    dx:       `${-30 + (i * 11) % 60}px`,
-    gold:     i % 3 !== 0,
-    bottom:   `${(i * 7) % 40}%`,
+function Particles({ reduced }: { reduced: boolean }) {
+  if (reduced) return null;
+
+  const rising = Array.from({ length: 8 }, (_, i) => ({
+    left:     `${8 + (i * 11) % 84}%`,
+    size:     i % 3 === 0 ? 3 : 2,
+    dur:      `${14 + (i * 2) % 10}s`,
+    delay:    `${(i * 1.5) % 8}s`,
+    dx:       `${-16 + (i * 8) % 32}px`,
+    gold:     i % 2 === 0,
+    bottom:   `${(i * 9) % 30}%`,
   }));
 
-  // Floating ambient orbs
-  const orbs = Array.from({ length: 8 }, (_, i) => ({
-    left:  `${8 + (i * 11.5) % 82}%`,
-    top:   `${15 + (i * 13) % 65}%`,
-    size:  12 + (i * 5) % 20,
-    dur:   `${7 + (i * 1.3) % 8}s`,
-    delay: `${i * 0.9}s`,
-  }));
-
-  // Golden streaks
-  const streaks = Array.from({ length: 5 }, (_, i) => ({
-    top:    `${15 + i * 16}%`,
-    width:  `${80 + i * 40}px`,
-    dur:    `${14 + i * 3}s`,
-    delay:  `${i * 4.5}s`,
-    angle:  `${18 + i * 4}deg`,
+  const orbs = Array.from({ length: 3 }, (_, i) => ({
+    left:  `${12 + i * 28}%`,
+    top:   `${20 + i * 18}%`,
+    size:  14 + i * 4,
+    dur:   `${8 + i * 2}s`,
+    delay: `${i * 0.8}s`,
   }));
 
   return (
     <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-      {/* Rising particles */}
       {rising.map((p, i) => (
         <div
           key={`r${i}`}
@@ -85,8 +62,6 @@ function Particles() {
           } as React.CSSProperties}
         />
       ))}
-
-      {/* Ambient floating orbs */}
       {orbs.map((o, i) => (
         <div
           key={`o${i}`}
@@ -96,35 +71,16 @@ function Particles() {
             top: o.top,
             width: o.size,
             height: o.size,
-            opacity: 0.12 + (i % 4) * 0.04,
+            opacity: 0.1,
             animationDuration: o.dur,
             animationDelay: o.delay,
           }}
-        />
-      ))}
-
-      {/* Golden streaks */}
-      {streaks.map((s, i) => (
-        <div
-          key={`s${i}`}
-          className="streak"
-          style={{
-            top: s.top,
-            left: '-100px',
-            width: s.width,
-            animationDuration: s.dur,
-            animationDelay: s.delay,
-            '--angle': s.angle,
-          } as React.CSSProperties}
         />
       ))}
     </div>
   );
 }
 
-/* ════════════════════════════════════════════════════════════
-   HOME PAGE
-════════════════════════════════════════════════════════════ */
 export default function HomeClient({ locale, initialContent }: { locale: string; initialContent?: Record<string, any> }) {
   const t    = useTranslations('home');
   const isAr = locale === 'ar';
@@ -133,18 +89,16 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
   const { data: whyContent }   = useSiteContent('why', initialContent?.why);
   const { data: ctaContent }   = useSiteContent('cta', initialContent?.cta);
   const { data: statsContent } = useSiteContent('stats', initialContent?.stats);
-  const [featured, setFeatured] = useState<Product[]>(() => STATIC_PRODUCTS.filter(p => p.featured).slice(0, 4) as Product[]);
-  const [loading, setLoading]   = useState(false);
+
+  const [featured, setFeatured] = useState<Product[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [homeCats, setHomeCats] = useState<Category[]>([]);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const [statsVisible, setStats] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
   const [activeReview, setActiveReview] = useState(0);
+  const [reviews, setReviews] = useState<HomeReview[]>([]);
 
-  // Reviews — fetch from API (any approved reviews), fallback to static
-  const [reviews, setReviews] = useState<Array<{
-    name: string; nameEn: string; rating: number; textAr: string; textEn: string;
-  }>>(FALLBACK_REVIEWS);
-
-  // Section reveal refs
   const categoriesRef = useRef<HTMLElement>(null);
   const featuredRef   = useRef<HTMLElement>(null);
   const aboutRef      = useRef<HTMLElement>(null);
@@ -156,60 +110,96 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
   const [whyVisible,      setWhyVisible]      = useState(true);
   const [reviewsVisible,  setReviewsVisible]  = useState(true);
 
+  const cmsStats = Array.isArray(statsContent?.items) ? statsContent.items : [];
+
   useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const apply = () => setReduceMotion(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
     productsApi.featured(locale)
       .then(r => {
-        if (r.data?.length) setFeatured(r.data.slice(0, 4));
+        if (!cancelled && r.data?.length) setFeatured(r.data.slice(0, 4));
       })
       .catch(() => {
-        // Keep initial static products
+        if (!cancelled) setFeatured([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
+    return () => { cancelled = true; };
   }, [locale]);
 
-  // Fetch recent approved customer reviews across all products
   useEffect(() => {
+    let cancelled = false;
+    categoriesApi.list(locale)
+      .then(r => {
+        if (!cancelled) setHomeCats(Array.isArray(r.data) ? r.data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setHomeCats([]);
+      });
+    return () => { cancelled = true; };
+  }, [locale]);
+
+  useEffect(() => {
+    let cancelled = false;
     reviewsApi.recent(6)
       .then(r => {
         const apiReviews = r.data ?? [];
-        if (apiReviews.length > 0) {
-          setReviews(apiReviews.map((rv: any) => {
-            const userName = rv.user?.name ||
-              (rv.user?.firstName ? `${rv.user.firstName} ${rv.user.lastName || ''}`.trim() : '') ||
-              (locale === 'ar' ? 'عميل راوقة' : 'Customer');
-            return {
-              name:   userName,
-              nameEn: userName,
-              rating: rv.rating || 5,
-              textAr: rv.comment,
-              textEn: rv.comment,
-            };
-          }));
-        }
+        if (cancelled) return;
+        setReviews(
+          apiReviews
+            .map((rv: any) => {
+              const userName = rv.user?.name ||
+                (rv.user?.firstName ? `${rv.user.firstName} ${rv.user.lastName || ''}`.trim() : '') ||
+                (locale === 'ar' ? 'عميل راوقة' : 'Customer');
+              return {
+                name: userName,
+                rating: typeof rv.rating === 'number' ? rv.rating : 0,
+                text: rv.comment || '',
+                verified: Boolean(rv.isVerifiedPurchase),
+              };
+            })
+            .filter((rv: HomeReview) => rv.text)
+        );
+        setActiveReview(0);
       })
       .catch(() => {
-        // keep fallback reviews
+        if (!cancelled) setReviews([]);
       });
+    return () => { cancelled = true; };
   }, [locale]);
 
   useEffect(() => {
+    if (reduceMotion || reviews.length < 2) return;
     const timer = setInterval(() => {
       setActiveReview(prev => (prev + 1) % reviews.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [reviews.length]);
+  }, [reviews.length, reduceMotion]);
 
   useEffect(() => {
-    if (!statsRef.current) return;
+    if (!statsRef.current || reduceMotion) {
+      setStats(true);
+      return;
+    }
     const io = new IntersectionObserver(([e]) => {
       if (e.isIntersecting) { setStats(true); io.disconnect(); }
     }, { threshold: 0.3 });
     io.observe(statsRef.current);
     return () => io.disconnect();
-  }, []);
+  }, [reduceMotion, cmsStats.length]);
 
-  // Section reveal observers
   useEffect(() => {
-    const sections: [React.RefObject<HTMLElement>, (v: boolean) => void][] = [
+    if (reduceMotion) return;
+    const sections: [React.RefObject<HTMLElement | null>, (v: boolean) => void][] = [
       [categoriesRef, setCatsVisible],
       [featuredRef,   setFeaturedVisible],
       [aboutRef,      setAboutVisible],
@@ -225,18 +215,12 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
       return io;
     });
     return () => observers.forEach(io => io?.disconnect());
-  }, []);
+  }, [reduceMotion]);
 
   return (
     <>
       <LoadingScreen />
       <AdPopup locale={locale} />
-      {/* ═══════════════════════════════════════════════
-          HERO
-          Layout: Text (left/right) + 3D Bag (right/left)
-          Best for Arabic: text on RIGHT, bag on LEFT
-          Best for English: text on LEFT, bag on RIGHT
-      ═══════════════════════════════════════════════ */}
       <section style={{
         position: 'relative',
         minHeight: '100vh',
@@ -246,7 +230,6 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
         display: 'flex',
         alignItems: 'center',
       }}>
-        {/* Background glows - dynamically responsive to current theme */}
         <div aria-hidden style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
           background: 'radial-gradient(ellipse 55% 65% at 30% 50%, color-mix(in srgb, var(--gold) 20%, transparent) 0%, transparent 70%)',
@@ -255,32 +238,32 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
           position: 'absolute', inset: 0, pointerEvents: 'none',
           background: 'radial-gradient(ellipse 40% 40% at 80% 70%, color-mix(in srgb, var(--clay) 18%, transparent) 0%, transparent 65%)',
         }} />
-        <Particles />
+        <Particles reduced={reduceMotion} />
 
         <div className="wrap relative z-10 pt-24 pb-12 sm:pt-32 sm:pb-20 md:pt-40 md:pb-24 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          {/* ── Text block ── */}
           <div className="lg:col-span-7">
-            {/* Eyebrow */}
             <p style={{
               fontSize: '.7rem',
               letterSpacing: '.22em',
               textTransform: 'uppercase',
               color: 'var(--gold-light)',
               marginBottom: '1.25rem',
-              opacity: 0,
-              animation: 'fadeSlideUp 600ms 100ms forwards',
+              opacity: reduceMotion ? 1 : 0,
+              animation: reduceMotion ? undefined : 'fadeSlideUp 600ms 100ms forwards',
             }}>
               {locContent(heroContent, 'eyebrow', locale) || t('hero.eyebrow')}
             </p>
 
-            {/* Headline */}
             <h1 className="display-1" style={{
               color: 'var(--ivory)',
               marginBottom: '1.5rem',
-              opacity: 0,
-              animation: 'fadeSlideUp 700ms 220ms forwards',
+              opacity: reduceMotion ? 1 : 0,
+              animation: reduceMotion ? undefined : 'fadeSlideUp 700ms 220ms forwards',
             }}>
-              <span style={{
+              <span style={reduceMotion ? {
+                color: 'var(--gold-light)',
+                display: 'block',
+              } : {
                 background: 'linear-gradient(135deg, var(--gold-light) 0%, var(--dune) 50%, var(--gold) 100%)',
                 backgroundSize: '200% auto',
                 WebkitBackgroundClip: 'text',
@@ -296,94 +279,84 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
               </span>
             </h1>
 
-            {/* Sub */}
             <p style={{
               fontSize: 'clamp(1rem, 1.3vw, 1.15rem)',
               lineHeight: 1.7,
               color: 'rgba(247,244,236,.68)',
               maxWidth: '42ch',
               marginBottom: '2.25rem',
-              opacity: 0,
-              animation: 'fadeSlideUp 700ms 340ms forwards',
+              opacity: reduceMotion ? 1 : 0,
+              animation: reduceMotion ? undefined : 'fadeSlideUp 700ms 340ms forwards',
             }}>
               {locContent(heroContent, 'sub', locale) || t('hero.sub')}
             </p>
 
-            {/* CTAs */}
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
               gap: '.875rem',
-              opacity: 0,
-              animation: 'fadeSlideUp 700ms 460ms forwards',
+              opacity: reduceMotion ? 1 : 0,
+              animation: reduceMotion ? undefined : 'fadeSlideUp 700ms 460ms forwards',
             }}>
               <Link href={`/${locale}/shop`} className="btn btn-gold">
                 {locContent(heroContent, 'ctaShop', locale) || t('hero.cta_shop')}
               </Link>
-              <Link href={`/${locale}/shop`} className="btn btn-line-dark">
+              <Link href={`#collections`} className="btn btn-line-dark">
                 {locContent(heroContent, 'ctaDiscover', locale) || t('hero.cta_discover')}
               </Link>
             </div>
 
-            {/* Stats */}
-            <div ref={statsRef} style={{
-              display: 'flex',
-              gap: '2.5rem',
-              marginTop: '3rem',
-              paddingTop: '2rem',
-              borderTop: '1px solid rgba(210,181,106,.15)',
-              flexWrap: 'wrap',
-              opacity: 0,
-              animation: 'fadeSlideUp 700ms 600ms forwards',
-            }}>
-              {(statsContent?.items || [
-                { num: '500+', labelAr: 'عميل سعيد',    labelEn: 'Happy Clients' },
-                { num: '4.9★', labelAr: 'تقييم العملاء', labelEn: 'Customer Rating' },
-                { num: '100%', labelAr: 'صنع في مصر',   labelEn: 'Made in Egypt' },
-              ] as any[]).map((s: any, i: number) => (
-                <div key={i}>
-                  <p style={{
-                    fontSize: 'clamp(1.4rem, 2.5vw, 1.9rem)',
-                    fontWeight: 800,
-                    color: 'var(--gold-light)',
-                    lineHeight: 1,
-                    fontFamily: isAr ? 'var(--font-cairo, Cairo, sans-serif)' : 'var(--font-fraunces, serif)',
-                    transform: statsVisible ? 'none' : 'translateY(12px)',
-                    opacity: statsVisible ? 1 : 0,
-                    transition: `all 500ms ${i * 120}ms ease`,
-                  }}>
-                    {s.num}
-                  </p>
-                  <p style={{ fontSize: '.72rem', color: 'rgba(247,244,236,.42)', marginTop: '.2rem' }}>
-                    {isAr ? (s.labelAr || s.ar) : (s.labelEn || s.en)}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {cmsStats.length > 0 && (
+              <div ref={statsRef} style={{
+                display: 'flex',
+                gap: '2.5rem',
+                marginTop: '3rem',
+                paddingTop: '2rem',
+                borderTop: '1px solid rgba(210,181,106,.15)',
+                flexWrap: 'wrap',
+                opacity: reduceMotion ? 1 : 0,
+                animation: reduceMotion ? undefined : 'fadeSlideUp 700ms 600ms forwards',
+              }}>
+                {cmsStats.map((s: any, i: number) => (
+                  <div key={i}>
+                    <p style={{
+                      fontSize: 'clamp(1.4rem, 2.5vw, 1.9rem)',
+                      fontWeight: 800,
+                      color: 'var(--gold-light)',
+                      lineHeight: 1,
+                      fontFamily: isAr ? 'var(--font-cairo, Cairo, sans-serif)' : 'var(--font-fraunces, serif)',
+                      transform: statsVisible ? 'none' : 'translateY(12px)',
+                      opacity: statsVisible ? 1 : 0,
+                      transition: reduceMotion ? 'none' : `all 500ms ${i * 120}ms ease`,
+                    }}>
+                      {s.num}
+                    </p>
+                    <p style={{ fontSize: '.72rem', color: 'rgba(247,244,236,.42)', marginTop: '.2rem' }}>
+                      {isAr ? (s.labelAr || s.ar) : (s.labelEn || s.en)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* ── Slideshow ── */}
           <div
             className="hero-slideshow-wrap lg:col-span-5 relative w-full aspect-[4/5] sm:aspect-square max-w-sm sm:max-w-md mx-auto lg:max-w-none rounded-[28px] overflow-hidden shadow-2xl"
             style={{
-              opacity: 0,
-              animation: 'fadeIn 900ms 300ms forwards',
+              opacity: reduceMotion ? 1 : 0,
+              animation: reduceMotion ? undefined : 'fadeIn 900ms 300ms forwards',
               boxShadow: '0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(210,181,106,.1)',
             }}>
             <HeroSlideshow style={{ borderRadius: 28 }} />
           </div>
         </div>
 
-        {/* Bottom fade */}
         <div aria-hidden style={{
           position: 'absolute', bottom: 0, insetInline: 0, height: 80, pointerEvents: 'none',
           background: 'linear-gradient(to bottom, transparent, rgba(21,19,15,.6))',
         }} />
       </section>
 
-      {/* ═══════════════════════════════════════════════
-          CATEGORIES — 3D tilt
-      ═══════════════════════════════════════════════ */}
       <section
         id="collections"
         ref={categoriesRef}
@@ -404,93 +377,108 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
             </h2>
           </div>
 
-          <div data-stagger style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-          }}>
-            {CATS.map((cat) => (
-              <Tilt3D key={cat.key} className="category-tile" style={{
-                borderRadius: 20,
-                overflow: 'hidden',
-                aspectRatio: '1',
-              }}>
-                <Link href={`/${locale}/shop?category=${cat.key}`} style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  justifyContent: 'flex-end',
-                  height: '100%',
-                  padding: '1.25rem',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  borderRadius: 20,
-                }}>
-                  {/* Real product photo background */}
-                  <Image
-                    src={cat.image}
-                    alt={cat.key}
-                    fill
-                    quality={70}
-                    style={{ objectFit: 'cover', transition: 'transform 500ms ease' }}
-                    sizes="(max-width: 640px) 46vw, (max-width: 1024px) 240px, 260px"
-                    className="cat-img"
-                  />
-                  {/* Dark gradient overlay */}
-                  <div aria-hidden style={{
-                    position: 'absolute', inset: 0,
-                    background: `linear-gradient(160deg, ${cat.color}88 0%, ${cat.color}cc 100%)`,
-                    mixBlendMode: 'multiply',
-                  }} />
-                  <div aria-hidden style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,.6) 0%, transparent 55%)',
-                  }} />
-                  <span style={{
-                    color: 'white', fontWeight: 700, fontSize: '.95rem',
-                    letterSpacing: isAr ? '.02em' : '.08em',
-                    textTransform: 'uppercase',
-                    position: 'relative', zIndex: 1,
-                    textShadow: '0 2px 8px rgba(0,0,0,.5)',
+          {homeCats.length > 0 ? (
+            <div data-stagger style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+            }}>
+              {homeCats.map((cat, idx) => {
+                const filter = categoryFilterParam(cat);
+                const href = filter
+                  ? `/${locale}/shop?category=${encodeURIComponent(filter)}`
+                  : `/${locale}/shop`;
+                const label = loc(cat.nameAr, cat.nameEn, locale);
+                const color = TILE_COLORS[idx % TILE_COLORS.length];
+                const img = cat.image;
+                return (
+                  <Tilt3D key={cat.id || filter || idx} className="category-tile" style={{
+                    borderRadius: 20,
+                    overflow: 'hidden',
+                    aspectRatio: '1',
                   }}>
-                    {t(`discover.${cat.key}` as 'discover.relax')}
-                  </span>
-                  <span aria-hidden style={{
-                    position: 'absolute', top: '.85rem',
-                    [isAr ? 'left' : 'right']: '.85rem',
-                    color: 'rgba(255,255,255,.8)', fontSize: '1rem',
-                    zIndex: 1,
-                  }}>{isAr ? '←' : '→'}</span>
-                </Link>
-              </Tilt3D>
-            ))}
-          </div>
+                    <Link href={href} style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      justifyContent: 'flex-end',
+                      height: '100%',
+                      padding: '1.25rem',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      borderRadius: 20,
+                      background: color,
+                    }}>
+                      {img && (
+                        <Image
+                          src={img}
+                          alt=""
+                          fill
+                          quality={70}
+                          style={{ objectFit: 'cover', transition: reduceMotion ? 'none' : 'transform 500ms ease' }}
+                          sizes="(max-width: 640px) 46vw, (max-width: 1024px) 240px, 260px"
+                          className="cat-img"
+                        />
+                      )}
+                      <div aria-hidden style={{
+                        position: 'absolute', inset: 0,
+                        background: img
+                          ? `linear-gradient(160deg, ${color}88 0%, ${color}cc 100%)`
+                          : `linear-gradient(160deg, ${color} 0%, rgba(21,19,15,.55) 100%)`,
+                        mixBlendMode: img ? 'multiply' : 'normal',
+                      }} />
+                      <div aria-hidden style={{
+                        position: 'absolute', inset: 0,
+                        background: 'linear-gradient(to top, rgba(0,0,0,.6) 0%, transparent 55%)',
+                      }} />
+                      <span style={{
+                        color: 'white', fontWeight: 700, fontSize: '.95rem',
+                        letterSpacing: isAr ? '.02em' : '.08em',
+                        textTransform: 'uppercase',
+                        position: 'relative', zIndex: 1,
+                        textShadow: '0 2px 8px rgba(0,0,0,.5)',
+                      }}>
+                        {label}
+                      </span>
+                      <span aria-hidden style={{
+                        position: 'absolute', top: '.85rem',
+                        insetInlineEnd: '.85rem',
+                        color: 'rgba(255,255,255,.8)', fontSize: '1rem',
+                        zIndex: 1,
+                      }}>{isAr ? '←' : '→'}</span>
+                    </Link>
+                  </Tilt3D>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center' }}>
+              <Link href={`/${locale}/shop`} className="btn btn-line-dark">
+                {t('hero.cta_shop')}
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════
-          FEATURED PRODUCTS
-      ═══════════════════════════════════════════════ */}
       <section
         ref={featuredRef}
         style={{ padding: '6.5rem 0', background: 'var(--charcoal)', position: 'relative', overflow: 'hidden' }}
         className={`section-reveal${featuredVisible ? ' visible' : ''}`}
       >
-        {/* Ambient background glow - dynamic */}
         <div aria-hidden style={{
-          position: 'absolute', top: '20%', [isAr ? 'right' : 'left']: '5%',
+          position: 'absolute', top: '20%', insetInlineStart: '5%',
           width: '35vw', height: '35vw', minWidth: 280,
           background: 'radial-gradient(circle, color-mix(in srgb, var(--gold-light) 12%, transparent) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
         <div className="wrap relative z-10">
-          {/* Header */}
           <div data-reveal="up" className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 sm:mb-14 gap-5">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-3" style={{ background: 'rgba(210,181,106,.1)', border: '1px solid rgba(210,181,106,.2)' }}>
                 <span style={{ fontSize: '.68rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--gold-light)', fontWeight: 700 }}>
-                  ✨ {isAr ? 'اختيارات الموسم' : 'CURATED COLLECTION'}
+                  {isAr ? 'اختيارات الموسم' : 'CURATED COLLECTION'}
                 </span>
               </div>
               <h2 className="display-3" style={{ color: 'var(--ivory)' }}>{t('featured.title')}</h2>
@@ -500,11 +488,10 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
               className="btn btn-line-dark btn-sm inline-flex items-center gap-2 self-start sm:self-auto hover:shadow-lg transition-all"
             >
               <span>{t('featured.view_all')}</span>
-              <span>{isAr ? '←' : '→'}</span>
+              <span aria-hidden>{isAr ? '←' : '→'}</span>
             </Link>
           </div>
 
-          {/* Grid */}
           {loading ? (
             <SkeletonGrid count={3} />
           ) : (
@@ -519,9 +506,6 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════
-          BRAND STORY — real hero image
-      ═══════════════════════════════════════════════ */}
       <section
         ref={aboutRef}
         id="moment"
@@ -546,7 +530,6 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
             </Link>
           </div>
 
-          {/* Real product image */}
           <div data-reveal={isAr?'left':'right'}>
             <Tilt3D>
               <div style={{
@@ -564,13 +547,12 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                   style={{ objectFit:'cover', objectPosition:'center' }}
                   sizes="(max-width:768px) 100vw, 45vw"
                 />
-                {/* Overlay */}
                 <div aria-hidden style={{
                   position:'absolute',inset:0,
                   background:'linear-gradient(135deg, rgba(210,181,106,.1) 0%, transparent 60%)',
                 }} />
                 <span style={{
-                  position:'absolute',bottom:'1.25rem',right:'1.25rem',
+                  position:'absolute',bottom:'1.25rem',insetInlineEnd:'1.25rem',
                   background:'rgba(21,19,15,.7)',backdropFilter:'blur(8px)',
                   borderRadius:999,padding:'.35rem .85rem',
                   fontSize:'.68rem',fontWeight:800,color:'var(--gold-light)',
@@ -584,9 +566,6 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════
-          WHY RAWAQA
-      ═══════════════════════════════════════════════ */}
       <section
         ref={whyRef}
         id="why"
@@ -603,7 +582,6 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
             </h2>
           </div>
 
-          {/* Unified Why RAWAQA grid — dynamic from CMS or fallback */}
           <div className="why-grid" data-reveal="up">
             {(Array.isArray(whyContent?.points) && whyContent.points.length > 0
               ? whyContent.points
@@ -657,15 +635,12 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════
-          REVIEWS — Compact Luxury Row Slider
-      ═══════════════════════════════════════════════ */}
+      {reviews.length > 0 && (
       <section
         ref={reviewsRef}
         style={{ padding:'4.5rem 0', background:'var(--charcoal)', position: 'relative', overflow:'hidden' }}
         className={`section-reveal${reviewsVisible ? ' visible' : ''}`}
       >
-        {/* Glow - dynamic */}
         <div aria-hidden style={{
           position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)',
           width: '50vw', height: '300px', minWidth: 260,
@@ -677,52 +652,48 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
           <div data-reveal="up" className="text-center mb-8">
             <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full mb-2.5" style={{ background: 'rgba(210,181,106,.08)', border: '1px solid rgba(210,181,106,.18)' }}>
               <span style={{ fontSize: '.62rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--gold-light)', fontWeight: 700 }}>
-                ⭐ {isAr ? 'آراء العملاء' : 'CUSTOMER REVIEWS'}
+                {isAr ? 'آراء العملاء' : 'CUSTOMER REVIEWS'}
               </span>
             </div>
             <h2 className="display-3 text-xl sm:text-2xl font-bold mb-1.5" style={{ color:'var(--ivory)' }}>{t('reviews.title')}</h2>
-            <p style={{ color: 'rgba(247,244,236,.45)', fontSize: '.82rem' }}>
-              {isAr ? 'تجارب حقيقية لعملاء رواقة في مختلف محافظات مصر' : 'Real experiences from happy RAWAQA customers'}
-            </p>
           </div>
 
-          {/* Compact Testimonial Row Slider Card */}
           <div data-reveal="scale" className="relative">
             <div
-              className="relative p-5 sm:p-7 rounded-2xl transition-all duration-500"
+              className="relative p-5 sm:p-7 rounded-2xl"
               style={{
                 background: 'linear-gradient(165deg, color-mix(in srgb, var(--charcoal-soft) 92%, var(--gold-light) 8%) 0%, var(--charcoal-soft) 100%)',
                 border: '1px solid rgba(210,181,106,.15)',
                 boxShadow: '0 15px 35px rgba(0,0,0,.4)',
               }}
             >
-              {/* Rating */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: reviews[activeReview]?.rating ?? 5 }).map((_, j) => (
+                  {Array.from({ length: Math.max(0, Math.round(reviews[activeReview]?.rating ?? 0)) }).map((_, j) => (
                     <span key={j} style={{ color: 'var(--gold-light)', fontSize: '.95rem' }}>★</span>
                   ))}
-                  <span className="text-xs font-bold text-ivory/60 ms-1.5">5.0</span>
+                  <span className="text-xs font-bold text-ivory/60 ms-1.5">
+                    {(reviews[activeReview]?.rating ?? 0).toFixed(1)}
+                  </span>
                 </div>
-                <span className="text-[.68rem] text-[#4ade80] font-semibold flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#4ade80]/10 border border-[#4ade80]/20">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                  </svg>
-                  <span>{isAr ? 'تجربة موثّقة' : 'Verified Review'}</span>
-                </span>
+                {reviews[activeReview]?.verified && (
+                  <span className="text-[.68rem] text-[#4ade80] font-semibold flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#4ade80]/10 border border-[#4ade80]/20">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                    </svg>
+                    <span>{isAr ? 'تجربة موثّقة' : 'Verified Review'}</span>
+                  </span>
+                )}
               </div>
 
-              {/* Quote Text */}
               <p
                 key={activeReview}
                 className="text-sm sm:text-base text-ivory/85 leading-relaxed mb-6 font-normal"
               >
-                &ldquo;{isAr ? reviews[activeReview]?.textAr : reviews[activeReview]?.textEn}&rdquo;
+                &ldquo;{reviews[activeReview]?.text}&rdquo;
               </p>
 
-              {/* Author Row & Slider Controls */}
               <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                {/* Author Info */}
                 <div className="flex items-center gap-2.5">
                   <div
                     style={{
@@ -731,29 +702,28 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontWeight: 800, color: 'var(--charcoal)', fontSize: '.85rem',
                     }}
+                    aria-hidden
                   >
-                    {(isAr ? reviews[activeReview]?.name : reviews[activeReview]?.nameEn)?.[0] ?? '?'}
+                    {reviews[activeReview]?.name?.[0] ?? '?'}
                   </div>
                   <div>
                     <p className="text-xs sm:text-sm font-bold text-ivory leading-tight">
-                      {isAr ? reviews[activeReview]?.name : reviews[activeReview]?.nameEn}
-                    </p>
-                    <p className="text-[.68rem] text-ivory/40 mt-0.5">
-                      {isAr ? 'عميل لدى رواقة' : 'RAWAQA Customer'}
+                      {reviews[activeReview]?.name}
                     </p>
                   </div>
                 </div>
 
-                {/* Slider Nav Buttons & Dots */}
+                {reviews.length > 1 && (
                 <div className="flex items-center gap-2">
-                  {/* Dots */}
                   <div className="flex items-center gap-0.5">
-                    {reviews.map((_: unknown, i: number) => (
+                    {reviews.map((_, i) => (
                       <button
                         key={i}
+                        type="button"
                         onClick={() => setActiveReview(i)}
-                        className="w-8 h-8 flex items-center justify-center p-0 m-0 border-0 bg-transparent cursor-pointer"
-                        aria-label={`Go to slide ${i + 1}`}
+                        className="touch-target w-11 h-11 flex items-center justify-center p-0 m-0 border-0 bg-transparent cursor-pointer"
+                        aria-label={t('reviews.go_to', { n: i + 1 })}
+                        aria-current={i === activeReview ? 'true' : undefined}
                       >
                         <span
                           className="transition-all duration-300 rounded-full block"
@@ -767,33 +737,33 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                     ))}
                   </div>
 
-                  {/* Arrows */}
                   <div className="flex items-center gap-1">
                     <button
+                      type="button"
                       onClick={() => setActiveReview(prev => (prev - 1 + reviews.length) % reviews.length)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-ivory/70 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-xs"
-                      aria-label="Previous review"
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-ivory/70 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-xs"
+                      aria-label={t('reviews.prev')}
                     >
                       {isAr ? '→' : '←'}
                     </button>
                     <button
+                      type="button"
                       onClick={() => setActiveReview(prev => (prev + 1) % reviews.length)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-ivory/70 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-xs"
-                      aria-label="Next review"
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-ivory/70 border border-white/15 hover:border-[var(--gold-light)] hover:text-[var(--gold-light)] hover:bg-white/5 transition-all text-xs"
+                      aria-label={t('reviews.next')}
                     >
-                      {isAr ? '←' : '→'}
+                      {isAr ? '←' : '→' }
                     </button>
                   </div>
                 </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </section>
+      )}
 
-      {/* ═══════════════════════════════════════════════
-          CTA FINAL — compact
-      ═══════════════════════════════════════════════ */}
       <section style={{
         padding:'3.5rem 0',
         background:'linear-gradient(160deg, var(--charcoal-soft) 0%, var(--charcoal) 100%)',
@@ -804,7 +774,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
           position:'absolute',inset:0,
           background:'radial-gradient(ellipse 55% 55% at 50% 50%, color-mix(in srgb, var(--gold) 20%, transparent) 0%, transparent 70%)',
         }} />
-        <Particles />
+        <Particles reduced={reduceMotion} />
         <div className="wrap" style={{ position:'relative',zIndex:1 }} data-reveal="scale">
           <h2 className="display-3" style={{ color:'var(--ivory)',marginBottom:'0.75rem' }}>
             {locContent(ctaContent, 'title', locale) || t('cta.title')}

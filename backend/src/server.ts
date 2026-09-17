@@ -521,6 +521,49 @@ const startServer = async () => {
     }
   });
 
+  let workerLifecycleBound = false;
+  let workerRestartTimer: NodeJS.Timeout | null = null;
+
+  const stopBackgroundWorkers = () => {
+    if (workerRestartTimer) {
+      clearTimeout(workerRestartTimer);
+      workerRestartTimer = null;
+    }
+    outboxWorker.stop();
+    inventoryReconciliationWorker.stop();
+    autoCancelWorker.stop();
+  };
+
+  const startBackgroundWorkers = () => {
+    outboxWorker.start();
+    inventoryReconciliationWorker.start();
+    autoCancelWorker.start();
+  };
+
+  const bindWorkerLifecycleOnce = () => {
+    if (workerLifecycleBound || !env.ENABLE_WORKERS) return;
+    workerLifecycleBound = true;
+
+    mongoose.connection.on('reconnected', () => {
+      logInfo('MongoDB reconnected — restarting workers once');
+      stopBackgroundWorkers();
+      workerRestartTimer = setTimeout(() => {
+        workerRestartTimer = null;
+        if (mongoose.connection.readyState !== 1) {
+          logInfo('Skipping worker restart — MongoDB is not connected');
+          return;
+        }
+        logInfo('Starting background workers after reconnect');
+        startBackgroundWorkers();
+      }, 2000);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      logInfo('MongoDB disconnected — pausing workers once');
+      stopBackgroundWorkers();
+    });
+  };
+
   // 2. Connect to Database asynchronously in background without blocking port discovery
   const initDbAndWorkers = async (retries = 5, delay = 3000) => {
     try {
@@ -534,32 +577,8 @@ const startServer = async () => {
       // 3. Start background workers AFTER DB is confirmed connected
       if (env.ENABLE_WORKERS) {
         logInfo('Starting background workers');
-        outboxWorker.start();
-        inventoryReconciliationWorker.start();
-        autoCancelWorker.start();
-
-        // Restart workers on MongoDB reconnect
-        mongoose.connection.on('reconnected', () => {
-          console.log('🔄 MongoDB reconnected — restarting workers');
-          logInfo('MongoDB reconnected — restarting workers');
-          outboxWorker.stop();
-          inventoryReconciliationWorker.stop();
-          autoCancelWorker.stop();
-          setTimeout(() => {
-            outboxWorker.start();
-            inventoryReconciliationWorker.start();
-            autoCancelWorker.start();
-          }, 2000);
-        });
-
-        // Stop workers on MongoDB disconnect (prevent MongoNotConnectedError)
-        mongoose.connection.on('disconnected', () => {
-          console.warn('⚠️ MongoDB disconnected — pausing workers');
-          logInfo('MongoDB disconnected — pausing workers');
-          outboxWorker.stop();
-          inventoryReconciliationWorker.stop();
-          autoCancelWorker.stop();
-        });
+        startBackgroundWorkers();
+        bindWorkerLifecycleOnce();
       }
     } catch (error: any) {
       console.error(`❌ Database connection attempt failed (${retries} retries left):`, error?.message || error);
@@ -584,9 +603,7 @@ const startServer = async () => {
     if (env.ENABLE_WORKERS) {
       logInfo('Stopping background workers');
       try {
-        outboxWorker.stop();
-        inventoryReconciliationWorker.stop();
-        autoCancelWorker.stop();
+        stopBackgroundWorkers();
       } catch (err) {
         logError('Error stopping workers', err);
       }

@@ -3,17 +3,30 @@ import dns from 'dns';
 import net from 'net';
 import logger, { logError, logInfo } from './logger';
 
-// Store last connection error for non-destructive diagnostics
-export let lastConnectionError: any = null;
+const READY_STATE_LABEL: Record<number, string> = {
+  0: 'disconnected',
+  1: 'connected',
+  2: 'connecting',
+  3: 'disconnecting',
+  99: 'uninitialized',
+};
 
-// Force IPv4 lookup ordering to prevent getaddrinfo EAI_AGAIN on container environments
+export let lastConnectionError: any = null;
+export let lastConnectionErrorAt: string | null = null;
+export let lastDisconnectedAt: string | null = null;
+export let lastReconnectedAt: string | null = null;
+export let disconnectCount = 0;
+
+let lastAppliedOptions: mongoose.ConnectOptions | null = null;
+let lifecycleListenersAttached = false;
+let keepAliveTimer: NodeJS.Timeout | null = null;
+let lastDisconnectEpochMs: number | null = null;
+
 try {
   dns.setDefaultResultOrder('ipv4first');
 } catch {}
 
 // Only apply custom DNS servers if explicitly configured via environment variable.
-// In container environments (Render, Docker, Kubernetes), overriding system DNS with public
-// IPs like 8.8.8.8 causes UDP 53 blackholing and 45s+ connection delays.
 if (process.env['DNS_SERVERS']) {
   try {
     const dnsServers = process.env['DNS_SERVERS'].split(',').map((s) => s.trim());
@@ -24,7 +37,6 @@ if (process.env['DNS_SERVERS']) {
   }
 }
 
-// Disable Mongoose command buffering to prevent dangerous operation queuing when disconnected
 mongoose.set('bufferCommands', false);
 
 interface DatabaseConfig {
@@ -32,9 +44,64 @@ interface DatabaseConfig {
   options: mongoose.ConnectOptions;
 }
 
+const redactSecrets = (value: string): string =>
+  String(value)
+    .replace(/:([^:@/]+)@/g, ':****@')
+    .replace(/(mongodb(?:\+srv)?:\/\/)[^/\s]+/gi, '$1****');
+
+const currentStateLabel = (): string =>
+  READY_STATE_LABEL[mongoose.connection.readyState] || String(mongoose.connection.readyState);
+
+const serializeMongoError = (error: any) => {
+  const serialized: Record<string, unknown> = {
+    name: error?.name || 'Error',
+    message: error?.message ? redactSecrets(String(error.message)) : 'Unknown error',
+    code: error?.code ?? null,
+    topologyType: error?.reason?.type || null,
+    servers: [] as unknown[],
+  };
+
+  if (error?.reason?.servers) {
+    try {
+      const serverEntries: any[] = error.reason.servers instanceof Map
+        ? Array.from(error.reason.servers.entries())
+        : Object.entries(error.reason.servers);
+      serialized.servers = serverEntries.map((entry: any) => {
+        const addr = entry[0];
+        const server = entry[1] || {};
+        return {
+          address: addr,
+          type: server.type || 'Unknown',
+          errorName: server.error?.name || null,
+          errorMessage: server.error?.message ? redactSecrets(String(server.error.message)) : null,
+          errorCode: server.error?.code || null,
+        };
+      });
+    } catch {
+      // Keep empty servers array if topology dump fails
+    }
+  }
+
+  return serialized;
+};
+
+const recordRuntimeError = (error: any, source: string): void => {
+  lastConnectionError = error;
+  lastConnectionErrorAt = new Date().toISOString();
+  const details = serializeMongoError(error);
+  const safeError = new Error(String(details.message));
+  safeError.name = String(details.name);
+  logError(`MongoDB ${source}`, safeError, {
+    ...details,
+    timestamp: lastConnectionErrorAt,
+    connectionState: currentStateLabel(),
+    readyState: mongoose.connection.readyState,
+  });
+};
+
 const getDatabaseConfig = (): DatabaseConfig => {
-  const uri = process.env['NODE_ENV'] === 'test' 
-    ? process.env['MONGODB_URI_TEST'] 
+  const uri = process.env['NODE_ENV'] === 'test'
+    ? process.env['MONGODB_URI_TEST']
     : process.env['MONGODB_URI'];
 
   if (!uri) {
@@ -42,7 +109,7 @@ const getDatabaseConfig = (): DatabaseConfig => {
   }
 
   const options: mongoose.ConnectOptions = {
-    maxPoolSize: parseInt(process.env['MONGODB_MAX_POOL_SIZE'] || '50', 10),
+    maxPoolSize: parseInt(process.env['MONGODB_MAX_POOL_SIZE'] || '10', 10),
     minPoolSize: parseInt(process.env['MONGODB_MIN_POOL_SIZE'] || '2', 10),
     connectTimeoutMS: 10000,
     socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '45000', 10),
@@ -52,7 +119,6 @@ const getDatabaseConfig = (): DatabaseConfig => {
     ),
     waitQueueTimeoutMS: parseInt(process.env['MONGODB_WAIT_QUEUE_TIMEOUT'] || '5000', 10),
     maxIdleTimeMS: parseInt(process.env['MONGODB_MAX_IDLE_TIME_MS'] || '120000', 10),
-    // Recommended settings for production
     retryWrites: true,
     retryReads: true,
     w: 'majority',
@@ -61,20 +127,26 @@ const getDatabaseConfig = (): DatabaseConfig => {
   return { uri, options };
 };
 
-// Active keepalive heartbeat timer to prevent cloud NAT/Atlas 270s idle connection drops
-let keepAliveTimer: NodeJS.Timeout | null = null;
-
 const startKeepAlive = () => {
   if (keepAliveTimer) return;
   keepAliveTimer = setInterval(async () => {
-    if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
-      try {
-        await mongoose.connection.db.admin().ping();
-      } catch {
-        // Silently ignore ping errors
-      }
+    if (mongoose.connection.readyState !== 1 || !mongoose.connection.db) {
+      return;
     }
-  }, 60000); // Send ping every 60s
+    try {
+      await mongoose.connection.db.admin().ping();
+    } catch (error: any) {
+      const details = serializeMongoError(error);
+      const safeError = new Error(String(details.message));
+      safeError.name = String(details.name);
+      logError('MongoDB keepalive ping failed', safeError, {
+        ...details,
+        timestamp: new Date().toISOString(),
+        connectionState: currentStateLabel(),
+        readyState: mongoose.connection.readyState,
+      });
+    }
+  }, 60000);
   if (typeof keepAliveTimer.unref === 'function') {
     keepAliveTimer.unref();
   }
@@ -87,45 +159,102 @@ const stopKeepAlive = () => {
   }
 };
 
+const attachLifecycleListenersOnce = (): void => {
+  if (lifecycleListenersAttached) return;
+  lifecycleListenersAttached = true;
+
+  mongoose.connection.on('connecting', () => {
+    logInfo('MongoDB connecting', {
+      timestamp: new Date().toISOString(),
+      connectionState: currentStateLabel(),
+      readyState: mongoose.connection.readyState,
+    });
+  });
+
+  mongoose.connection.on('connected', () => {
+    logInfo('MongoDB connected', {
+      timestamp: new Date().toISOString(),
+      connectionState: currentStateLabel(),
+      readyState: mongoose.connection.readyState,
+      host: mongoose.connection.host,
+      name: mongoose.connection.name,
+    });
+  });
+
+  mongoose.connection.on('error', (err) => {
+    const details = serializeMongoError(err);
+    console.error('❌ MongoDB runtime error:', details.name, details.message, details.code);
+    recordRuntimeError(err, 'runtime error');
+  });
+
+  mongoose.connection.on('disconnected', () => {
+    lastDisconnectEpochMs = Date.now();
+    lastDisconnectedAt = new Date(lastDisconnectEpochMs).toISOString();
+    disconnectCount += 1;
+    logger.warn('MongoDB disconnected', {
+      timestamp: lastDisconnectedAt,
+      connectionState: currentStateLabel(),
+      readyState: mongoose.connection.readyState,
+      disconnectCount,
+      lastErrorName: lastConnectionError?.name || null,
+      lastErrorMessage: lastConnectionError?.message
+        ? redactSecrets(String(lastConnectionError.message))
+        : null,
+      lastErrorCode: lastConnectionError?.code ?? null,
+      lastConnectionErrorAt,
+    });
+  });
+
+  mongoose.connection.on('reconnected', () => {
+    const now = Date.now();
+    lastReconnectedAt = new Date(now).toISOString();
+    const downtimeMs = lastDisconnectEpochMs != null ? now - lastDisconnectEpochMs : null;
+    lastDisconnectEpochMs = null;
+    logInfo(
+      downtimeMs != null
+        ? `MongoDB reconnected after ${downtimeMs}ms`
+        : 'MongoDB reconnected',
+      {
+        timestamp: lastReconnectedAt,
+        downtimeMs,
+        downtimeSeconds: downtimeMs != null ? Number((downtimeMs / 1000).toFixed(3)) : null,
+        connectionState: currentStateLabel(),
+        readyState: mongoose.connection.readyState,
+        disconnectCount,
+      }
+    );
+  });
+};
+
 export const connectDatabase = async (): Promise<void> => {
   try {
     const { uri, options } = getDatabaseConfig();
-    
-    // Mask password in logs
-    const maskedUri = uri.replace(/:([^:@]+)@/, ':****@');
-    logInfo(`Connecting to MongoDB: ${maskedUri}`);
+    lastAppliedOptions = options;
+    attachLifecycleListenersOnce();
+
+    logInfo('Connecting to MongoDB', {
+      maxPoolSize: options.maxPoolSize,
+      minPoolSize: options.minPoolSize,
+      serverSelectionTimeoutMS: options.serverSelectionTimeoutMS,
+      connectTimeoutMS: options.connectTimeoutMS,
+      socketTimeoutMS: options.socketTimeoutMS,
+      waitQueueTimeoutMS: options.waitQueueTimeoutMS,
+      maxIdleTimeMS: options.maxIdleTimeMS,
+    });
 
     await mongoose.connect(uri, options);
-
-    // Start background keepalive ping
     startKeepAlive();
 
     logInfo('MongoDB connected successfully', {
       host: mongoose.connection.host,
       name: mongoose.connection.name,
       poolSize: options.maxPoolSize,
+      minPoolSize: options.minPoolSize,
+      connectionState: currentStateLabel(),
     });
-
-    // Set up connection event handlers
-    mongoose.connection.on('error', (err) => {
-      console.error('❌ MongoDB runtime error:', err.message);
-      logError('MongoDB connection error', err);
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      console.warn('⚠️ MongoDB disconnected');
-      logger.warn('MongoDB disconnected');
-    });
-
-    mongoose.connection.on('reconnected', () => {
-      console.log('🔄 MongoDB reconnected');
-      logInfo('MongoDB reconnected');
-    });
-
   } catch (error: any) {
-    lastConnectionError = error;
-    console.error('❌ Failed to connect to MongoDB:', error?.message || error);
-    logError('Failed to connect to MongoDB', error);
+    recordRuntimeError(error, 'initial connection failure');
+    console.error('❌ Failed to connect to MongoDB:', error?.message ? redactSecrets(String(error.message)) : error);
     throw error;
   }
 };
@@ -141,12 +270,10 @@ export const disconnectDatabase = async (): Promise<void> => {
   }
 };
 
-// Helper to check if database is connected
 export const isDatabaseConnected = (): boolean => {
   return mongoose.connection.readyState === 1;
 };
 
-// Helper to get database connection stats
 export const getDatabaseStats = () => {
   return {
     readyState: mongoose.connection.readyState,
@@ -156,7 +283,6 @@ export const getDatabaseStats = () => {
   };
 };
 
-// Non-destructive TCP probe helper
 const probeTcp = (host: string, port: number, timeoutMs = 3000): Promise<{ host: string; port: number; status: string; error?: string }> => {
   return new Promise((resolve) => {
     const s = net.createConnection({ host, port, timeout: timeoutMs });
@@ -174,10 +300,26 @@ const probeTcp = (host: string, port: number, timeoutMs = 3000): Promise<{ host:
   });
 };
 
-// Comprehensive, safe diagnostic collector (NO secrets, NO passwords exposed)
+const resolveAppliedOptions = (): mongoose.ConnectOptions => {
+  if (lastAppliedOptions) return lastAppliedOptions;
+  try {
+    return getDatabaseConfig().options;
+  } catch {
+    return {
+      maxPoolSize: parseInt(process.env['MONGODB_MAX_POOL_SIZE'] || '10', 10),
+      minPoolSize: parseInt(process.env['MONGODB_MIN_POOL_SIZE'] || '2', 10),
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '45000', 10),
+      serverSelectionTimeoutMS: parseInt(process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '5000', 10),
+      waitQueueTimeoutMS: parseInt(process.env['MONGODB_WAIT_QUEUE_TIMEOUT'] || '5000', 10),
+      maxIdleTimeMS: parseInt(process.env['MONGODB_MAX_IDLE_TIME_MS'] || '120000', 10),
+    };
+  }
+};
+
 export const getDiagnosticInfo = async (runActiveProbes = false) => {
-  const rawUri = process.env['NODE_ENV'] === 'test' 
-    ? process.env['MONGODB_URI_TEST'] 
+  const rawUri = process.env['NODE_ENV'] === 'test'
+    ? process.env['MONGODB_URI_TEST']
     : process.env['MONGODB_URI'];
 
   let sanitizedConfig: any = { exists: Boolean(rawUri) };
@@ -203,48 +345,38 @@ export const getDiagnosticInfo = async (runActiveProbes = false) => {
     }
   }
 
-  const serializedError: any = lastConnectionError ? {
-    name: lastConnectionError.name || 'Error',
-    message: lastConnectionError.message ? String(lastConnectionError.message).replace(/:([^:@]+)@/, ':****@') : 'Unknown error',
-    code: lastConnectionError.code || null,
-    topologyType: lastConnectionError.reason?.type || null,
-    servers: [] as any[],
-  } : null;
-
-  if (lastConnectionError?.reason?.servers) {
-    try {
-      const serverEntries: any[] = lastConnectionError.reason.servers instanceof Map
-        ? Array.from(lastConnectionError.reason.servers.entries())
-        : Object.entries(lastConnectionError.reason.servers);
-      serializedError.servers = serverEntries.map((entry: any) => {
-        const addr = entry[0];
-        const server = entry[1] || {};
-        return {
-          address: addr,
-          type: server.type || 'Unknown',
-          errorName: server.error?.name || null,
-          errorMessage: server.error?.message ? String(server.error.message).replace(/:([^:@]+)@/, ':****@') : null,
-          errorCode: server.error?.code || null,
-        };
-      });
-    } catch (_e) {}
-  }
+  const options = resolveAppliedOptions();
+  const timeouts = {
+    connectTimeoutMS: options.connectTimeoutMS ?? 10000,
+    socketTimeoutMS: options.socketTimeoutMS,
+    serverSelectionTimeoutMS: options.serverSelectionTimeoutMS,
+    waitQueueTimeoutMS: options.waitQueueTimeoutMS,
+    maxIdleTimeMS: options.maxIdleTimeMS,
+  };
 
   const diagnostic: any = {
     timestamp: new Date().toISOString(),
+    connected: isDatabaseConnected(),
+    readyState: mongoose.connection.readyState,
+    currentConnectionState: currentStateLabel(),
     isDatabaseConnected: isDatabaseConnected(),
     environment: process.env['NODE_ENV'] || 'unknown',
     mongooseVersion: mongoose.version,
     configuredDnsServers: dns.getServers(),
     uriConfig: sanitizedConfig,
-    connectionTimeouts: {
-      serverSelectionTimeoutMS: parseInt(process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '5000', 10),
-      connectTimeoutMS: 10000,
-      socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '20000', 10),
-      waitQueueTimeoutMS: parseInt(process.env['MONGODB_WAIT_QUEUE_TIMEOUT'] || '5000', 10),
-      maxIdleTimeMS: parseInt(process.env['MONGODB_MAX_IDLE_TIME_MS'] || '60000', 10),
+    pool: {
+      maxPoolSize: options.maxPoolSize,
+      minPoolSize: options.minPoolSize,
     },
-    lastConnectionError: serializedError,
+    timeouts,
+    connectionTimeouts: timeouts,
+    runtime: {
+      disconnectCount,
+      lastDisconnectedAt,
+      lastReconnectedAt,
+      lastConnectionErrorAt,
+    },
+    lastConnectionError: lastConnectionError ? serializeMongoError(lastConnectionError) : null,
   };
 
   if (runActiveProbes && sanitizedConfig.hosts?.length) {
@@ -279,7 +411,6 @@ export const getDiagnosticInfo = async (runActiveProbes = false) => {
   return diagnostic;
 };
 
-// Helper to check if transactions are supported by MongoDB topology
 export const supportsTransactions = (): boolean => {
   try {
     const client = (mongoose.connection?.getClient?.() || (mongoose.connection as any).client) as any;

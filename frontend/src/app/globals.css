@@ -1408,3 +1408,38 @@ img, svg { display: block; max-width: 100%; }
     max-height: 560px !important;
   }
 }
+
+/* ─── Phase A — touch targets + reduced motion (storefront) ─── */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.product-card-add {
+  min-height: 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .particle-v2,
+  .streak,
+  .anim-float,
+  .anim-float-slow,
+  .text-gradient-gold,
+  .product-card-stagger,
+  .shop-grid-card,
+  .cart-empty-bounce,
+  .checkout-pulse {
+    animation: none !important;
+  }
+
+  .product-card-3d:hover,
+  .category-tile:hover,
+  .why-card:hover {
+    transform: none !important;
+  }
+}
+
