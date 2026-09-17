@@ -523,18 +523,27 @@ const startServer = async () => {
 
   let workerLifecycleBound = false;
   let workerRestartTimer: NodeJS.Timeout | null = null;
+  let workersRunning = false;
 
   const stopBackgroundWorkers = () => {
     if (workerRestartTimer) {
       clearTimeout(workerRestartTimer);
       workerRestartTimer = null;
     }
+    if (!workersRunning) return;
+    workersRunning = false;
     outboxWorker.stop();
     inventoryReconciliationWorker.stop();
     autoCancelWorker.stop();
   };
 
   const startBackgroundWorkers = () => {
+    if (workersRunning) return;
+    if (mongoose.connection.readyState !== 1) {
+      logInfo('Skipping worker start — MongoDB is not connected');
+      return;
+    }
+    workersRunning = true;
     outboxWorker.start();
     inventoryReconciliationWorker.start();
     autoCancelWorker.start();
@@ -545,7 +554,7 @@ const startServer = async () => {
     workerLifecycleBound = true;
 
     mongoose.connection.on('reconnected', () => {
-      logInfo('MongoDB reconnected — restarting workers once');
+      logInfo('MongoDB reconnected — scheduling worker restart once');
       stopBackgroundWorkers();
       workerRestartTimer = setTimeout(() => {
         workerRestartTimer = null;
