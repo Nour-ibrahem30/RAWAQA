@@ -11,16 +11,17 @@ try {
   dns.setDefaultResultOrder('ipv4first');
 } catch {}
 
-// Use explicitly configured DNS servers, or fallback to Google & Cloudflare public DNS
-const dnsServers = process.env['DNS_SERVERS']
-  ? process.env['DNS_SERVERS'].split(',').map((s) => s.trim())
-  : ['8.8.8.8', '1.1.1.1', '8.8.4.4'];
-
-try {
-  dns.setServers(dnsServers);
-  logger.info(`DNS servers configured: ${dnsServers.join(', ')}`);
-} catch (err) {
-  logger.warn('Failed to set DNS servers', { error: err });
+// Only apply custom DNS servers if explicitly configured via environment variable.
+// In container environments (Render, Docker, Kubernetes), overriding system DNS with public
+// IPs like 8.8.8.8 causes UDP 53 blackholing and 45s+ connection delays.
+if (process.env['DNS_SERVERS']) {
+  try {
+    const dnsServers = process.env['DNS_SERVERS'].split(',').map((s) => s.trim());
+    dns.setServers(dnsServers);
+    logger.info(`Custom DNS servers configured: ${dnsServers.join(', ')}`);
+  } catch (err) {
+    logger.warn('Failed to set custom DNS servers', { error: err });
+  }
 }
 
 // Disable Mongoose command buffering to prevent dangerous operation queuing when disconnected

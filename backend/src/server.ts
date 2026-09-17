@@ -129,10 +129,10 @@ export const dbDiagnosticHandler = async (_req: Request, res: Response): Promise
   res.status(200).json(diag);
 };
 
-// Standard health check (returns 200 if database connected, 503 if disconnected)
+// Standard health check (returns HTTP 200 for cloud platform deployment probes, reporting database state in body)
 export const standardHealthHandler = (_req: Request, res: Response): void => {
   const isDbConnected = database.isConnected();
-  res.status(isDbConnected ? 200 : 503).json({
+  res.status(200).json({
     status: isDbConnected ? 'ok' : 'degraded',
     environment: env.NODE_ENV,
     database: isDbConnected ? 'connected' : 'disconnected',
