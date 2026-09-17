@@ -14,11 +14,11 @@ const envSchema = z.object({
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/rawaqa'),
   MONGODB_URI_TEST: z.string().optional(),
   MONGODB_MAX_POOL_SIZE: z.coerce.number().positive().default(50),
-  MONGODB_MIN_POOL_SIZE: z.coerce.number().positive().default(5),
-  MONGODB_SOCKET_TIMEOUT: z.coerce.number().positive().default(20000),
+  MONGODB_MIN_POOL_SIZE: z.coerce.number().positive().default(2),
+  MONGODB_SOCKET_TIMEOUT: z.coerce.number().positive().default(45000),
   MONGODB_SERVER_SELECTION_TIMEOUT: z.coerce.number().positive().default(5000),
   MONGODB_WAIT_QUEUE_TIMEOUT: z.coerce.number().positive().default(5000),
-  MONGODB_MAX_IDLE_TIME_MS: z.coerce.number().positive().default(60000),
+  MONGODB_MAX_IDLE_TIME_MS: z.coerce.number().positive().default(120000),
 
   // JWT
   JWT_ACCESS_SECRET: z.string().min(16).default('rawaqa-jwt-access-secret-default-key-32-chars-minimum'),

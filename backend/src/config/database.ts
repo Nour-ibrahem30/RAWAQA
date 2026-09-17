@@ -43,15 +43,15 @@ const getDatabaseConfig = (): DatabaseConfig => {
 
   const options: mongoose.ConnectOptions = {
     maxPoolSize: parseInt(process.env['MONGODB_MAX_POOL_SIZE'] || '50', 10),
-    minPoolSize: parseInt(process.env['MONGODB_MIN_POOL_SIZE'] || '5', 10),
+    minPoolSize: parseInt(process.env['MONGODB_MIN_POOL_SIZE'] || '2', 10),
     connectTimeoutMS: 10000,
-    socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '20000', 10),
+    socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '45000', 10),
     serverSelectionTimeoutMS: parseInt(
       process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '5000',
       10
     ),
     waitQueueTimeoutMS: parseInt(process.env['MONGODB_WAIT_QUEUE_TIMEOUT'] || '5000', 10),
-    maxIdleTimeMS: parseInt(process.env['MONGODB_MAX_IDLE_TIME_MS'] || '60000', 10),
+    maxIdleTimeMS: parseInt(process.env['MONGODB_MAX_IDLE_TIME_MS'] || '120000', 10),
     // Recommended settings for production
     retryWrites: true,
     retryReads: true,
@@ -59,6 +59,32 @@ const getDatabaseConfig = (): DatabaseConfig => {
   };
 
   return { uri, options };
+};
+
+// Active keepalive heartbeat timer to prevent cloud NAT/Atlas 270s idle connection drops
+let keepAliveTimer: NodeJS.Timeout | null = null;
+
+const startKeepAlive = () => {
+  if (keepAliveTimer) return;
+  keepAliveTimer = setInterval(async () => {
+    if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
+      try {
+        await mongoose.connection.db.admin().ping();
+      } catch {
+        // Silently ignore ping errors
+      }
+    }
+  }, 60000); // Send ping every 60s
+  if (typeof keepAliveTimer.unref === 'function') {
+    keepAliveTimer.unref();
+  }
+};
+
+const stopKeepAlive = () => {
+  if (keepAliveTimer) {
+    clearInterval(keepAliveTimer);
+    keepAliveTimer = null;
+  }
 };
 
 export const connectDatabase = async (): Promise<void> => {
@@ -71,7 +97,9 @@ export const connectDatabase = async (): Promise<void> => {
 
     await mongoose.connect(uri, options);
 
-    console.log('✅ Database connected');
+    // Start background keepalive ping
+    startKeepAlive();
+
     logInfo('MongoDB connected successfully', {
       host: mongoose.connection.host,
       name: mongoose.connection.name,
@@ -104,6 +132,7 @@ export const connectDatabase = async (): Promise<void> => {
 
 export const disconnectDatabase = async (): Promise<void> => {
   try {
+    stopKeepAlive();
     await mongoose.connection.close();
     logInfo('MongoDB connection closed');
   } catch (error) {
