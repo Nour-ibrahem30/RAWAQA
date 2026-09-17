@@ -1,3 +1,7 @@
+import dns from 'dns';
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {}
 console.log('🚀 [STARTUP] server.ts initializing... PID:', process.pid, 'PORT:', process.env.PORT);
 import mongoose from "mongoose";
 import express, { Application, Request, Response, NextFunction } from 'express';

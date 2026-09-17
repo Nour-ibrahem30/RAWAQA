@@ -6,14 +6,21 @@ import logger, { logError, logInfo } from './logger';
 // Store last connection error for non-destructive diagnostics
 export let lastConnectionError: any = null;
 
-// Only override DNS servers if explicitly provided in environment variables
-if (process.env['DNS_SERVERS']) {
-  try {
-    dns.setServers(process.env['DNS_SERVERS'].split(',').map((s) => s.trim()));
-    logger.info(`Custom DNS servers configured: ${process.env['DNS_SERVERS']}`);
-  } catch (err) {
-    logger.warn('Failed to set custom DNS servers', { error: err });
-  }
+// Force IPv4 lookup ordering to prevent getaddrinfo EAI_AGAIN on container environments
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {}
+
+// Use explicitly configured DNS servers, or fallback to Google & Cloudflare public DNS
+const dnsServers = process.env['DNS_SERVERS']
+  ? process.env['DNS_SERVERS'].split(',').map((s) => s.trim())
+  : ['8.8.8.8', '1.1.1.1', '8.8.4.4'];
+
+try {
+  dns.setServers(dnsServers);
+  logger.info(`DNS servers configured: ${dnsServers.join(', ')}`);
+} catch (err) {
+  logger.warn('Failed to set DNS servers', { error: err });
 }
 
 interface DatabaseConfig {
