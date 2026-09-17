@@ -4,9 +4,9 @@ services:
     env: node
     region: frankfurt
     plan: free
-    buildCommand: npm ci && npm run build && npm prune --production
+    buildCommand: npm ci && npm run build && npm prune --omit=dev
     startCommand: node --max-old-space-size=400 dist/server.js
-    healthCheckPath: /health
+    healthCheckPath: /health/live
     envVars:
       - key: NODE_ENV
         value: production

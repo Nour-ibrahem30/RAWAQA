@@ -125,10 +125,12 @@ app.get('/health/db-diagnostic', async (_req: Request, res: Response) => {
   res.status(200).json(diag);
 });
 
-// Standard health check (backward-compatible; returns 503 if database disconnected)
+// Standard health check (returns 200 on healthy or during startup grace period to allow Render port discovery)
 app.get('/health', (_req: Request, res: Response) => {
   const isDbConnected = database.isConnected();
-  res.status(isDbConnected ? 200 : 503).json({
+  const isStartupGrace = process.uptime() < 60;
+  const statusCode = (isDbConnected || isStartupGrace) ? 200 : 503;
+  res.status(statusCode).json({
     status: isDbConnected ? 'ok' : 'degraded',
     environment: env.NODE_ENV,
     database: isDbConnected ? 'connected' : 'connecting',
