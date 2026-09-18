@@ -2,6 +2,11 @@ import mongoose from 'mongoose';
 import dns from 'dns';
 import net from 'net';
 import logger, { logError, logInfo } from './logger';
+import {
+  getDnsDiagnostic,
+  extractMongoHostsFromUri,
+  setMongoHostsAllowlist,
+} from './dns';
 
 const READY_STATE_LABEL: Record<number, string> = {
   0: 'disconnected',
@@ -23,21 +28,6 @@ let lifecycleListenersAttached = false;
 let clientListenersAttached = false;
 let keepAliveTimer: NodeJS.Timeout | null = null;
 let lastDisconnectEpochMs: number | null = null;
-
-try {
-  dns.setDefaultResultOrder('ipv4first');
-} catch {}
-
-// Only apply custom DNS servers if explicitly configured via environment variable.
-if (process.env['DNS_SERVERS']) {
-  try {
-    const dnsServers = process.env['DNS_SERVERS'].split(',').map((s) => s.trim());
-    dns.setServers(dnsServers);
-    logger.info(`Custom DNS servers configured: ${dnsServers.join(', ')}`);
-  } catch (err) {
-    logger.warn('Failed to set custom DNS servers', { error: err });
-  }
-}
 
 mongoose.set('bufferCommands', false);
 
@@ -122,12 +112,15 @@ const getDatabaseConfig = (): DatabaseConfig => {
     throw new Error('MONGODB_URI is not defined in environment variables');
   }
 
+  // Strictly register the configured MongoDB hosts in the scoped DNS allowlist
+  setMongoHostsAllowlist(extractMongoHostsFromUri(uri));
+
   const maxPoolSize = parseInt(process.env['MONGODB_MAX_POOL_SIZE'] || '10', 10);
   const minPoolSize = parseInt(process.env['MONGODB_MIN_POOL_SIZE'] || '2', 10);
   const connectTimeoutMS = parseInt(process.env['MONGODB_CONNECT_TIMEOUT_MS'] || '10000', 10);
   const socketTimeoutMS = parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '45000', 10);
   const serverSelectionTimeoutMS = parseInt(
-    process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '5000',
+    process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '10000',
     10
   );
   const waitQueueTimeoutMS = parseInt(process.env['MONGODB_WAIT_QUEUE_TIMEOUT'] || '5000', 10);
@@ -138,7 +131,7 @@ const getDatabaseConfig = (): DatabaseConfig => {
     minPoolSize: Number.isFinite(minPoolSize) && minPoolSize >= 0 ? minPoolSize : 2,
     connectTimeoutMS: Number.isFinite(connectTimeoutMS) && connectTimeoutMS > 0 ? connectTimeoutMS : 10000,
     socketTimeoutMS: Number.isFinite(socketTimeoutMS) && socketTimeoutMS > 0 ? socketTimeoutMS : 45000,
-    serverSelectionTimeoutMS: Number.isFinite(serverSelectionTimeoutMS) && serverSelectionTimeoutMS > 0 ? serverSelectionTimeoutMS : 5000,
+    serverSelectionTimeoutMS: Number.isFinite(serverSelectionTimeoutMS) && serverSelectionTimeoutMS > 0 ? serverSelectionTimeoutMS : 10000,
     waitQueueTimeoutMS: Number.isFinite(waitQueueTimeoutMS) && waitQueueTimeoutMS > 0 ? waitQueueTimeoutMS : 5000,
     maxIdleTimeMS: Number.isFinite(maxIdleTimeMS) && maxIdleTimeMS > 0 ? maxIdleTimeMS : 120000,
     retryWrites: true,
@@ -385,7 +378,7 @@ const resolveAppliedOptions = (): mongoose.ConnectOptions => {
       minPoolSize: parseInt(process.env['MONGODB_MIN_POOL_SIZE'] || '2', 10),
       connectTimeoutMS: 10000,
       socketTimeoutMS: parseInt(process.env['MONGODB_SOCKET_TIMEOUT'] || '45000', 10),
-      serverSelectionTimeoutMS: parseInt(process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '5000', 10),
+      serverSelectionTimeoutMS: parseInt(process.env['MONGODB_SERVER_SELECTION_TIMEOUT'] || '10000', 10),
       waitQueueTimeoutMS: parseInt(process.env['MONGODB_WAIT_QUEUE_TIMEOUT'] || '5000', 10),
       maxIdleTimeMS: parseInt(process.env['MONGODB_MAX_IDLE_TIME_MS'] || '120000', 10),
     };
@@ -397,7 +390,7 @@ export const getDiagnosticInfo = async (runActiveProbes = false) => {
   const timeouts = {
     connectTimeoutMS: options.connectTimeoutMS ?? 10000,
     socketTimeoutMS: options.socketTimeoutMS ?? 45000,
-    serverSelectionTimeoutMS: options.serverSelectionTimeoutMS ?? 5000,
+    serverSelectionTimeoutMS: options.serverSelectionTimeoutMS ?? 10000,
     waitQueueTimeoutMS: options.waitQueueTimeoutMS ?? 5000,
     maxIdleTimeMS: options.maxIdleTimeMS ?? 120000,
   };
@@ -443,6 +436,8 @@ export const getDiagnosticInfo = async (runActiveProbes = false) => {
     }
   }
 
+  const dnsDiagnostic = getDnsDiagnostic();
+
   const diagnostic: any = {
     timestamp: new Date().toISOString(),
     connected: isDatabaseConnected(),
@@ -457,11 +452,18 @@ export const getDiagnosticInfo = async (runActiveProbes = false) => {
     environment: process.env['NODE_ENV'] || 'unknown',
     mongooseVersion: mongoose.version,
     configuredDnsServers: dns.getServers(),
+    dns: dnsDiagnostic,
     uriConfig: sanitizedConfig,
   };
 
   if (runActiveProbes && sanitizedConfig.hosts?.length) {
-    const activeProbes: any = { dnsSrv: null, dnsLookup: null, tcpPorts: [] };
+    const activeProbes: any = {
+      dnsSrv: null,
+      dnsLookup: null,
+      hosts: [] as any[],
+      tcpPorts: [] as any[],
+      dnsDiagnostic,
+    };
     const primaryHost = sanitizedConfig.hosts[0];
     if (sanitizedConfig.protocol === 'mongodb+srv') {
       try {
@@ -475,16 +477,21 @@ export const getDiagnosticInfo = async (runActiveProbes = false) => {
         activeProbes.dnsSrv = { status: 'failed', code: err.code || 'UNKNOWN', message: err.message };
       }
     } else {
-      const [h, p] = primaryHost.split(':');
-      const port = parseInt(p || '27017', 10);
-      try {
-        const lookup = await dns.promises.lookup(h, { all: true });
-        activeProbes.dnsLookup = { status: 'success', addresses: lookup };
-      } catch (err: any) {
-        activeProbes.dnsLookup = { status: 'failed', code: err.code || 'UNKNOWN', message: err.message };
+      for (const hostStr of sanitizedConfig.hosts) {
+        const [h, p] = hostStr.split(':');
+        const port = parseInt(p || '27017', 10);
+        let hostLookup: any = null;
+        try {
+          const lookup = await dns.promises.lookup(h, { all: true });
+          hostLookup = { host: h, status: 'success', addresses: lookup };
+        } catch (err: any) {
+          hostLookup = { host: h, status: 'failed', code: err.code || 'UNKNOWN', message: err.message };
+        }
+        const tcpStatus = await probeTcp(h, port, 3000);
+        activeProbes.hosts.push({ host: h, port, lookup: hostLookup, tcp: tcpStatus });
+        activeProbes.tcpPorts.push(tcpStatus);
       }
-      const tcpStatus = await probeTcp(h, port, 3000);
-      activeProbes.tcpPorts.push(tcpStatus);
+      activeProbes.dnsLookup = activeProbes.hosts[0]?.lookup || null;
     }
     diagnostic.activeProbes = activeProbes;
   }

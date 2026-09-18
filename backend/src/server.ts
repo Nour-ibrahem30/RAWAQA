@@ -1,7 +1,4 @@
-import dns from 'dns';
-try {
-  dns.setDefaultResultOrder('ipv4first');
-} catch {}
+import './config/dns';
 console.log('🚀 [STARTUP] server.ts initializing... PID:', process.pid, 'PORT:', process.env.PORT);
 import mongoose from "mongoose";
 import express, { Application, Request, Response, NextFunction } from 'express';
@@ -574,7 +571,10 @@ const startServer = async () => {
   };
 
   // 2. Connect to Database asynchronously in background without blocking port discovery
-  const initDbAndWorkers = async (retries = 5, delay = 3000) => {
+  const initDbAndWorkers = async (
+    retries = parseInt(process.env['MONGODB_CONNECT_MAX_RETRIES'] || '5', 10),
+    delay = parseInt(process.env['MONGODB_CONNECT_RETRY_DELAY_MS'] || '3000', 10)
+  ) => {
     try {
       await database.connect();
       console.log('✅ Database connected');
@@ -593,7 +593,8 @@ const startServer = async () => {
       console.error(`❌ Database connection attempt failed (${retries} retries left):`, error?.message || error);
       logError(`Database connection attempt failed (${retries} retries left):`, error);
       if (retries > 0) {
-        setTimeout(() => initDbAndWorkers(retries - 1, delay * 1.5), delay);
+        const nextDelay = Math.min(Math.round(delay * 1.5), 30000);
+        setTimeout(() => initDbAndWorkers(retries - 1, nextDelay), delay);
       } else {
         console.error('⚠️ All database connection retries exhausted. Running server in degraded mode to allow port inspection.');
         logError('All database connection retries exhausted. Running server in degraded mode to allow port inspection.', error);

@@ -16,9 +16,15 @@ const envSchema = z.object({
   MONGODB_MAX_POOL_SIZE: z.coerce.number().positive().default(10),
   MONGODB_MIN_POOL_SIZE: z.coerce.number().positive().default(2),
   MONGODB_SOCKET_TIMEOUT: z.coerce.number().positive().default(45000),
-  MONGODB_SERVER_SELECTION_TIMEOUT: z.coerce.number().positive().default(5000),
+  MONGODB_SERVER_SELECTION_TIMEOUT: z.coerce.number().positive().default(10000),
   MONGODB_WAIT_QUEUE_TIMEOUT: z.coerce.number().positive().default(5000),
   MONGODB_MAX_IDLE_TIME_MS: z.coerce.number().positive().default(120000),
+
+  // DNS & Resolver Configuration
+  DNS_SERVERS: z.string().optional(),
+  DNS_FALLBACK_ENABLED: z.string().transform((val) => val === 'true').default('false'),
+  DNS_FALLBACK_SERVERS: z.string().default('1.1.1.1,8.8.8.8'),
+  DNS_RESOLVER_STRATEGY: z.enum(['system', 'fallback', 'public']).default('system'),
 
   // JWT
   JWT_ACCESS_SECRET: z.string().min(16).default('rawaqa-jwt-access-secret-default-key-32-chars-minimum'),
