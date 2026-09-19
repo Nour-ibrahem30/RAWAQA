@@ -57,3 +57,6 @@ uploads/
 # Prisma generated client (regenerate with: npm run db:generate)
 src/generated/
 prisma/generated/
+
+# Pre-migration backup files (local only)
+mongo-backup-*.json
