@@ -1,514 +1,441 @@
-import mongoose from 'mongoose';
-import { Order, IOrder, OrderStatus, PaymentMethod, PaymentStatus } from '../models/Order';
-import { Cart } from '../models/Cart';
-import { Product } from '../models/Product';
-import { User } from '../models/User';
-import { IdempotencyKey } from '../models/IdempotencyKey';
-import { OutboxEvent } from '../models/OutboxEvent';
-import { applyCoupon, recordCouponUsage } from './coupon.service';
-import { invalidateProductsCache } from './product.service';
+/**
+ * checkout.service.ts — PostgreSQL/Prisma implementation
+ *
+ * CONCURRENCY SAFETY:
+ * Inventory reservation uses `productRepository.reserveStock()` which executes:
+ *   UPDATE inventories
+ *   SET reservedQuantity += qty, availableQuantity -= qty
+ *   WHERE productId = ? AND availableQuantity >= qty
+ * This single UPDATE is atomic in PostgreSQL — no separate SELECT/UPDATE race.
+ * The entire checkout (inventory reservation + order creation + idempotency +
+ * cart clear) runs inside ONE prisma.$transaction(), so either everything
+ * commits or everything rolls back. Two concurrent requests against the same
+ * final unit of stock: exactly one will get modifiedCount=1, the other will
+ * get modifiedCount=0 and throw "Insufficient stock".
+ */
+
 import crypto from 'crypto';
+import { Prisma, OrderStatus, PaymentMethod, PaymentStatus } from '../generated/prisma/client';
+import { orderRepository }   from '../repositories/order.repository';
+import { productRepository } from '../repositories/product.repository';
+import { cartRepository }    from '../repositories/cart.repository';
+import { outboxRepository }  from '../repositories/outbox.repository';
+import { prisma }            from '../lib/prisma';
+import { applyCoupon, recordCouponUsage } from './coupon.service';
+import { invalidateProductsCache }        from './product.service';
+
+// ─── Interfaces (identical to Mongoose version) ───────────────────────────────
 
 interface CheckoutInput {
-  userId: string;
-  cartId: string;
+  userId:  string;
+  cartId:  string;
   shippingAddress: {
     recipientName: string;
-    phone: string;
+    phone:         string;
     streetAddress: string;
-    city: string;
-    governorate: string;
-    postalCode?: string;
+    city:          string;
+    governorate:   string;
+    postalCode?:   string;
   };
-  paymentMethod: PaymentMethod;
-  couponCode?:   string;   // optional coupon
-  notes?: string;
+  paymentMethod:  PaymentMethod;
+  couponCode?:    string;
+  notes?:         string;
   idempotencyKey: string;
 }
 
 interface CheckoutResult {
-  order: IOrder;
+  order:     any;
   fromCache: boolean;
 }
 
-function supportsTransactions(): boolean {
-  try {
-    const client = (mongoose.connection?.getClient?.() || (mongoose.connection as any).client) as any;
-    const topology = client?.topology?.description;
-    if (!topology) return false;
-    if (topology.type === 'Single') return false;
-    const servers = Array.from(topology.servers?.values?.() || []) as any[];
-    if (servers.some((s: any) => s.type === 'Standalone')) return false;
-    return true;
-  } catch (_err) {
-    return false;
-  }
-}
-
-/**
- * Process checkout with atomic inventory reservation
- * Implements: Idempotency, Atomic Inventory, Outbox Pattern
- */
-export const processCheckout = async (
-  input: CheckoutInput
-): Promise<CheckoutResult> => {
-  const requestHash = generateRequestHash(input);
-
-  // Check idempotency - return cached result if exists
-  const existingKey = await IdempotencyKey.findOne({
-    key: input.idempotencyKey,
-    userId: input.userId,
-  });
-
-  if (existingKey) {
-    if (existingKey.requestHash !== requestHash) {
-      throw new Error('Idempotency key reused with different parameters');
-    }
-
-    // Try to return cached order
-    const cachedOrderId = (existingKey as any).result?.orderId;
-    if (cachedOrderId) {
-      const order = await Order.findById(cachedOrderId);
-      if (order) {
-        return { order, fromCache: true };
-      }
-    }
-  }
-
-  // Start MongoDB session for transaction if supported (replica set / Mongo Atlas)
-  const canUseTx = supportsTransactions();
-  const session = canUseTx ? await mongoose.startSession() : null;
-  if (session) {
-    session.startTransaction();
-  }
-
-  try {
-    // 1. Get and validate cart
-    const cart = await Cart.findById(input.cartId).session(session);
-    if (!cart || cart.items.length === 0) {
-      throw new Error('Cart is empty or not found');
-    }
-
-    if (cart.userId?.toString() !== input.userId) {
-      throw new Error('Cart does not belong to user');
-    }
-
-    // 2. Prepare order items and validate/reserve inventory atomically
-    const orderItems: any[] = [];
-    let subtotal = 0;
-
-    for (const cartItem of cart.items) {
-      const product = await Product.findById(cartItem.product).session(session);
-      
-      if (!product) {
-        throw new Error(`Product ${cartItem.product} not found`);
-      }
-
-      // Check stock availability
-      if (product.inventory.availableQuantity < cartItem.quantity) {
-        throw new Error(
-          `Insufficient stock for ${product.nameEn}. Available: ${product.inventory.availableQuantity}`
-        );
-      }
-
-      // ATOMIC: Reserve inventory (increment reservedQuantity, decrement availableQuantity)
-      const updateResult = await Product.updateOne(
-        {
-          _id: product._id,
-          'inventory.availableQuantity': { $gte: cartItem.quantity },
-        },
-        {
-          $inc: {
-            'inventory.reservedQuantity': cartItem.quantity,
-            'inventory.availableQuantity': -cartItem.quantity,
-          },
-        }
-      ).session(session);
-
-      if (updateResult.modifiedCount === 0) {
-        throw new Error(
-          `Failed to reserve inventory for ${product.nameEn}. Stock may have changed.`
-        );
-      }
-
-      const itemSubtotal = product.price * cartItem.quantity;
-      subtotal += itemSubtotal;
-
-      orderItems.push({
-        product:  product._id,
-        quantity: cartItem.quantity,
-        price:    product.price,
-        subtotal: itemSubtotal,
-        inventoryReserved: true,
-        reservedAt: new Date(),
-        productSnapshot: {
-          sku:    product.sku,
-          nameAr: product.nameAr,
-          nameEn: product.nameEn,
-          price:  product.price,
-          image:  product.images?.[0]?.url,
-        },
-      });
-    }
-
-    // 3. Calculate totals
-    const shipping = calculateShipping(input.shippingAddress.governorate, subtotal);
-    const tax = calculateTax(subtotal);
-
-    // 4. Apply coupon (if provided) — validated OUTSIDE session for speed
-    let couponDiscount = 0;
-    let couponCode: string | undefined;
-
-    if (input.couponCode) {
-      try {
-        const productIds = orderItems.map((i: any) => i.product.toString());
-        const couponResult = await applyCoupon({
-          code:       input.couponCode,
-          userId:     input.userId,
-          cartTotal:  subtotal,
-          productIds,
-        });
-        couponDiscount = couponResult.discountAmount;
-        couponCode     = couponResult.coupon.code;
-      } catch (err) {
-        // Coupon validation failed — abort transaction and surface the error
-        throw err;
-      }
-    }
-
-    const total = Math.max(0, subtotal + shipping + tax - couponDiscount);
-
-    // 5. Create order
-    const orderNumber = await generateOrderNumber();
-
-    // Map shippingAddress to Order schema format
-    const [firstName, ...lastNameParts] = (input.shippingAddress.recipientName || '').split(' ');
-    const lastName = lastNameParts.join(' ') || firstName;
-
-    // Fetch user email for shippingAddress
-    const user = await User.findById(input.userId).select('email');
-    const userEmail = user?.email || '';
-    
-    const order = new Order({
-      orderNumber,
-      userId: input.userId,
-      items: orderItems,
-      subtotal,
-      shippingCost: shipping,
-      tax,
-      discount: 0,
-      couponCode,
-      couponDiscount,
-      total,
-      status: OrderStatus.PENDING,
-      paymentMethod: input.paymentMethod,
-      paymentStatus:
-        input.paymentMethod === PaymentMethod.CASH_ON_DELIVERY
-          ? PaymentStatus.PENDING
-          : PaymentStatus.PENDING,
-      shippingAddress: {
-        firstName: firstName || 'Customer',
-        lastName:  lastName  || 'Name',
-        phone:     input.shippingAddress.phone,
-        email:     userEmail,
-        addressLine1: input.shippingAddress.streetAddress,
-        city:         input.shippingAddress.city,
-        governorate:  input.shippingAddress.governorate,
-        postalCode:   input.shippingAddress.postalCode,
-        country:      'Egypt',
-      },
-      customerNotes: input.notes,
-    });
-
-    await order.save(session ? { session } : {});
-
-    // Save/update user's phone from checkout shipping address
-    if (input.shippingAddress?.phone) {
-      await User.findByIdAndUpdate(input.userId, {
-        $set: { phone: input.shippingAddress.phone },
-      }).catch(() => {});
-    }
-
-    // 6. Create outbox events
-    await createOutboxEvents(order, session);
-
-    // 7. Store idempotency key
-    await IdempotencyKey.create(
-      [
-        {
-          key:              input.idempotencyKey,
-          userId:           input.userId,
-          requestHash,
-          status:           'completed',
-          processingTimeout: new Date(),
-          result:           { orderId: order._id },
-        },
-      ],
-      session ? { session } : {}
-    );
-
-    // 8. Clear cart
-    cart.items = [];
-    await cart.save(session ? { session } : {});
-
-    // Commit transaction
-    if (session) {
-      await session.commitTransaction();
-    }
-
-    // Invalidate product catalog cache to immediately reflect inventory decrement
-    invalidateProductsCache();
-
-    // 9. Record coupon usage AFTER commit (non-critical, outside transaction)
-    if (couponCode && couponDiscount > 0) {
-      try {
-        const { Coupon } = await import('../models/Coupon');
-        const couponDoc  = await Coupon.findOne({ code: couponCode });
-        if (couponDoc) {
-          await recordCouponUsage({
-            couponId: couponDoc._id.toString(),
-            userId:   input.userId,
-            orderId:  order._id.toString(),
-            discount: couponDiscount,
-          });
-        }
-      } catch (_err) {
-        // Non-critical — order already committed
-      }
-    }
-
-    return { order, fromCache: false };
-  } catch (error) {
-    // Rollback transaction on error
-    if (session) {
-      await session.abortTransaction();
-    }
-    throw error;
-  } finally {
-    if (session) {
-      session.endSession();
-    }
-  }
-};
-
-/**
- * Cancel order and release inventory
- */
-export const cancelOrder = async (orderId: string, reason: string): Promise<IOrder> => {
-  const canUseTx = supportsTransactions();
-  const session = canUseTx ? await mongoose.startSession() : null;
-  if (session) {
-    session.startTransaction();
-  }
-
-  try {
-    const order = await Order.findById(orderId).session(session);
-    
-    if (!order) {
-      throw new Error('Order not found');
-    }
-
-    if (order.status === OrderStatus.CANCELLED || order.status === OrderStatus.DELIVERED) {
-      throw new Error(`Cannot cancel order with status: ${order.status}`);
-    }
-
-    // Release inventory atomically
-    for (const item of order.items) {
-      await Product.updateOne(
-        { _id: item.product },
-        {
-          $inc: {
-            'inventory.reservedQuantity': -item.quantity,
-            'inventory.availableQuantity': item.quantity,
-          },
-        }
-      ).session(session);
-    }
-
-    // Update order status
-    order.status = OrderStatus.CANCELLED;
-    order.internalNotes = reason;
-    order.cancelledAt = new Date();
-
-    await order.save(session ? { session } : {});
-
-    // Create outbox event
-    await OutboxEvent.create(
-      [
-        {
-          aggregateType: 'Order',
-          aggregateId: order._id,
-          eventType: 'OrderCancelled',
-          payload: { orderId: order._id, reason },
-        },
-      ],
-      session ? { session } : {}
-    );
-
-    if (session) {
-      await session.commitTransaction();
-    }
-    return order;
-  } catch (error) {
-    if (session) {
-      await session.abortTransaction();
-    }
-    throw error;
-  } finally {
-    if (session) {
-      session.endSession();
-    }
-  }
-};
-
-/**
- * Confirm order delivery and deduct inventory
- */
-export const confirmDelivery = async (orderId: string): Promise<IOrder> => {
-  const canUseTx = supportsTransactions();
-  const session = canUseTx ? await mongoose.startSession() : null;
-  if (session) {
-    session.startTransaction();
-  }
-
-  try {
-    const order = await Order.findById(orderId).session(session);
-    
-    if (!order) {
-      throw new Error('Order not found');
-    }
-
-    if (order.status !== OrderStatus.SHIPPED) {
-      throw new Error('Only shipped orders can be marked as delivered');
-    }
-
-    // Deduct inventory atomically (from onHandQuantity and reservedQuantity)
-    for (const item of order.items) {
-      const updateResult = await Product.updateOne(
-        {
-          _id: item.product,
-          'inventory.onHandQuantity': { $gte: item.quantity },
-          'inventory.reservedQuantity': { $gte: item.quantity },
-        },
-        {
-          $inc: {
-            'inventory.onHandQuantity': -item.quantity,
-            'inventory.reservedQuantity': -item.quantity,
-          },
-        }
-      ).session(session);
-
-      if (updateResult.modifiedCount === 0) {
-        throw new Error('Failed to deduct inventory. Insufficient stock.');
-      }
-    }
-
-    // Update order
-    order.status = OrderStatus.DELIVERED;
-    order.deliveredAt = new Date();
-    order.paymentStatus = PaymentStatus.PAID;
-
-    await order.save(session ? { session } : {});
-
-    // Create outbox event
-    await OutboxEvent.create(
-      [
-        {
-          aggregateType: 'Order',
-          aggregateId: order._id,
-          eventType: 'OrderDelivered',
-          payload: { orderId: order._id },
-        },
-      ],
-      session ? { session } : {}
-    );
-
-    if (session) {
-      await session.commitTransaction();
-    }
-    return order;
-  } catch (error) {
-    if (session) {
-      await session.abortTransaction();
-    }
-    throw error;
-  } finally {
-    if (session) {
-      session.endSession();
-    }
-  }
-};
-
-// Helper functions
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function generateRequestHash(input: CheckoutInput): string {
   const normalized = JSON.stringify({
-    userId: input.userId,
-    cartId: input.cartId,
+    userId:          input.userId,
+    cartId:          input.cartId,
     shippingAddress: input.shippingAddress,
-    paymentMethod: input.paymentMethod,
+    paymentMethod:   input.paymentMethod,
   });
   return crypto.createHash('sha256').update(normalized).digest('hex');
 }
 
 async function generateOrderNumber(): Promise<string> {
-  const date = new Date();
-  const year  = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day   = String(date.getDate()).padStart(2, '0');
+  const d      = new Date();
+  const prefix = `RWQ${d.getFullYear()}${String(d.getMonth() + 1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 
-  const prefix = `RWQ${year}${month}${day}`;
+  // Count today's orders then loop to find first unused sequence
+  const count    = await prisma.order.count({ where: { orderNumber: { startsWith: prefix } } });
+  let attempt    = count + 1;
+  const MAX      = 200;
 
-  // Count existing orders with today's prefix to get a starting sequence,
-  // then loop until we find a sequence not already taken (handles gaps from
-  // deletions and race conditions — BUG-26 fix).
-  const count = await Order.countDocuments({
-    orderNumber: { $regex: `^${prefix}` },
-  });
-
-  let candidate = '';
-  let attempt   = count + 1;
-  const MAX_ATTEMPTS = 200;
-
-  for (let i = 0; i < MAX_ATTEMPTS; i++) {
-    candidate = `${prefix}${String(attempt).padStart(4, '0')}`;
-    const exists = await Order.exists({ orderNumber: candidate });
-    if (!exists) break;
+  for (let i = 0; i < MAX; i++) {
+    const candidate = `${prefix}${String(attempt).padStart(4, '0')}`;
+    const exists    = await prisma.order.findUnique({ where: { orderNumber: candidate }, select: { id: true } });
+    if (!exists) return candidate;
     attempt++;
   }
-
-  return candidate;
+  // Fallback with timestamp suffix (should never reach this in normal operation)
+  return `${prefix}${Date.now().toString().slice(-6)}`;
 }
 
-function calculateShipping(governorate: string, subtotal: number): number {
-  // Free shipping over 1000 EGP
+export function calculateShipping(governorate: string, subtotal: number): number {
   if (subtotal >= 1000) return 0;
-
-  // Cairo/Giza: 50 EGP, other governorates: 75 EGP
-  // Match lowercase slugs (from frontend form) and Arabic display names
   const cairoSlugs = ['cairo', 'giza', 'القاهرة', 'الجيزة', 'Cairo', 'Giza'];
   return cairoSlugs.includes(governorate) ? 50 : 75;
 }
 
-function calculateTax(subtotal: number): number {
-  // 14% VAT
+export function calculateTax(subtotal: number): number {
   return Math.round(subtotal * 0.14 * 100) / 100;
 }
 
-async function createOutboxEvents(order: IOrder, session: mongoose.ClientSession | null): Promise<void> {
-  const events = [
-    {
-      aggregateType: 'Order',
-      aggregateId: order._id,
-      eventType: 'OrderCreated',
-      payload: {
-        orderId: order._id,
-        orderNumber: order.orderNumber,
-        userId: order.userId,
-        total: order.total,
-      },
-    },
-  ];
-
-  await OutboxEvent.create(events, session ? { session } : {});
+function toDecimal(v: number): Prisma.Decimal {
+  return new Prisma.Decimal(v.toFixed(2));
 }
+
+const normaliseOrder = (o: any): any => {
+  if (!o) return o;
+  return {
+    ...o,
+    _id:           o.id,
+    subtotal:      Number(o.subtotal ?? 0),
+    shippingCost:  Number(o.shippingCost ?? 0),
+    discount:      Number(o.discount ?? 0),
+    tax:           Number(o.tax ?? 0),
+    total:         Number(o.total ?? 0),
+    couponDiscount: o.couponDiscount != null ? Number(o.couponDiscount) : undefined,
+    // Map flat shippingXxx fields → shippingAddress object for API compat
+    shippingAddress: {
+      recipientName: o.shippingRecipientName,
+      firstName:     o.shippingRecipientName?.split(' ')[0] ?? '',
+      lastName:      o.shippingRecipientName?.split(' ').slice(1).join(' ') ?? '',
+      phone:         o.shippingPhone,
+      streetAddress: o.shippingStreetAddress,
+      addressLine1:  o.shippingStreetAddress,
+      city:          o.shippingCity,
+      governorate:   o.shippingGovernorate,
+      postalCode:    o.shippingPostalCode ?? null,
+      country:       'Egypt',
+    },
+    items: (o.items ?? []).map((item: any) => ({
+      ...item,
+      price:     Number(item.price    ?? 0),
+      subtotal:  Number(item.subtotal ?? 0),
+      snapshotPrice: Number(item.snapshotPrice ?? 0),
+      // Backward-compatible productSnapshot field
+      productSnapshot: {
+        sku:    item.snapshotSku,
+        nameAr: item.snapshotNameAr,
+        nameEn: item.snapshotNameEn,
+        price:  Number(item.snapshotPrice ?? 0),
+        image:  item.snapshotImage ?? null,
+      },
+    })),
+  };
+};
+
+// ─── processCheckout ──────────────────────────────────────────────────────────
+export const processCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
+  const requestHash = generateRequestHash(input);
+
+  // ── Idempotency check ──────────────────────────────────────────────────────
+  const existingKey = await orderRepository.findIdempotencyKey(input.idempotencyKey);
+  if (existingKey) {
+    if (existingKey.requestHash !== requestHash) {
+      throw new Error('Idempotency key reused with different parameters');
+    }
+    const cachedOrderId = (existingKey.result as any)?.orderId;
+    if (cachedOrderId) {
+      const cached = await orderRepository.findById(cachedOrderId);
+      if (cached) return { order: normaliseOrder(cached), fromCache: true };
+    }
+  }
+
+  // ── Load and validate cart ─────────────────────────────────────────────────
+  // Always look up by the provided cartId — this is the canonical lookup.
+  // findByUserId is a secondary fallback only when no cartId is provided.
+  let cart: any = await cartRepository.findById(input.cartId);
+  if (!cart || cart.items.length === 0) {
+    // Fallback: try finding by userId if cartId lookup fails
+    const userCart = await cartRepository.findByUserId(input.userId);
+    if (!userCart || userCart.items.length === 0) throw new Error('Cart is empty or not found');
+    cart = userCart;
+  }
+  // Ownership check: cart must belong to the requesting user (or have no user — guest cart passed to checkout)
+  if (cart.userId && cart.userId !== input.userId) {
+    throw new Error('Cart does not belong to user');
+  }
+
+  // ── Coupon validation (outside transaction — faster) ──────────────────────
+  let couponDiscount = 0;
+  let couponCode: string | undefined;
+  let resolvedCouponId: string | undefined;
+
+  if (input.couponCode) {
+    // Need product IDs from cart items (they are PG UUIDs here)
+    const productIds = cart.items.map((i: any) => i.productId as string);
+    const subtotalForCoupon = cart.items.reduce(
+      (s: number, i: any) => s + Number(i.price) * i.quantity, 0
+    );
+    const couponResult = await applyCoupon({
+      code:       input.couponCode,
+      userId:     input.userId,
+      cartTotal:  subtotalForCoupon,
+      productIds,
+    });
+    couponDiscount = couponResult.discountAmount;
+    couponCode     = couponResult.coupon.code;
+    resolvedCouponId = couponResult.coupon.id;
+  }
+
+  // ── Atomic transaction: inventory reservation + order creation ─────────────
+  //
+  // CONCURRENCY GUARANTEE:
+  // productRepository.reserveStock() runs:
+  //   UPDATE inventories
+  //   SET reservedQuantity += qty, availableQuantity -= qty
+  //   WHERE productId = ? AND availableQuantity >= qty
+  // If two simultaneous requests target the same last unit, only one UPDATE
+  // will match the WHERE clause (the other will find availableQuantity = 0).
+  // The failing request gets count=0 and throws before creating an order.
+  // All this is wrapped in prisma.$transaction() for full rollback on any error.
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Re-read cart inside transaction using direct Prisma (no session concept needed)
+    const txCart = await tx.cart.findUnique({
+      where: { id: (cart as any).id },
+      include: { items: { include: { product: { include: { inventory: true } } } } },
+    });
+    if (!txCart || txCart.items.length === 0) throw new Error('Cart is empty or not found');
+
+    // Reserve inventory for each item atomically
+    const orderItems: any[] = [];
+    let subtotal = 0;
+
+    for (const cartItem of txCart.items) {
+      const prod = cartItem.product as any;
+      if (!prod) throw new Error(`Product ${cartItem.productId} not found`);
+
+      const inv   = prod.inventory;
+      const avail = inv?.availableQuantity ?? 0;
+
+      if (avail < cartItem.quantity) {
+        throw new Error(
+          `Insufficient stock for ${prod.nameEn}. Available: ${avail}`
+        );
+      }
+
+      // Atomic conditional update — if stock changed between read and update,
+      // the WHERE availableQuantity >= qty won't match → count = 0 → throw
+      const reserved = await productRepository.reserveStock(
+        prod.id,
+        cartItem.quantity,
+        tx
+      );
+      if (!reserved) {
+        throw new Error(
+          `Failed to reserve inventory for ${prod.nameEn}. Stock may have changed.`
+        );
+      }
+
+      const itemPrice    = Number(prod.price);
+      const itemSubtotal = itemPrice * cartItem.quantity;
+      subtotal          += itemSubtotal;
+
+      orderItems.push({
+        productId:         prod.id,
+        quantity:          cartItem.quantity,
+        price:             toDecimal(itemPrice),
+        subtotal:          toDecimal(itemSubtotal),
+        inventoryReserved: true,
+        reservedAt:        new Date(),
+        snapshotSku:       prod.sku,
+        snapshotNameAr:    prod.nameAr,
+        snapshotNameEn:    prod.nameEn,
+        snapshotPrice:     toDecimal(itemPrice),
+        snapshotImage:     prod.images?.[0]?.url ?? null,
+      });
+    }
+
+    const shipping = calculateShipping(input.shippingAddress.governorate, subtotal);
+    const tax      = calculateTax(subtotal);
+    const total    = Math.max(0, subtotal + shipping + tax - couponDiscount);
+    const orderNumber = await generateOrderNumber();
+
+    // Parse recipient name
+    const nameParts = (input.shippingAddress.recipientName || '').trim().split(/\s+/);
+    const firstName = nameParts[0] ?? 'Customer';
+    const lastName  = nameParts.slice(1).join(' ') || firstName;
+
+    const order = await orderRepository.create(
+      {
+        orderNumber,
+        userId:        input.userId,
+        status:        OrderStatus.pending,
+        paymentMethod: input.paymentMethod,
+        paymentStatus: PaymentStatus.pending,
+        subtotal:      toDecimal(subtotal),
+        shippingCost:  toDecimal(shipping),
+        tax:           toDecimal(tax),
+        discount:      toDecimal(0),
+        couponCode,
+        couponDiscount: couponDiscount > 0 ? toDecimal(couponDiscount) : undefined,
+        total:         toDecimal(total),
+        customerNotes: input.notes,
+        shippingRecipientName: `${firstName} ${lastName}`.trim(),
+        shippingPhone:         input.shippingAddress.phone,
+        shippingStreetAddress: input.shippingAddress.streetAddress,
+        shippingCity:          input.shippingAddress.city,
+        shippingGovernorate:   input.shippingAddress.governorate,
+        shippingPostalCode:    input.shippingAddress.postalCode,
+        items:                 orderItems,
+      },
+      tx
+    );
+
+    // Create outbox event inside transaction
+    await outboxRepository.createEvent(
+      {
+        aggregateType: 'Order',
+        aggregateId:   order.id,
+        eventType:     'OrderCreated',
+        payload:       { orderId: order.id, orderNumber, userId: input.userId, total },
+      },
+      tx
+    );
+
+    // Store idempotency key inside transaction
+    await orderRepository.createIdempotencyKey(
+      {
+        key:               input.idempotencyKey,
+        userId:            input.userId,
+        requestHash,
+        status:            'completed',
+        processingTimeout: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+      tx
+    );
+    await orderRepository.updateIdempotencyKey(
+      input.idempotencyKey,
+      { status: 'completed', result: { orderId: order.id } },
+      tx
+    );
+
+    // Clear cart
+    await cartRepository.clearCart(txCart.id, tx);
+
+    return order;
+  }, {
+    // 30s timeout accommodates Neon network latency under high concurrency
+    // Default Prisma timeout is 5s which is too tight for 10+ concurrent checkouts
+    timeout: 30_000,
+    maxWait: 10_000,
+  });
+
+  // Update user's phone from shipping (non-critical, outside transaction)
+  if (input.shippingAddress?.phone) {
+    await prisma.user.update({
+      where: { id: input.userId },
+      data:  { phone: input.shippingAddress.phone },
+    }).catch(() => {});
+  }
+
+  invalidateProductsCache();
+
+  // Record coupon usage AFTER commit (non-critical)
+  if (couponCode && couponDiscount > 0 && resolvedCouponId) {
+    recordCouponUsage({
+      couponId: resolvedCouponId,
+      userId:   input.userId,
+      orderId:  result.id,
+      discount: couponDiscount,
+    }).catch(() => {});
+  }
+
+  return { order: normaliseOrder(result), fromCache: false };
+};
+
+// ─── cancelOrder ──────────────────────────────────────────────────────────────
+export const cancelOrder = async (orderId: string, reason: string): Promise<any> => {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+    if (!order) throw new Error('Order not found');
+    if (order.status === OrderStatus.cancelled || order.status === OrderStatus.delivered) {
+      throw new Error(`Cannot cancel order with status: ${order.status}`);
+    }
+
+    // Release inventory for each reserved item
+    for (const item of order.items) {
+      if (item.productId) {
+        await productRepository.releaseStock(item.productId, item.quantity, tx);
+      }
+    }
+
+    const updated = await tx.order.update({
+      where: { id: orderId },
+      data:  {
+        status:      OrderStatus.cancelled,
+        cancelReason: reason,
+        cancelledAt: new Date(),
+      },
+      include: { items: true },
+    });
+
+    await outboxRepository.createEvent(
+      {
+        aggregateType: 'Order',
+        aggregateId:   orderId,
+        eventType:     'OrderCancelled',
+        payload:       { orderId, reason },
+      },
+      tx
+    );
+
+    return normaliseOrder(updated);
+  });
+};
+
+// ─── confirmDelivery ──────────────────────────────────────────────────────────
+export const confirmDelivery = async (orderId: string): Promise<any> => {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+    if (!order) throw new Error('Order not found');
+    if (order.status !== OrderStatus.shipped) {
+      throw new Error('Only shipped orders can be marked as delivered');
+    }
+
+    // Deduct onHandQuantity and reservedQuantity atomically
+    for (const item of order.items) {
+      if (item.productId) {
+        await productRepository.commitStock(item.productId, item.quantity, tx);
+      }
+    }
+
+    const updated = await tx.order.update({
+      where: { id: orderId },
+      data:  {
+        status:        OrderStatus.delivered,
+        paymentStatus: PaymentStatus.paid,
+      },
+      include: { items: true },
+    });
+
+    await outboxRepository.createEvent(
+      {
+        aggregateType: 'Order',
+        aggregateId:   orderId,
+        eventType:     'OrderDelivered',
+        payload:       { orderId },
+      },
+      tx
+    );
+
+    return normaliseOrder(updated);
+  });
+};

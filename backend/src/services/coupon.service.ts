@@ -1,5 +1,5 @@
 import { couponRepository } from '../repositories/coupon.repository';
-import { CouponType } from '../generated/prisma/client.js';
+import { CouponType } from '../generated/prisma/client';
 
 const formatCoupon = (c: any) => {
   if (!c) return null;

@@ -10,7 +10,7 @@ import {
   getOrderStats,
 } from '../services/order.service';
 import { logError } from '../config/logger';
-import { OrderStatus, PaymentStatus } from '../models/Order';
+import { OrderStatus, PaymentStatus } from '../services/order.service';
 
 // Get all orders (admin)
 export const listOrders = async (req: Request, res: Response): Promise<void> => {
