@@ -77,12 +77,23 @@ class AutoCancelWorker {
   private async cancelSingleOrder(order: any): Promise<void> {
     try {
       await prisma.$transaction(async (tx) => {
-        // Release inventory for each item
-        for (const item of order.items) {
-          if (item.productId && item.inventoryReserved) {
-            await productRepository.releaseStock(item.productId, item.quantity, tx);
-          }
+        // Re-read the order inside the transaction to guard against double-cancel
+        // (two worker instances or concurrent cancel requests on the same order).
+        const fresh = await tx.order.findUnique({
+          where:  { id: order.id },
+          select: { status: true },
+        });
+        if (!fresh || fresh.status === 'cancelled' || fresh.status === 'delivered') {
+          // Already processed — skip silently
+          return;
         }
+
+        // Release inventory for each reserved item (parallel)
+        await Promise.all(
+          order.items
+            .filter((item: any) => item.productId && item.inventoryReserved)
+            .map((item: any) => productRepository.releaseStock(item.productId, item.quantity, tx))
+        );
 
         // Update order status
         await tx.order.update({

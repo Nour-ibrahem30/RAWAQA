@@ -29,8 +29,8 @@ const envSchema = z.object({
   DNS_RESOLVER_STRATEGY: z.enum(['system', 'fallback', 'public']).default('system'),
 
   // JWT
-  JWT_ACCESS_SECRET: z.string().min(16).default('rawaqa-jwt-access-secret-default-key-32-chars-minimum'),
-  JWT_REFRESH_SECRET: z.string().min(16).default('rawaqa-jwt-refresh-secret-default-key-32-chars-minimum'),
+  JWT_ACCESS_SECRET: z.string().min(32).default('rawaqa-jwt-access-secret-default-key-32-chars-minimum'),
+  JWT_REFRESH_SECRET: z.string().min(32).default('rawaqa-jwt-refresh-secret-default-key-32-chars-minimum'),
   JWT_ACCESS_EXPIRES_IN: z.string().default('24h'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
@@ -175,7 +175,19 @@ const envSchema = z.object({
 // Parse and validate environment variables
 const parseEnv = () => {
   try {
-    return envSchema.parse(process.env);
+    const parsed = envSchema.parse(process.env);
+
+    // Warn loudly in production if default JWT secrets are still in use
+    if (parsed.NODE_ENV === 'production') {
+      const DEFAULT_ACCESS_SECRET  = 'rawaqa-jwt-access-secret-default-key-32-chars-minimum';
+      const DEFAULT_REFRESH_SECRET = 'rawaqa-jwt-refresh-secret-default-key-32-chars-minimum';
+      if (parsed.JWT_ACCESS_SECRET === DEFAULT_ACCESS_SECRET || parsed.JWT_REFRESH_SECRET === DEFAULT_REFRESH_SECRET) {
+        console.error('🚨 FATAL: Default JWT secrets detected in production. Set JWT_ACCESS_SECRET and JWT_REFRESH_SECRET environment variables.');
+        process.exit(1);
+      }
+    }
+
+    return parsed;
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.warn('⚠️ Environment variable validation warning:');

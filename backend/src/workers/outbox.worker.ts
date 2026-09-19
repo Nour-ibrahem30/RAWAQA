@@ -77,7 +77,7 @@ class OutboxWorker {
       case 'OrderStatusChanged': await this.handleOrderStatusChanged(event); break;
       case 'OrderCancelled':     await this.handleOrderCancelled(event);     break;
       case 'OrderDelivered':     await this.handleOrderDelivered(event);     break;
-      case 'PaymentStatusChanged': this.handlePaymentStatusChanged(event);   break;
+      case 'PaymentStatusChanged': await this.handlePaymentStatusChanged(event); break;
       default: logInfo(`Unknown event type: ${event.eventType}`);
     }
   }
@@ -190,7 +190,7 @@ class OutboxWorker {
     if (user?.phone) await smsService.sendOrderDelivered(user.phone, order.orderNumber);
   }
 
-  private handlePaymentStatusChanged(event: any): void {
+  private async handlePaymentStatusChanged(event: any): Promise<void> {
     logInfo('Payment status changed', event.payload);
   }
 }

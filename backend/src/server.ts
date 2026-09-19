@@ -1,6 +1,5 @@
 import './config/dns';
 console.log('🚀 [STARTUP] server.ts initializing... PID:', process.pid, 'PORT:', process.env.PORT);
-import mongoose from "mongoose";
 import express, { Application, Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -244,7 +243,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // Protects the Node.js event loop, sockets, and memory from operation queuing.
 // Rejects DB-dependent API requests immediately (<1ms) with HTTP 503 if the
 // database layer is unavailable. PostgreSQL (Prisma) is now the primary DB.
-// MongoDB gatekeeper retained for workers/legacy paths still using Mongoose.
+// MongoDB gatekeeper removed — all active services now use PostgreSQL/Prisma.
 // =============================================================================
 export const dbGatekeeper = (req: Request, res: Response, next: NextFunction): void => {
   const path = req.originalUrl || req.url || req.path;
@@ -252,26 +251,13 @@ export const dbGatekeeper = (req: Request, res: Response, next: NextFunction): v
     return next();
   }
 
-  // PostgreSQL must be available (Prisma drives auth, products, orders, coupons, etc.)
+  // PostgreSQL must be configured — it drives all active business logic
   if (!process.env.DATABASE_URL) {
     res.setHeader('Retry-After', '5');
     res.status(503).json({
       success: false,
       error: 'Service Unavailable',
       message: 'PostgreSQL database not configured.',
-    });
-    return;
-  }
-
-  // MongoDB still required for workers (outbox, checkout, orders legacy paths)
-  // Only block if MongoDB is actively disconnected (not just slow to start)
-  const mongoState = mongoose.connection.readyState;
-  if (mongoState === 0) { // 0 = disconnected (not 2=connecting, 3=disconnecting)
-    res.setHeader('Retry-After', '2');
-    res.status(503).json({
-      success: false,
-      error: 'Service Unavailable',
-      message: 'Database is currently unavailable. Please retry shortly.',
     });
     return;
   }

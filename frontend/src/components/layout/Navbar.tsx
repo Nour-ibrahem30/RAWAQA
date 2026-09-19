@@ -211,7 +211,7 @@ export default function Navbar() {
                       {c.label}
                     </Link>
                   </li>
-                )}
+                ))}
               </ul>
             )}
           </div>

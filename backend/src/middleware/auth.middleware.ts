@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, IAccessTokenPayload } from '../utils/jwt';
-import { User, UserRole } from '../models/User';
-import { RefreshSession } from '../models/RefreshSession';
+import { UserRole } from '../generated/prisma/client';
+import { userRepository } from '../repositories/user.repository';
+import type { RefreshSession } from '../generated/prisma/client';
 
 // Extend Express Request to include user
 declare global {
@@ -12,23 +13,31 @@ declare global {
   }
 }
 
-// Extract token from request
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Extract token from request (Authorization header or cookie)
 const extractToken = (req: Request): string | null => {
-  // Check Authorization header (Bearer token)
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
-
-  // Check cookie
-  if (req.cookies && req.cookies.accessToken) {
+  if (req.cookies?.accessToken) {
     return req.cookies.accessToken;
   }
-
   return null;
 };
 
-// Authenticate user (require valid access token)
+/**
+ * Replaces the Mongoose RefreshSession.isValid() instance method.
+ * A session is valid when it is neither revoked nor past its expiry date.
+ */
+function isSessionValid(session: RefreshSession): boolean {
+  return !session.revoked && new Date() <= session.expiresAt;
+}
+
+// ─── authenticate ─────────────────────────────────────────────────────────────
+// Require a valid access token. Validates against the Prisma refresh_sessions
+// and users tables (PostgreSQL only — no Mongoose dependency).
 export const authenticate = async (
   req: Request,
   res: Response,
@@ -45,7 +54,7 @@ export const authenticate = async (
       return;
     }
 
-    // Verify token
+    // 1. Cryptographically verify the JWT
     let decoded: IAccessTokenPayload;
     try {
       decoded = verifyAccessToken(token);
@@ -57,13 +66,15 @@ export const authenticate = async (
       return;
     }
 
-    // Check if session is still valid
-    const session = await RefreshSession.findOne({
-      sessionId: decoded.sessionId,
-      userId: decoded.userId,
-    });
+    // 2. Validate the session still exists, belongs to this user, and is not
+    //    revoked or expired (PostgreSQL / Prisma — zero Mongoose dependency)
+    const session = await userRepository.findRefreshSession(decoded.sessionId);
 
-    if (!session || !session.isValid()) {
+    if (
+      !session ||
+      session.userId !== decoded.userId || // Guard against sessionId collision across users
+      !isSessionValid(session)
+    ) {
       res.status(401).json({
         error: 'Unauthorized',
         message: 'Session is invalid or expired',
@@ -71,8 +82,8 @@ export const authenticate = async (
       return;
     }
 
-    // Check if user still exists and is active
-    const user = await User.findById(decoded.userId);
+    // 3. Confirm the user still exists and is active (PostgreSQL / Prisma)
+    const user = await userRepository.findById(decoded.userId);
     if (!user || !user.isActive) {
       res.status(401).json({
         error: 'Unauthorized',
@@ -81,7 +92,7 @@ export const authenticate = async (
       return;
     }
 
-    // Attach user to request
+    // 4. Attach decoded payload to request
     req.user = decoded;
     next();
   } catch (error) {
@@ -92,7 +103,9 @@ export const authenticate = async (
   }
 };
 
-// Optional authentication (don't fail if no token)
+// ─── optionalAuth ─────────────────────────────────────────────────────────────
+// Like authenticate but does not fail when no token is present.
+// Used for public endpoints that behave differently when logged in.
 export const optionalAuth = async (
   req: Request,
   _res: Response,
@@ -100,41 +113,37 @@ export const optionalAuth = async (
 ): Promise<void> => {
   try {
     const token = extractToken(req);
-
     if (!token) {
-      // No token, but that's okay
       next();
       return;
     }
 
-    // Try to verify token
     try {
       const decoded = verifyAccessToken(token);
-      
-      // Check session
-      const session = await RefreshSession.findOne({
-        sessionId: decoded.sessionId,
-        userId: decoded.userId,
-      });
 
-      if (session && session.isValid()) {
-        // Check user
-        const user = await User.findById(decoded.userId);
+      const session = await userRepository.findRefreshSession(decoded.sessionId);
+      if (
+        session &&
+        session.userId === decoded.userId &&
+        isSessionValid(session)
+      ) {
+        const user = await userRepository.findById(decoded.userId);
         if (user && user.isActive) {
           req.user = decoded;
         }
       }
-    } catch (error) {
-      // Invalid token, but don't fail - just continue without user
+    } catch {
+      // Invalid / expired token — silently ignore, continue without user
     }
 
     next();
-  } catch (error) {
+  } catch {
     next();
   }
 };
 
-// Require specific role
+// ─── requireRole ──────────────────────────────────────────────────────────────
+// Restrict an endpoint to specific roles. Must be used after authenticate.
 export const requireRole = (...roles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
@@ -145,7 +154,7 @@ export const requireRole = (...roles: UserRole[]) => {
       return;
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!roles.includes(req.user.role as UserRole)) {
       res.status(403).json({
         error: 'Forbidden',
         message: 'Insufficient permissions',
@@ -157,13 +166,14 @@ export const requireRole = (...roles: UserRole[]) => {
   };
 };
 
-// Require admin role
-export const requireAdmin = requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN);
+// ─── requireAdmin ─────────────────────────────────────────────────────────────
+export const requireAdmin = requireRole(UserRole.admin, UserRole.super_admin);
 
-// Require super admin role
-export const requireSuperAdmin = requireRole(UserRole.SUPER_ADMIN);
+// ─── requireSuperAdmin ────────────────────────────────────────────────────────
+export const requireSuperAdmin = requireRole(UserRole.super_admin);
 
-// Check if user owns resource
+// ─── requireOwnership ────────────────────────────────────────────────────────
+// Allows admins through unconditionally; customers must own the resource.
 export const requireOwnership = (userIdField: string = 'userId') => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
@@ -174,18 +184,19 @@ export const requireOwnership = (userIdField: string = 'userId') => {
       return;
     }
 
-    // Admin can access any resource
+    // Admins bypass ownership check
     if (
-      req.user.role === UserRole.ADMIN ||
-      req.user.role === UserRole.SUPER_ADMIN
+      req.user.role === UserRole.admin ||
+      req.user.role === UserRole.super_admin
     ) {
       next();
       return;
     }
 
-    // Check ownership
     const resourceUserId =
-      req.params[userIdField] || req.body[userIdField] || req.query[userIdField];
+      req.params[userIdField] ||
+      req.body[userIdField] ||
+      req.query[userIdField];
 
     if (!resourceUserId || resourceUserId !== req.user.userId) {
       res.status(403).json({

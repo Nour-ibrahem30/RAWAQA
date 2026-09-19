@@ -30,23 +30,30 @@ export class OutboxRepository {
     const now = new Date();
     const leaseExpiry = new Date(now.getTime() + leaseDurationMs);
 
-    // Atomic update of available pending events
+    // Atomic update of available pending events (excludes exhausted retries)
     const candidates = await prisma.outboxEvent.findMany({
       where: {
         processed: false,
+        // Skip events that have exceeded their maxRetries — dead-letter guard
+        // We use a filter after fetching since Prisma can't compare two fields in WHERE
         OR: [
           { lockedBy: null },
           { lockedUntil: { lt: now } },
         ],
       },
       orderBy: { createdAt: 'asc' },
-      take: limit,
-      select: { id: true },
+      take: limit * 2, // over-fetch so we can filter exhausted events
+      select: { id: true, retryCount: true, maxRetries: true },
     });
 
-    if (candidates.length === 0) return [];
+    // Filter out events that have exceeded their retry budget (dead-letter)
+    const eligible = candidates
+      .filter((c) => c.retryCount < c.maxRetries)
+      .slice(0, limit);
 
-    const candidateIds = candidates.map((c) => c.id);
+    if (eligible.length === 0) return [];
+
+    const candidateIds = eligible.map((c) => c.id);
 
     const updateResult = await prisma.outboxEvent.updateMany({
       where: {

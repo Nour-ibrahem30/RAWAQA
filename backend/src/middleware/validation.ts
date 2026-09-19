@@ -102,9 +102,9 @@ export const checkoutSchema = z.object({
     cartId:          z.string().min(1, 'Cart ID is required'),
     shippingAddress: shippingAddressSchema,
     paymentMethod: z.enum(
-      ['cash_on_delivery', 'credit_card', 'bank_transfer'],
-      { errorMap: () => ({ message: 'Invalid payment method' }) }
-    ),
+      ['cod', 'paymob', 'wallet'],
+      { errorMap: () => ({ message: 'Invalid payment method. Supported: cod, paymob, wallet' }) }
+    ).default('cod'),
     couponCode: z.string().min(3).max(30).toUpperCase().trim().optional(),
     notes: z.string().max(500).optional(),
   }),

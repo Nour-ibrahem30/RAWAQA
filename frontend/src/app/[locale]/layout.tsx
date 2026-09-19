@@ -16,22 +16,60 @@ import { ScrollReveal } from '@/components/ui/ScrollAnimations';
 import BackToTop from '@/components/ui/BackToTop';
 import LocaleHtmlAttrs from '@/components/ui/LocaleHtmlAttrs';
 
-export const metadata: Metadata = {
-  title: 'RAWAQA — Crafted Comfort. Designed for Life.',
-  description: 'Premium bean bags and relaxed seating for the Egyptian home.',
-  icons: {
-    icon: [
-      { url: '/favicon.ico?v=3', sizes: 'any' },
-      { url: '/favicon-32x32.png?v=3', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon-16x16.png?v=3', sizes: '16x16', type: 'image/png' },
-      { url: '/icon-192.png?v=3', sizes: '192x192', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/apple-touch-icon.png?v=3', sizes: '180x180', type: 'image/png' },
-    ],
-    shortcut: '/favicon.ico?v=3',
-  },
-};
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rawaqa.com';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+
+  const titleAr      = 'رواقة — كل الراحة. صُنعت لحياتك.';
+  const titleEn      = 'RAWAQA — Crafted Comfort. Designed for Life.';
+  const descriptionAr = 'بين باقز وكراسي جلوس عصرية للبيت المصري — تصاميم مميزة بجودة استثنائية من رواقة.';
+  const descriptionEn = 'Premium bean bags and relaxed seating crafted for the Egyptian home — exceptional quality from RAWAQA.';
+
+  const title       = locale === 'ar' ? titleAr       : titleEn;
+  const description = locale === 'ar' ? descriptionAr : descriptionEn;
+  const url         = `${SITE_URL}/${locale}`;
+
+  return {
+    title,
+    description,
+    metadataBase: new URL(SITE_URL),
+    alternates: {
+      canonical: url,
+      languages: {
+        ar:          `${SITE_URL}/ar`,
+        en:          `${SITE_URL}/en`,
+        'x-default': `${SITE_URL}/ar`,
+      },
+    },
+    openGraph: {
+      type:        'website',
+      locale:      locale === 'ar' ? 'ar_EG' : 'en_US',
+      url,
+      siteName:    'RAWAQA',
+      title,
+      description,
+      images: [
+        {
+          url:    `${SITE_URL}/og-image.jpg`,
+          width:  1200,
+          height: 630,
+          alt:    title,
+        },
+      ],
+    },
+    twitter: {
+      card:        'summary_large_image',
+      title,
+      description,
+      images:      [`${SITE_URL}/og-image.jpg`],
+    },
+  };
+}
 
 export default async function LocaleLayout({
   children,
@@ -44,9 +82,7 @@ export default async function LocaleLayout({
 
   if (!routing.locales.includes(locale as 'ar' | 'en')) notFound();
 
-  const messages = await getMessages();
-
-  return (
+  const messages = await getMessages();  return (
     <NextIntlClientProvider messages={messages}>
       {/* Sets lang, dir, and font class-names on <html> client-side for root doc sync */}
       <LocaleHtmlAttrs locale={locale} fontClasses={fontClasses} />

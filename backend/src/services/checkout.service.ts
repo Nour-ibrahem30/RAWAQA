@@ -367,12 +367,12 @@ export const cancelOrder = async (orderId: string, reason: string): Promise<any>
       throw new Error(`Cannot cancel order with status: ${order.status}`);
     }
 
-    // Release inventory for each reserved item
-    for (const item of order.items) {
-      if (item.productId) {
-        await productRepository.releaseStock(item.productId, item.quantity, tx);
-      }
-    }
+    // Release inventory for each reserved item (parallel — each is an atomic UPDATE)
+    await Promise.all(
+      order.items
+        .filter((item) => item.productId && item.inventoryReserved)
+        .map((item) => productRepository.releaseStock(item.productId!, item.quantity, tx))
+    );
 
     const updated = await tx.order.update({
       where: { id: orderId },
@@ -410,12 +410,12 @@ export const confirmDelivery = async (orderId: string): Promise<any> => {
       throw new Error('Only shipped orders can be marked as delivered');
     }
 
-    // Deduct onHandQuantity and reservedQuantity atomically
-    for (const item of order.items) {
-      if (item.productId) {
-        await productRepository.commitStock(item.productId, item.quantity, tx);
-      }
-    }
+    // Deduct onHandQuantity and reservedQuantity atomically (parallel)
+    await Promise.all(
+      order.items
+        .filter((item) => item.productId)
+        .map((item) => productRepository.commitStock(item.productId!, item.quantity, tx))
+    );
 
     const updated = await tx.order.update({
       where: { id: orderId },

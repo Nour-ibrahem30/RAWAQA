@@ -218,13 +218,16 @@ export class OrderRepository {
     });
 
     const results: any[] = [];
+    const productIds = topItems.map((i) => i.productId).filter(Boolean) as string[];
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, nameAr: true, nameEn: true, sku: true },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
     for (const item of topItems) {
       if (!item.productId) continue;
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId },
-        select: { nameAr: true, nameEn: true, sku: true },
-      });
-
+      const product = productMap.get(item.productId);
       results.push({
         productId: item.productId,
         totalSold: item._sum.quantity ?? 0,

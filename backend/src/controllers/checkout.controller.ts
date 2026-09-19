@@ -30,11 +30,11 @@ export const checkout = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (paymentMethod && paymentMethod !== 'cash_on_delivery') {
+    if (paymentMethod && paymentMethod !== 'cod') {
       res.status(400).json({
         success: false,
         error: 'Bad Request',
-        message: 'Cash on delivery is the only supported payment method',
+        message: 'Cash on delivery (cod) is the only supported payment method',
       });
       return;
     }
@@ -46,7 +46,7 @@ export const checkout = async (req: Request, res: Response): Promise<void> => {
       userId: req.user.userId,
       cartId,
       shippingAddress,
-      paymentMethod: (paymentMethod || 'cash_on_delivery'),
+      paymentMethod: (paymentMethod || 'cod'),
       couponCode,
       notes,
       idempotencyKey,

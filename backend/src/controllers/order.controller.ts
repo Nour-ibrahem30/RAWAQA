@@ -72,8 +72,7 @@ export const getOrder = async (req: Request, res: Response): Promise<void> => {
 
     // Check authorization (user can only see their own orders)
     const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
-    const orderUserId = (order.userId as any)?._id?.toString() || (order.userId as any)?.toString();
-    const isOwner = Boolean(orderUserId && req.user?.userId && orderUserId === req.user.userId);
+    const isOwner = Boolean(req.user?.userId && order.userId === req.user.userId);
 
     if (!isAdmin && !isOwner) {
       res.status(403).json({
@@ -128,13 +127,12 @@ export const getOrderByNumberHandler = async (
 
     // If not authenticated or not owner/admin, provide public tracking view
     const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
-    const orderUserId = (order.userId as any)?._id?.toString() || (order.userId as any)?.toString();
-    const isOwner = Boolean(orderUserId && req.user?.userId && orderUserId === req.user.userId);
+    const isOwner = Boolean(req.user?.userId && order.userId === req.user.userId);
     if (!req.user || (!isAdmin && !isOwner)) {
       res.status(200).json({
         success: true,
         data: {
-          id: order._id,
+          id: order.id,
           orderNumber: order.orderNumber,
           status: order.status,
           items: order.items,
@@ -145,7 +143,7 @@ export const getOrderByNumberHandler = async (
           paymentMethod: order.paymentMethod,
           paymentStatus: order.paymentStatus,
           createdAt: order.createdAt,
-          trackingNumber: order.trackingNumber,
+          trackingNumber: (order as any).trackingNumber,
         },
       });
       return;
