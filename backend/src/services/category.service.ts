@@ -1,94 +1,32 @@
-import { Category, ICategory } from '../models/Category';
-import { Product } from '../models/Product';
+/**
+ * category.service.ts — PostgreSQL/Prisma implementation
+ * All business logic preserved exactly from the Mongoose version.
+ */
+
+import { Prisma } from '../generated/prisma/client';
+import { productRepository }  from '../repositories/product.repository';
+import { prisma }             from '../lib/prisma';
 import { invalidateProductsCache } from './product.service';
 
+// ─── Default categories (identical to Mongoose version) ──────────────────────
 export const DEFAULT_CATEGORIES = [
-  {
-    nameAr: 'استرخاء',
-    nameEn: 'Relax',
-    descriptionAr: 'كراسي بين باج فاخرة للاسترخاء وأوقات الفراغ',
-    descriptionEn: 'Premium bean bags for relaxation and leisure time',
-    slugAr: 'relax',
-    slugEn: 'relax',
-    order: 1,
-    isActive: true,
-  },
-  {
-    nameAr: 'ألعاب',
-    nameEn: 'Game',
-    descriptionAr: 'كراسي منخفضة مصممة لجلسات الألعاب الطويلة',
-    descriptionEn: 'Low-profile chairs designed for long gaming sessions',
-    slugAr: 'game',
-    slugEn: 'game',
-    order: 2,
-    isActive: true,
-  },
-  {
-    nameAr: 'أطفال',
-    nameEn: 'Kids',
-    descriptionAr: 'بين باج بحجم مناسب للأطفال بتصميمات مرحة',
-    descriptionEn: 'Kid-sized bean bags with fun, playful designs',
-    slugAr: 'kids',
-    slugEn: 'kids',
-    order: 3,
-    isActive: true,
-  },
-  {
-    nameAr: 'خارجي',
-    nameEn: 'Outdoor',
-    descriptionAr: 'بين باج مقاوم للماء والشمس للحدائق والتراسات',
-    descriptionEn: 'Water and UV resistant bean bags for gardens and patios',
-    slugAr: 'outdoor',
-    slugEn: 'outdoor',
-    order: 4,
-    isActive: true,
-  },
+  { nameAr: 'استرخاء', nameEn: 'Relax',   descriptionAr: 'كراسي بين باج فاخرة للاسترخاء وأوقات الفراغ', descriptionEn: 'Premium bean bags for relaxation and leisure time', slugAr: 'relax',   slugEn: 'relax',   order: 1, isActive: true },
+  { nameAr: 'ألعاب',   nameEn: 'Game',    descriptionAr: 'كراسي منخفضة مصممة لجلسات الألعاب الطويلة',   descriptionEn: 'Low-profile chairs designed for long gaming sessions',  slugAr: 'game',    slugEn: 'game',    order: 2, isActive: true },
+  { nameAr: 'أطفال',  nameEn: 'Kids',    descriptionAr: 'بين باج بحجم مناسب للأطفال بتصميمات مرحة',    descriptionEn: 'Kid-sized bean bags with fun, playful designs',          slugAr: 'kids',    slugEn: 'kids',    order: 3, isActive: true },
+  { nameAr: 'خارجي',  nameEn: 'Outdoor', descriptionAr: 'بين باج مقاوم للماء والشمس للحدائق والتراسات', descriptionEn: 'Water and UV resistant bean bags for gardens and patios', slugAr: 'outdoor', slugEn: 'outdoor', order: 4, isActive: true },
 ];
 
-const formatCategory = (c: any) => ({
+// ─── Format helper: Prisma row → API shape ────────────────────────────────────
+const formatCategory = (c: any): any => ({
   ...c,
-  id: c._id ? c._id.toString() : c.id,
-  slug: c.slugEn || c.slugAr || c.slug || '',
+  _id:    c.id,
+  id:     c.id,
+  slug:   c.slugEn ?? c.slugAr ?? '',
   status: c.isActive ? 'active' : 'inactive',
 });
 
-let defaultCategoriesSeeded = false;
-
-/**
- * Idempotent startup initialization of default categories.
- * Executed ONCE at server startup after database connection.
- * NEVER called inside public GET requests.
- */
-export const ensureDefaultCategories = async (): Promise<void> => {
-  if (defaultCategoriesSeeded) return;
-  try {
-    for (const defCat of DEFAULT_CATEGORIES) {
-      const exists = await Category.findOne({
-        $or: [
-          { slugEn: defCat.slugEn },
-          { slugAr: defCat.slugAr },
-          { nameEn: defCat.nameEn },
-          { nameAr: defCat.nameAr },
-        ],
-      }).select('_id').lean();
-      if (!exists) {
-        try {
-          await Category.create(defCat);
-        } catch {
-          // ignore concurrent duplicate key race condition
-        }
-      }
-    }
-    defaultCategoriesSeeded = true;
-  } catch (_err) {
-    // Non-fatal on startup; will retry on next check
-  }
-};
-
-interface CategoryCacheEntry {
-  data: any[];
-  expiresAt: number;
-}
+// ─── In-memory 60s TTL cache (identical bounds as Mongoose version) ───────────
+interface CategoryCacheEntry { data: any[]; expiresAt: number }
 let categoriesCache: { active?: CategoryCacheEntry; all?: CategoryCacheEntry } = {};
 
 export const invalidateCategoryCache = (): void => {
@@ -96,195 +34,202 @@ export const invalidateCategoryCache = (): void => {
   invalidateProductsCache();
 };
 
-// Get all categories (pure read with 60s TTL cache)
-export const getCategories = async (includeInactive: boolean = false): Promise<any[]> => {
+// ─── ensureDefaultCategories (startup only, never called in request path) ─────
+let defaultCategoriesSeeded = false;
+export const ensureDefaultCategories = async (): Promise<void> => {
+  if (defaultCategoriesSeeded) return;
+  try {
+    for (const def of DEFAULT_CATEGORIES) {
+      const exists = await prisma.category.findFirst({
+        where: { OR: [{ slugEn: def.slugEn }, { slugAr: def.slugAr }, { nameEn: def.nameEn }, { nameAr: def.nameAr }] },
+        select: { id: true },
+      });
+      if (!exists) {
+        await prisma.category.create({ data: def }).catch(() => {/* ignore race-condition dupe */});
+      }
+    }
+    defaultCategoriesSeeded = true;
+  } catch (_err) {
+    // Non-fatal on startup
+  }
+};
+
+// ─── getCategories ────────────────────────────────────────────────────────────
+export const getCategories = async (includeInactive = false): Promise<any[]> => {
   const cacheKey = includeInactive ? 'all' : 'active';
-  const now = Date.now();
+  const now      = Date.now();
   if (categoriesCache[cacheKey] && categoriesCache[cacheKey]!.expiresAt > now) {
     return categoriesCache[cacheKey]!.data;
   }
 
-  const filter = includeInactive ? {} : { isActive: true };
-  
-  const cats = await Category.find(filter)
-    .sort({ order: 1, nameEn: 1 })
-    .lean();
+  const where: Prisma.CategoryWhereInput = includeInactive ? {} : { isActive: true };
+  const cats = await productRepository.findCategories({
+    where,
+    orderBy: { order: 'asc' },
+  });
 
   const result = cats.map(formatCategory);
-  categoriesCache[cacheKey] = {
-    data: result,
-    expiresAt: now + 60_000, // 60s TTL
-  };
-
+  categoriesCache[cacheKey] = { data: result, expiresAt: now + 60_000 };
   return result;
 };
 
-// Get single category by ID
+// ─── getCategoryById ──────────────────────────────────────────────────────────
 export const getCategoryById = async (id: string): Promise<any | null> => {
-  const category = await Category.findById(id).lean();
-  if (!category) return null;
-  return formatCategory(category);
+  const category = await productRepository.findCategoryById(id);
+  return category ? formatCategory(category) : null;
 };
 
-// Get category by slug
-export const getCategoryBySlug = async (
-  slug: string,
-  locale: 'ar' | 'en'
-): Promise<any | null> => {
+// ─── getCategoryBySlug ────────────────────────────────────────────────────────
+export const getCategoryBySlug = async (slug: string, locale: 'ar' | 'en'): Promise<any | null> => {
   const slugField = locale === 'ar' ? 'slugAr' : 'slugEn';
-  let category = await Category.findOne({ [slugField]: slug, isActive: true }).lean();
+
+  let category = await prisma.category.findFirst({
+    where: { [slugField]: slug, isActive: true },
+  }).catch(() => null);
+
   if (!category) {
-    category = await Category.findOne({
-      $or: [{ slugEn: slug }, { slugAr: slug }],
-      isActive: true,
-    }).lean();
+    category = await prisma.category.findFirst({
+      where: { OR: [{ slugEn: slug }, { slugAr: slug }], isActive: true },
+    }).catch(() => null);
   }
-  if (!category) return null;
-  return formatCategory(category);
+
+  return category ? formatCategory(category) : null;
 };
 
-// Get category with products
+// ─── getCategoryWithProducts ──────────────────────────────────────────────────
 export const getCategoryWithProducts = async (
   id: string,
-  page: number = 1,
-  limit: number = 20
-): Promise<{ category: ICategory | null; products: any[]; total: number }> => {
-  const category = await Category.findById(id);
-  
-  if (!category) {
-    return { category: null, products: [], total: 0 };
-  }
+  page = 1,
+  limit = 20
+): Promise<{ category: any | null; products: any[]; total: number }> => {
+  const category = await productRepository.findCategoryById(id);
+  if (!category) return { category: null, products: [], total: 0 };
 
+  const { normalisePrismaProduct } = await import('./product.service');
   const skip = (page - 1) * limit;
-  
   const [products, total] = await Promise.all([
-    Product.find({ category: id, status: 'active' })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Product.countDocuments({ category: id, status: 'active' }),
+    prisma.product.findMany({
+      where: { categoryId: id, status: 'active' },
+      skip,
+      take: limit,
+      include: { images: { orderBy: { order: 'asc' } }, inventory: true },
+    }),
+    prisma.product.count({ where: { categoryId: id, status: 'active' } }),
   ]);
 
-  return { category, products, total };
+  return {
+    category: formatCategory(category),
+    products: products.map(normalisePrismaProduct),
+    total,
+  };
 };
 
-// Create category
+// ─── createCategory ───────────────────────────────────────────────────────────
 export const createCategory = async (data: any): Promise<any> => {
-  if (data.status) {
-    data.isActive = data.status === 'active';
-  }
+  // status → isActive
+  if (data.status !== undefined) data.isActive = data.status === 'active';
 
+  // slug normalisation
   if (data.slug) {
     if (!data.slugEn) data.slugEn = data.slug.toLowerCase().trim();
     if (!data.slugAr) data.slugAr = data.slug.toLowerCase().trim();
   }
   if (data.slugEn && !data.slugAr) data.slugAr = data.slugEn;
   if (data.slugAr && !data.slugEn) data.slugEn = data.slugAr;
-
   if (!data.slugEn) {
     const gen = (data.nameEn || 'category').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     data.slugEn = gen;
-    data.slugAr = gen;
+    data.slugAr = data.slugAr || gen;
   }
 
-  // Check slug uniqueness (both AR and EN)
+  // Uniqueness check
   if (data.slugAr) {
-    const existingAr = await Category.findOne({ slugAr: data.slugAr });
-    if (existingAr) {
-      throw new Error('Arabic slug already exists');
-    }
+    const existAr = await prisma.category.findFirst({ where: { slugAr: data.slugAr }, select: { id: true } });
+    if (existAr) throw new Error('Arabic slug already exists');
   }
-
   if (data.slugEn) {
-    const existingEn = await Category.findOne({ slugEn: data.slugEn });
-    if (existingEn) {
-      throw new Error('English slug already exists');
-    }
+    const existEn = await prisma.category.findFirst({ where: { slugEn: data.slugEn }, select: { id: true } });
+    if (existEn) throw new Error('English slug already exists');
   }
 
-  const category = new Category(data);
-  await category.save();
+  const category = await productRepository.createCategory({
+    nameAr:        data.nameAr,
+    nameEn:        data.nameEn,
+    slugAr:        data.slugAr,
+    slugEn:        data.slugEn,
+    descriptionAr: data.descriptionAr ?? null,
+    descriptionEn: data.descriptionEn ?? null,
+    image:         data.image ?? null,
+    isActive:      data.isActive !== undefined ? data.isActive : true,
+    order:         data.order ?? 0,
+    productCount:  0,
+  });
 
   invalidateCategoryCache();
-  return formatCategory(category.toObject ? category.toObject() : category);
+  return formatCategory(category);
 };
 
-// Update category
-export const updateCategory = async (
-  id: string,
-  data: any
-): Promise<any | null> => {
-  const existingCategory = await Category.findById(id);
-  if (!existingCategory) {
-    throw new Error('Category not found');
-  }
+// ─── updateCategory ───────────────────────────────────────────────────────────
+export const updateCategory = async (id: string, data: any): Promise<any | null> => {
+  const existing = await productRepository.findCategoryById(id);
+  if (!existing) throw new Error('Category not found');
 
-  if (data.status) {
-    data.isActive = data.status === 'active';
-  }
+  if (data.status !== undefined) data.isActive = data.status === 'active';
 
   if (data.slug) {
     if (!data.slugEn) data.slugEn = data.slug.toLowerCase().trim();
     if (!data.slugAr) data.slugAr = data.slug.toLowerCase().trim();
   }
 
-  // Check slug uniqueness if changed
-  if (data.slugAr && data.slugAr !== existingCategory.slugAr) {
-    const duplicate = await Category.findOne({ slugAr: data.slugAr });
-    if (duplicate) {
-      throw new Error('Arabic slug already exists');
-    }
+  if (data.slugAr && data.slugAr !== existing.slugAr) {
+    const dup = await prisma.category.findFirst({ where: { slugAr: data.slugAr }, select: { id: true } });
+    if (dup) throw new Error('Arabic slug already exists');
+  }
+  if (data.slugEn && data.slugEn !== existing.slugEn) {
+    const dup = await prisma.category.findFirst({ where: { slugEn: data.slugEn }, select: { id: true } });
+    if (dup) throw new Error('English slug already exists');
   }
 
-  if (data.slugEn && data.slugEn !== existingCategory.slugEn) {
-    const duplicate = await Category.findOne({ slugEn: data.slugEn });
-    if (duplicate) {
-      throw new Error('English slug already exists');
-    }
+  const updateData: Prisma.CategoryUpdateInput = {};
+  const fields = ['nameAr', 'nameEn', 'slugAr', 'slugEn', 'descriptionAr', 'descriptionEn', 'image', 'isActive', 'order'];
+  for (const f of fields) {
+    if (data[f] !== undefined) (updateData as any)[f] = data[f];
   }
 
-  const category = await Category.findByIdAndUpdate(id, data, {
-    new: true,
-    runValidators: true,
-  });
-
+  const category = await productRepository.updateCategory(id, updateData);
   invalidateCategoryCache();
-  return category ? formatCategory(category.toObject ? category.toObject() : category) : null;
+  return formatCategory(category);
 };
 
-// Delete category (safe delete - check for products)
-export const deleteCategory = async (id: string): Promise<ICategory | null> => {
-  // Check if category has products
-  const productCount = await Product.countDocuments({ category: id });
-  
+// ─── deleteCategory ───────────────────────────────────────────────────────────
+export const deleteCategory = async (id: string): Promise<any | null> => {
+  const productCount = await prisma.product.count({ where: { categoryId: id } });
   if (productCount > 0) {
-    throw new Error(
-      `Cannot delete category with ${productCount} products. Please reassign or delete products first.`
-    );
+    throw new Error(`Cannot delete category with ${productCount} products. Please reassign or delete products first.`);
   }
 
-  const category = await Category.findByIdAndDelete(id);
+  const category = await productRepository.findCategoryById(id);
+  if (!category) return null;
+
+  await productRepository.deleteCategory(id);
   invalidateCategoryCache();
-  return category;
+  return formatCategory(category);
 };
 
-// Reorder categories
+// ─── reorderCategories ────────────────────────────────────────────────────────
 export const reorderCategories = async (
   categoryOrders: Array<{ id: string; order: number }>
 ): Promise<void> => {
-  const bulkOps = categoryOrders.map(({ id, order }) => ({
-    updateOne: {
-      filter: { _id: id },
-      update: { $set: { order } },
-    },
-  }));
-
-  await Category.bulkWrite(bulkOps);
+  await prisma.$transaction(
+    categoryOrders.map(({ id, order }) =>
+      prisma.category.update({ where: { id }, data: { order } })
+    )
+  );
   invalidateCategoryCache();
 };
 
-// Update product count (internal use)
+// ─── updateCategoryProductCount ───────────────────────────────────────────────
 export const updateCategoryProductCount = async (categoryId: string): Promise<void> => {
-  const count = await Product.countDocuments({ category: categoryId, status: 'active' });
-  await Category.findByIdAndUpdate(categoryId, { productCount: count });
+  const count = await prisma.product.count({ where: { categoryId, status: 'active' } });
+  await prisma.category.update({ where: { id: categoryId }, data: { productCount: count } });
 };

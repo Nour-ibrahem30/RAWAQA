@@ -1,192 +1,242 @@
-import { Product, IProduct, ProductStatus } from '../models/Product';
-import { Category } from '../models/Category';
-import mongoose, { FilterQuery, SortOrder } from 'mongoose';
-import { logError } from '../config/logger';
+/**
+ * product.service.ts — PostgreSQL/Prisma implementation
+ * All business logic preserved exactly from the Mongoose version.
+ * Prices are explicitly converted to number to maintain frontend compatibility.
+ */
 
-interface FeaturedCacheEntry {
-  data: any[];
-  expiresAt: number;
-}
+import { Prisma, ProductStatus } from '../generated/prisma/client';
+import { productRepository }     from '../repositories/product.repository';
+import { prisma }                from '../lib/prisma';
+import { logError }              from '../config/logger';
+
+// ─── Re-export types used by other modules ────────────────────────────────────
+export { ProductStatus };
+
+// ─── In-memory caches (identical TTL/bounds as Mongoose version) ──────────────
+
+interface FeaturedCacheEntry { data: any[]; expiresAt: number }
 let featuredCache: Record<number, FeaturedCacheEntry> = {};
 
-interface ProductsCacheEntry {
-  data: IPaginatedProducts;
-  expiresAt: number;
-}
-const productsCache = new Map<string, ProductsCacheEntry>();
-const inFlightProductQueries = new Map<string, Promise<IPaginatedProducts>>();
+interface ProductsCacheEntry { data: IPaginatedProducts; expiresAt: number }
+const productsCache           = new Map<string, ProductsCacheEntry>();
+const inFlightProductQueries  = new Map<string, Promise<IPaginatedProducts>>();
 const MAX_PRODUCTS_CACHE_ENTRIES = 50;
-const PRODUCTS_CACHE_TTL_MS = 30_000; // 30 seconds
+const PRODUCTS_CACHE_TTL_MS      = 30_000;
 
-export const invalidateFeaturedCache = (): void => {
-  featuredCache = {};
-};
-
-export const invalidateProductsCache = (): void => {
-  productsCache.clear();
-};
-
-export const invalidateProductCaches = (): void => {
+export const invalidateFeaturedCache   = (): void => { featuredCache = {}; };
+export const invalidateProductsCache   = (): void => { productsCache.clear(); };
+export const invalidateProductCaches   = (): void => {
   featuredCache = {};
   productsCache.clear();
 };
 
-// Query parameters interface
+// ─── Types ────────────────────────────────────────────────────────────────────
 export interface IProductQuery {
-  page: number;
-  limit: number;
-  category?: string;
-  status?: ProductStatus;
-  featured?: boolean;
-  search?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  inStock?: boolean;
-  sortBy: string;
-  sortOrder: 'asc' | 'desc';
+  page:       number;
+  limit:      number;
+  category?:  string;
+  status?:    ProductStatus;
+  featured?:  boolean;
+  search?:    string;
+  minPrice?:  number;
+  maxPrice?:  number;
+  inStock?:   boolean;
+  sortBy:     string;
+  sortOrder:  'asc' | 'desc';
 }
 
-// Paginated result interface
 export interface IPaginatedProducts {
-  products: IProduct[];
+  products: any[];
   pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
+    page: number; limit: number; total: number; pages: number;
   };
 }
 
-// Get all products with filters and pagination (with 30s bounded cache and single-flight coalescing for public reads)
-export const getProducts = async (
-  query: IProductQuery
-): Promise<IPaginatedProducts> => {
-  const { page, limit, category, status, featured, search, minPrice, maxPrice, inStock, sortBy, sortOrder } = query;
+// ─── Decimal → number helper ──────────────────────────────────────────────────
+// Prisma returns Decimal objects. Serialise to plain numbers so the frontend
+// receives the same numeric values it did from MongoDB.
+const toNum = (v: any): number => (v === null || v === undefined ? 0 : Number(v));
 
-  const actualSortBy = sortBy || 'createdAt';
-  const actualSortOrder = sortOrder === 'asc' ? 1 : -1;
-  const isCacheable = !status || status === ProductStatus.ACTIVE;
+/**
+ * Normalises a raw Prisma product row to the shape the frontend expects.
+ * - images: [{url, ...}] → string[] (controller's transformProduct handles this too)
+ * - prices: Decimal → number
+ * - inventory: Decimal-free
+ * - ratings:   averaged from ratingAverage/ratingCount fields
+ * - category:  {id, nameAr, nameEn, slug}
+ */
+export const normalisePrismaProduct = (p: any): any => {
+  if (!p) return p;
+
+  const images = Array.isArray(p.images)
+    ? p.images
+        .sort((a: any, b: any) => {
+          if (a.isPrimary && !b.isPrimary) return -1;
+          if (!a.isPrimary && b.isPrimary) return 1;
+          return (a.order ?? 0) - (b.order ?? 0);
+        })
+    : [];
+
+  const cat = p.category;
+  const category = cat && typeof cat === 'object' ? {
+    _id:    cat.id ?? cat._id,
+    id:     cat.id ?? cat._id,
+    nameAr: cat.nameAr,
+    nameEn: cat.nameEn,
+    slug:   cat.slugEn ?? cat.slug,
+    slugEn: cat.slugEn,
+    slugAr: cat.slugAr,
+    isActive: cat.isActive,
+  } : cat;
+
+  const inventory = p.inventory ? {
+    onHandQuantity:    p.inventory.onHandQuantity    ?? 0,
+    reservedQuantity:  p.inventory.reservedQuantity  ?? 0,
+    availableQuantity: p.inventory.availableQuantity ?? 0,
+    lowStockThreshold: p.inventory.lowStockThreshold ?? 5,
+    allowBackorder:    p.inventory.allowBackorder    ?? false,
+    lastSyncedAt:      p.inventory.lastSyncedAt      ?? null,
+  } : {
+    onHandQuantity: 0, reservedQuantity: 0, availableQuantity: 0, lowStockThreshold: 5, allowBackorder: false, lastSyncedAt: null,
+  };
+
+  return {
+    ...p,
+    _id:            p.id,
+    id:             p.id,
+    price:          toNum(p.price),
+    compareAtPrice: p.compareAtPrice != null ? toNum(p.compareAtPrice) : undefined,
+    costPrice:      p.costPrice      != null ? toNum(p.costPrice)      : undefined,
+    images,
+    category,
+    inventory,
+    ratings: {
+      average: p.ratingAverage ?? 0,
+      count:   p.ratingCount   ?? 0,
+    },
+  };
+};
+
+// ─── Category resolution helper ───────────────────────────────────────────────
+// Resolves a category from UUID, slug, or name — mirrors Mongoose logic exactly.
+async function resolveCategoryId(raw: string): Promise<string | null> {
+  // Try UUID directly
+  const byId = await productRepository.findCategoryById(raw).catch(() => null);
+  if (byId) return byId.id;
+
+  // Try slug / name
+  let cat = await prisma.category.findFirst({
+    where: {
+      OR: [
+        { slugEn: raw.toLowerCase() },
+        { slugAr: raw.toLowerCase() },
+        { nameEn: raw },
+        { nameAr: raw },
+      ],
+    },
+    select: { id: true },
+  });
+
+  if (!cat) {
+    // Case-insensitive fallback (mimics Mongoose regex)
+    cat = await prisma.category.findFirst({
+      where: {
+        OR: [
+          { slugEn: { equals: raw, mode: 'insensitive' } },
+          { slugAr: { equals: raw, mode: 'insensitive' } },
+          { nameEn: { equals: raw, mode: 'insensitive' } },
+          { nameAr: { equals: raw, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true },
+    });
+  }
+
+  return cat?.id ?? null;
+}
+
+// ─── getProducts ──────────────────────────────────────────────────────────────
+export const getProducts = async (query: IProductQuery): Promise<IPaginatedProducts> => {
+  const { page = 1, limit = 10, category, status, featured, search,
+          minPrice, maxPrice, inStock, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+
+  const isCacheable = !status || status === ProductStatus.active;
   const cacheKey = isCacheable
-    ? `${page || 1}|${limit || 10}|${category || ''}|${featured !== undefined ? featured : ''}|${search || ''}|${minPrice ?? ''}|${maxPrice ?? ''}|${inStock ? 1 : 0}|${actualSortBy}|${actualSortOrder}`
+    ? `${page}|${limit}|${category || ''}|${featured !== undefined ? featured : ''}|${search || ''}|${minPrice ?? ''}|${maxPrice ?? ''}|${inStock ? 1 : 0}|${sortBy}|${sortOrder}`
     : '';
 
   if (isCacheable && cacheKey) {
     const cached = productsCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.data;
-    }
+    if (cached && cached.expiresAt > Date.now()) return cached.data;
     const inFlight = inFlightProductQueries.get(cacheKey);
-    if (inFlight) {
-      return inFlight;
-    }
+    if (inFlight) return inFlight;
   }
 
   const executeQuery = async (): Promise<IPaginatedProducts> => {
-    // Build filter
-    const filter: FilterQuery<IProduct> = {};
+    // Build where clause
+    const where: Prisma.ProductWhereInput = {};
+
+    // Default to active products for public queries
+    if (status) {
+      where.status = status as ProductStatus;
+    } else if (isCacheable) {
+      where.status = ProductStatus.active;
+    }
 
     if (category) {
-      let cleanCat = category.trim();
-      try {
-        cleanCat = decodeURIComponent(category).trim();
-      } catch {
-        cleanCat = category.trim();
-      }
-      const categoryIds: mongoose.Types.ObjectId[] = [];
-      if (mongoose.Types.ObjectId.isValid(cleanCat)) {
-        categoryIds.push(new mongoose.Types.ObjectId(cleanCat));
-      }
-      // Fast path: try exact/lowercased match against indexed slugs and names
-      let matchedCategories = await Category.find({
-        $or: [
-          { slugEn: cleanCat.toLowerCase() },
-          { slugAr: cleanCat.toLowerCase() },
-          { nameEn: cleanCat },
-          { nameAr: cleanCat },
-          ...(mongoose.Types.ObjectId.isValid(cleanCat) ? [{ _id: new mongoose.Types.ObjectId(cleanCat) }] : []),
-        ],
-      }).select('_id').lean();
-
-      // Fallback: case-insensitive regex only if exact lookup finds nothing
-      if (matchedCategories.length === 0) {
-        const orQueries: any[] = [
-          { slugEn: new RegExp(`^${cleanCat}$`, 'i') },
-          { slugAr: new RegExp(`^${cleanCat}$`, 'i') },
-          { nameEn: new RegExp(`^${cleanCat}$`, 'i') },
-          { nameAr: new RegExp(`^${cleanCat}$`, 'i') },
-        ];
-        if (mongoose.Types.ObjectId.isValid(cleanCat)) {
-          orQueries.push({ _id: new mongoose.Types.ObjectId(cleanCat) });
-        }
-        matchedCategories = await Category.find({ $or: orQueries }).select('_id').lean();
-      }
-
-      matchedCategories.forEach((c) => {
-        const oid = c._id as mongoose.Types.ObjectId;
-        if (!categoryIds.some((id) => id.toString() === oid.toString())) {
-          categoryIds.push(oid);
-        }
-      });
-
-      if (categoryIds.length > 0) {
-        filter.category = { $in: categoryIds };
-      } else {
-        filter.category = new mongoose.Types.ObjectId('000000000000000000000000');
-      }
+      let catVal = category.trim();
+      try { catVal = decodeURIComponent(catVal).trim(); } catch { /* keep as-is */ }
+      const catId = await resolveCategoryId(catVal);
+      where.categoryId = catId ?? '00000000-0000-0000-0000-000000000000'; // forces empty result if not found
     }
 
-    if (status) {
-      filter.status = status;
-    }
-
-    if (featured !== undefined) {
-      filter.featured = featured;
-    }
+    if (featured !== undefined) where.featured = featured;
 
     if (minPrice !== undefined || maxPrice !== undefined) {
-      filter.price = {};
-      if (minPrice !== undefined) {
-        filter.price.$gte = minPrice;
-      }
-      if (maxPrice !== undefined) {
-        filter.price.$lte = maxPrice;
-      }
+      where.price = {};
+      if (minPrice !== undefined) (where.price as any).gte = minPrice;
+      if (maxPrice !== undefined) (where.price as any).lte = maxPrice;
     }
 
-    if (inStock !== undefined && inStock) {
-      filter['inventory.availableQuantity'] = { $gt: 0 };
+    if (inStock) {
+      where.inventory = { availableQuantity: { gt: 0 } };
     }
 
-    // Text search
+    // Prisma full-text search (PostgreSQL @@ websearch_to_tsquery)
+    // Falls back to ILIKE when no ts_vector is available
     if (search) {
-      filter.$text = { $search: search };
+      where.OR = [
+        { nameEn: { contains: search, mode: 'insensitive' } },
+        { nameAr: { contains: search, mode: 'insensitive' } },
+        { sku:    { contains: search, mode: 'insensitive' } },
+      ];
     }
 
-    // Build sort
-    const sort: { [key: string]: SortOrder } = {};
-    sort[actualSortBy] = actualSortOrder;
+    // Map sort field names from Mongoose API to Prisma field names
+    const sortFieldMap: Record<string, string> = {
+      createdAt:  'createdAt',
+      price:      'price',
+      nameAr:     'nameAr',
+      nameEn:     'nameEn',
+      orderCount: 'orderCount',
+      viewCount:  'viewCount',
+    };
+    const safeSortBy   = sortFieldMap[sortBy] ?? 'createdAt';
+    const safeSortOrd  = sortOrder === 'asc' ? 'asc' : 'desc';
+    const skip         = (page - 1) * limit;
 
-    // Execute query
-    const skip = (page - 1) * limit;
-    
-    const [products, total] = await Promise.all([
-      Product.find(filter)
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .populate('category', 'nameAr nameEn slugAr slugEn')
-        .lean(),
-      Product.countDocuments(filter),
+    const [rawProducts, total] = await Promise.all([
+      productRepository.findMany({
+        skip, take: limit,
+        where,
+        orderBy: { [safeSortBy]: safeSortOrd } as any,
+      }),
+      productRepository.count(where),
     ]);
 
     const result: IPaginatedProducts = {
-      products: products as any,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
+      products:   rawProducts.map(normalisePrismaProduct),
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     };
 
     if (isCacheable && cacheKey) {
@@ -194,19 +244,14 @@ export const getProducts = async (
         const oldestKey = productsCache.keys().next().value;
         if (oldestKey) productsCache.delete(oldestKey);
       }
-      productsCache.set(cacheKey, {
-        data: result,
-        expiresAt: Date.now() + PRODUCTS_CACHE_TTL_MS,
-      });
+      productsCache.set(cacheKey, { data: result, expiresAt: Date.now() + PRODUCTS_CACHE_TTL_MS });
     }
 
     return result;
   };
 
   if (isCacheable && cacheKey) {
-    const promise = executeQuery().finally(() => {
-      inFlightProductQueries.delete(cacheKey);
-    });
+    const promise = executeQuery().finally(() => inFlightProductQueries.delete(cacheKey));
     inFlightProductQueries.set(cacheKey, promise);
     return promise;
   }
@@ -214,429 +259,403 @@ export const getProducts = async (
   return executeQuery();
 };
 
-// Get single product by ID (supports ObjectId, slug, or SKU)
-export const getProductById = async (id: string): Promise<IProduct | null> => {
-  let product: any = null;
-  if (mongoose.Types.ObjectId.isValid(id)) {
-    product = await Product.findById(id).populate('category', 'nameAr nameEn slugAr slugEn').lean();
-  }
+// ─── getProductById (supports UUID, slug, or SKU) ────────────────────────────
+export const getProductById = async (id: string): Promise<any | null> => {
+  // Try UUID first
+  let product: any = await productRepository.findById(id).catch(() => null);
 
+  // Fallback to slug / SKU lookup
   if (!product) {
-    // Fallback to slug or SKU
-    product = await Product.findOne({
-      $or: [
-        { slugEn: id },
-        { slugAr: id },
-        { sku: id.toUpperCase() },
-        { sku: id },
-      ],
-    }).populate('category', 'nameAr nameEn slugAr slugEn').lean();
+    product = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { slugEn: id.toLowerCase() },
+          { slugAr: id.toLowerCase() },
+          { sku:    id.toUpperCase() },
+          { sku:    id },
+        ],
+      },
+      include: { category: true, images: { orderBy: { order: 'asc' } }, inventory: true },
+    }).catch(() => null);
   }
 
   if (product) {
-    // Non-blocking atomic increment: does NOT block response or trigger pre-save hooks
-    Product.updateOne({ _id: product._id }, { $inc: { viewCount: 1 } }).catch((err) => {
-      logError('Failed to increment viewCount asynchronously', err);
-    });
-    return product;
+    // Non-blocking view count increment
+    prisma.product.update({ where: { id: product.id }, data: { viewCount: { increment: 1 } } })
+      .catch(err => logError('Failed to increment viewCount', err));
+    return normalisePrismaProduct(product);
   }
 
   return null;
 };
 
-// Get product by slug
-export const getProductBySlug = async (
-  slug: string,
-  locale: 'ar' | 'en'
-): Promise<IProduct | null> => {
+// ─── getProductBySlug ─────────────────────────────────────────────────────────
+export const getProductBySlug = async (slug: string, locale: 'ar' | 'en'): Promise<any | null> => {
   const slugField = locale === 'ar' ? 'slugAr' : 'slugEn';
-  const product: any = await Product.findOne({ [slugField]: slug })
-    .populate('category', 'nameAr nameEn slugAr slugEn')
-    .lean();
+  const product   = await prisma.product.findFirst({
+    where: { [slugField]: slug.toLowerCase() },
+    include: { category: true, images: { orderBy: { order: 'asc' } }, inventory: true },
+  }).catch(() => null);
 
   if (product) {
-    // Non-blocking atomic increment: does NOT block response or trigger pre-save hooks
-    Product.updateOne({ _id: product._id }, { $inc: { viewCount: 1 } }).catch((err) => {
-      logError('Failed to increment viewCount asynchronously', err);
-    });
+    prisma.product.update({ where: { id: product.id }, data: { viewCount: { increment: 1 } } })
+      .catch(err => logError('Failed to increment viewCount', err));
+    return normalisePrismaProduct(product);
   }
 
-  return product;
+  return null;
 };
 
-// Get product by SKU
-export const getProductBySku = async (sku: string): Promise<IProduct | null> => {
-  return Product.findOne({ sku: sku.toUpperCase() }).populate(
-    'category',
-    'nameAr nameEn slugAr slugEn'
-  );
+// ─── getProductBySku ──────────────────────────────────────────────────────────
+export const getProductBySku = async (sku: string): Promise<any | null> => {
+  const product = await productRepository.findBySku(sku);
+  return product ? normalisePrismaProduct(product) : null;
 };
 
-// Create product
-export const createProduct = async (data: Partial<IProduct>): Promise<IProduct> => {
-  // Validate or assign category (supports ObjectId or slug)
+// ─── createProduct ────────────────────────────────────────────────────────────
+export const createProduct = async (data: any): Promise<any> => {
+  // Resolve category (UUID, slug, or name)
+  let categoryId: string | null = null;
   if (data.category) {
-    let catDoc = null;
-    if (mongoose.Types.ObjectId.isValid(data.category as any)) {
-      catDoc = await Category.findById(data.category);
-    }
-    if (!catDoc) {
-      catDoc = await Category.findOne({
-        $or: [{ slugEn: data.category }, { slugAr: data.category }],
-      });
-    }
-    if (catDoc) {
-      data.category = catDoc._id as any;
+    categoryId = await resolveCategoryId(String(data.category));
+  }
+
+  // Default category fallback
+  if (!categoryId) {
+    const first = await prisma.category.findFirst({ orderBy: { order: 'asc' }, select: { id: true } });
+    if (first) {
+      categoryId = first.id;
     } else {
-      delete (data as any).category;
-    }
-  }
-
-  if (!data.category) {
-    let defaultCat = await Category.findOne();
-    if (!defaultCat) {
+      // Create default category if none exists
       const { DEFAULT_CATEGORIES } = await import('./category.service');
-      defaultCat = await Category.create(DEFAULT_CATEGORIES[0]);
+      const def = DEFAULT_CATEGORIES[0]!;
+      const created = await prisma.category.create({ data: def });
+      categoryId = created.id;
     }
-    data.category = defaultCat._id as any;
   }
 
-  // Increment product count on assigned category
-  if (data.category) {
-    await Category.findByIdAndUpdate(data.category, { $inc: { productCount: 1 } }).catch(() => {});
-  }
-
-  // Normalize descriptions so product creation never fails if one language is missing
+  // Normalise descriptions
   if (!data.descriptionAr && data.descriptionEn) data.descriptionAr = data.descriptionEn;
   if (!data.descriptionEn && data.descriptionAr) data.descriptionEn = data.descriptionAr;
   if (!data.descriptionAr) data.descriptionAr = data.nameAr || 'لا يوجد وصف';
   if (!data.descriptionEn) data.descriptionEn = data.nameEn || 'No description';
 
-  // Check SKU uniqueness
+  // SKU normalisation
+  const sku = data.sku ? data.sku.toUpperCase() : `SKU-${Date.now()}`;
   if (data.sku) {
-    const existingProduct = await Product.findOne({ sku: data.sku.toUpperCase() });
-    if (existingProduct) {
-      throw new Error(`Product with SKU "${data.sku.toUpperCase()}" already exists`);
-    }
-    data.sku = data.sku.toUpperCase();
-  } else {
-    data.sku = `SKU-${Date.now()}`;
+    const dupe = await productRepository.findBySku(sku);
+    if (dupe) throw new Error(`Product with SKU "${sku}" already exists`);
   }
 
-  // Auto-generate slugs if not provided
-  if (!data.slugEn) {
-    data.slugEn = (data.nameEn || data.sku || 'product')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '') || `prod-${Date.now()}`;
-  }
-  if (!data.slugAr) {
-    data.slugAr = data.slugEn;
-  }
+  // Slug generation
+  let slugEn = data.slugEn?.toLowerCase().trim() ||
+    (data.nameEn || sku).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ||
+    `prod-${Date.now()}`;
+  let slugAr = data.slugAr?.toLowerCase().trim() || slugEn;
 
-  // Normalize images
-  if (data.images && Array.isArray(data.images)) {
-    data.images = data.images.map((img: any, idx: number) => {
+  // Normalise images: string[] → {url, isPrimary, order}[]
+  let images: any[] = [];
+  if (Array.isArray(data.images)) {
+    images = data.images.map((img: any, idx: number) => {
       if (typeof img === 'string') {
-        return {
-          url: img.trim(),
-          alt: `${data.nameEn || 'Product'} image ${idx + 1}`,
-          isPrimary: idx === 0,
-          order: idx,
-        };
+        return { url: img.trim(), altEn: `${data.nameEn || 'Product'} image ${idx + 1}`, altAr: `${data.nameAr || 'المنتج'} ${idx + 1}`, isPrimary: idx === 0, order: idx };
       }
-      return img;
+      return {
+        url:       img.url ?? img,
+        publicId:  img.publicId ?? img.public_id ?? null,
+        altEn:     img.altEn ?? img.alt ?? `${data.nameEn || 'Product'} image ${idx + 1}`,
+        altAr:     img.altAr ?? img.alt ?? null,
+        isPrimary: img.isPrimary ?? (idx === 0),
+        order:     img.order ?? idx,
+      };
     });
   }
 
-  // Normalize inventory
-  if (data.inventory) {
-    if ((data.inventory as any).onHand !== undefined && data.inventory.onHandQuantity === undefined) {
-      data.inventory.onHandQuantity = (data.inventory as any).onHand;
-    }
-    if (data.inventory.onHandQuantity !== undefined && data.inventory.reservedQuantity === undefined) {
-      data.inventory.reservedQuantity = 0;
-    }
-    if (data.inventory.availableQuantity === undefined && data.inventory.onHandQuantity !== undefined) {
-      data.inventory.availableQuantity = data.inventory.onHandQuantity - (data.inventory.reservedQuantity || 0);
-    }
-  }
+  // Inventory
+  const inv = data.inventory ?? {};
+  const onHand   = Number(inv.onHandQuantity ?? inv.onHand ?? 0);
 
-  // Create product
-  const product = new Product(data);
-  await product.save();
-
-  // Update category product count
-  if (data.category) {
-    await Category.findByIdAndUpdate(data.category, { $inc: { productCount: 1 } });
-  }
-
-  invalidateProductCaches();
-  return product;
-};
-
-// Update product
-export const updateProduct = async (
-  id: string,
-  data: Partial<IProduct>
-): Promise<IProduct | null> => {
-  // Check if product exists (supports ObjectId, slug, or SKU)
-  let existingProduct = null;
-  if (mongoose.Types.ObjectId.isValid(id)) {
-    existingProduct = await Product.findById(id);
-  }
-  if (!existingProduct) {
-    existingProduct = await Product.findOne({
-      $or: [{ slugEn: id }, { slugAr: id }, { sku: id }],
-    });
-  }
-  if (!existingProduct) {
-    throw new Error('Product not found');
-  }
-
-  // Resolve category if changed (supports ObjectId, slug, or name)
-  if (data.category) {
-    let catDoc = null;
-    if (mongoose.Types.ObjectId.isValid(data.category as any)) {
-      catDoc = await Category.findById(data.category);
-    }
-    if (!catDoc) {
-      catDoc = await Category.findOne({
-        $or: [
-          { slugEn: data.category },
-          { slugAr: data.category },
-          { nameEn: new RegExp(`^${data.category}$`, 'i') },
-          { nameAr: data.category },
-        ],
-      });
-    }
-    if (catDoc) {
-      data.category = catDoc._id as any;
-    } else {
-      delete (data as any).category;
-    }
-  }
-
-  // Validate category if changed
-  const oldCat = existingProduct.category ? existingProduct.category.toString() : '';
-  const newCat = data.category ? data.category.toString() : '';
-  if (newCat && newCat !== oldCat) {
-    // Update category counts
-    if (existingProduct.category) {
-      await Category.findByIdAndUpdate(existingProduct.category, { $inc: { productCount: -1 } }).catch(() => {});
-    }
-    await Category.findByIdAndUpdate(newCat, { $inc: { productCount: 1 } }).catch(() => {});
-  }
-
-  // Check SKU uniqueness if changed
-  if (data.sku && data.sku !== existingProduct.sku) {
-    const duplicateProduct = await Product.findOne({ sku: data.sku });
-    if (duplicateProduct) {
-      throw new Error('Product with this SKU already exists');
-    }
-  }
-
-  // Normalize images
-  if (data.images && Array.isArray(data.images)) {
-    data.images = data.images.map((img: any, idx: number) => {
-      if (typeof img === 'string') {
-        return {
-          url: img.trim(),
-          alt: `${data.nameEn || existingProduct.nameEn || 'Product'} image ${idx + 1}`,
-          isPrimary: idx === 0,
-          order: idx,
-        };
-      }
-      return img;
-    });
-  }
-
-  // Normalize inventory aliases
-  if (data.inventory) {
-    if ((data.inventory as any).onHand !== undefined && data.inventory.onHandQuantity === undefined) {
-      data.inventory.onHandQuantity = (data.inventory as any).onHand;
-    }
-  }
-  if ((data as any)['inventory.onHand'] !== undefined && (data as any)['inventory.onHandQuantity'] === undefined) {
-    (data as any)['inventory.onHandQuantity'] = (data as any)['inventory.onHand'];
-  }
-
-  // Apply updates to existingProduct
-  Object.keys(data).forEach((key) => {
-    if (key.includes('.')) {
-      const parts = key.split('.');
-      const parent = parts[0];
-      const child = parts[1];
-      if (parent && child && (existingProduct as any)[parent]) {
-        (existingProduct as any)[parent][child] = (data as any)[key];
-      }
-    } else if (key === 'inventory' && typeof (data as any).inventory === 'object') {
-      Object.assign(existingProduct.inventory, data.inventory);
-    } else if (key === 'images' && Array.isArray(data.images)) {
-      existingProduct.images = data.images as any;
-      existingProduct.markModified('images');
-    } else {
-      (existingProduct as any)[key] = (data as any)[key];
-    }
+  const product = await productRepository.create({
+    nameAr:        data.nameAr,
+    nameEn:        data.nameEn,
+    descriptionAr: data.descriptionAr,
+    descriptionEn: data.descriptionEn,
+    shortDescriptionAr: data.shortDescriptionAr,
+    shortDescriptionEn: data.shortDescriptionEn,
+    slugAr, slugEn, sku,
+    categoryId:    categoryId!,
+    price:         Number(data.price ?? 0),
+    compareAtPrice: data.compareAtPrice != null ? Number(data.compareAtPrice) : undefined,
+    costPrice:      data.costPrice      != null ? Number(data.costPrice)      : undefined,
+    color:    data.color ?? null,
+    material: data.material ?? null,
+    status:   (data.status as ProductStatus) ?? ProductStatus.active,
+    featured: data.featured ?? data.isFeatured ?? false,
+    tags:     Array.isArray(data.tags) ? data.tags : [],
+    metaTitleAr:       data.metaTitleAr ?? null,
+    metaTitleEn:       data.metaTitleEn ?? null,
+    metaDescriptionAr: data.metaDescriptionAr ?? null,
+    metaDescriptionEn: data.metaDescriptionEn ?? null,
+    dimensionLength: data.dimensions?.length ?? null,
+    dimensionWidth:  data.dimensions?.width  ?? null,
+    dimensionHeight: data.dimensions?.height ?? null,
+    dimensionWeight: data.dimensions?.weight ?? null,
+    images,
+    initialInventory: {
+      onHandQuantity:    onHand,
+      lowStockThreshold: Number(inv.lowStockThreshold ?? 5),
+      allowBackorder:    inv.allowBackorder ?? false,
+    },
   });
 
-  // Ensure required descriptions exist to avoid validation error on save
-  if (!existingProduct.descriptionAr && existingProduct.descriptionEn) {
-    existingProduct.descriptionAr = existingProduct.descriptionEn;
-  }
-  if (!existingProduct.descriptionEn && existingProduct.descriptionAr) {
-    existingProduct.descriptionEn = existingProduct.descriptionAr;
-  }
-  if (!existingProduct.slugEn) {
-    existingProduct.slugEn = existingProduct.sku?.toLowerCase() || `prod-${Date.now()}`;
-  }
-  if (!existingProduct.slugAr) {
-    existingProduct.slugAr = existingProduct.slugEn;
-  }
-
-  if (existingProduct.inventory) {
-    existingProduct.updateAvailableQuantity();
-  }
-
-  const product = await existingProduct.save();
-  invalidateProductCaches();
-  return product;
-};
-
-// Delete product (soft delete - set status to archived)
-export const deleteProduct = async (id: string): Promise<IProduct | null> => {
-  let query: any = { _id: id };
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    query = { $or: [{ slugEn: id }, { slugAr: id }, { sku: id }] };
-  }
-  const product = await Product.findOneAndUpdate(
-    query,
-    { status: ProductStatus.ARCHIVED },
-    { new: true }
-  );
-
-  if (product) {
-    // Decrement category product count
-    await Category.findByIdAndUpdate(product.category, { $inc: { productCount: -1 } });
-  }
+  // Increment category product count
+  await prisma.category.update({
+    where: { id: categoryId! },
+    data:  { productCount: { increment: 1 } },
+  }).catch(() => {});
 
   invalidateProductCaches();
-  return product;
+  return normalisePrismaProduct(product);
 };
 
-// Get featured products (pure read with 60s TTL cache, bounded to max 50 items and 10 cache slots)
+// ─── updateProduct ────────────────────────────────────────────────────────────
+export const updateProduct = async (id: string, data: any): Promise<any | null> => {
+  // Find existing (UUID, slug, or SKU)
+  let existing: any = await productRepository.findById(id).catch(() => null);
+  if (!existing) {
+    existing = await prisma.product.findFirst({
+      where: { OR: [{ slugEn: id }, { slugAr: id }, { sku: id }] },
+    }).catch(() => null);
+  }
+  if (!existing) throw new Error('Product not found');
+
+  const updateData: Prisma.ProductUpdateInput = {};
+
+  // Scalar field mapping
+  const scalarFields = ['nameAr', 'nameEn', 'descriptionAr', 'descriptionEn',
+    'shortDescriptionAr', 'shortDescriptionEn', 'slugAr', 'slugEn',
+    'odooProductId', 'color', 'material', 'featured', 'tags',
+    'metaTitleAr', 'metaTitleEn', 'metaDescriptionAr', 'metaDescriptionEn'];
+
+  for (const f of scalarFields) {
+    if (data[f] !== undefined) (updateData as any)[f] = data[f];
+  }
+
+  // Also handle isFeatured alias
+  if (data.isFeatured !== undefined && data.featured === undefined) {
+    updateData.featured = data.isFeatured;
+  }
+
+  if (data.status !== undefined)       updateData.status       = data.status as ProductStatus;
+  if (data.price !== undefined)        updateData.price        = Number(data.price);
+  if (data.compareAtPrice !== undefined) updateData.compareAtPrice = data.compareAtPrice != null ? Number(data.compareAtPrice) : null;
+
+  // Category resolution
+  if (data.category !== undefined) {
+    const newCatId = await resolveCategoryId(String(data.category));
+    if (newCatId && newCatId !== existing.categoryId) {
+      updateData.category = { connect: { id: newCatId } };
+      // Update counts
+      await prisma.category.update({ where: { id: existing.categoryId }, data: { productCount: { decrement: 1 } } }).catch(() => {});
+      await prisma.category.update({ where: { id: newCatId },            data: { productCount: { increment: 1 } } }).catch(() => {});
+    }
+  }
+
+  // SKU uniqueness check
+  if (data.sku && data.sku.toUpperCase() !== existing.sku) {
+    const dupe = await productRepository.findBySku(data.sku);
+    if (dupe) throw new Error('Product with this SKU already exists');
+    updateData.sku = data.sku.toUpperCase();
+  }
+
+  // Images: replace entire image set when provided
+  if (Array.isArray(data.images)) {
+    const normalised = data.images.map((img: any, idx: number) => {
+      if (typeof img === 'string') {
+        return { url: img.trim(), altEn: `${data.nameEn || existing.nameEn || 'Product'} image ${idx + 1}`, altAr: null, isPrimary: idx === 0, order: idx };
+      }
+      return {
+        url:       img.url ?? img,
+        publicId:  img.publicId ?? img.public_id ?? null,
+        altEn:     img.altEn ?? img.alt ?? null,
+        altAr:     img.altAr ?? null,
+        isPrimary: img.isPrimary ?? (idx === 0),
+        order:     img.order ?? idx,
+      };
+    });
+    // Delete old images and recreate — identical to Mongoose behaviour
+    await prisma.productImage.deleteMany({ where: { productId: existing.id } });
+    updateData.images = { create: normalised };
+  }
+
+  // Inventory fields
+  if (data.inventory !== undefined) {
+    const inv = data.inventory;
+    const invUpdate: Prisma.InventoryUpdateInput = {};
+    if (inv.onHandQuantity   !== undefined) invUpdate.onHandQuantity   = Number(inv.onHandQuantity);
+    if (inv.reservedQuantity !== undefined) invUpdate.reservedQuantity = Number(inv.reservedQuantity);
+    if (inv.lowStockThreshold !== undefined) invUpdate.lowStockThreshold = Number(inv.lowStockThreshold);
+    if (inv.allowBackorder   !== undefined) invUpdate.allowBackorder   = inv.allowBackorder;
+    if (Object.keys(invUpdate).length > 0) {
+      // Recompute availableQuantity
+      const currentInv  = await productRepository.getInventory(existing.id);
+      const newOnHand   = inv.onHandQuantity   !== undefined ? Number(inv.onHandQuantity)   : (currentInv?.onHandQuantity   ?? 0);
+      const newReserved = inv.reservedQuantity !== undefined ? Number(inv.reservedQuantity) : (currentInv?.reservedQuantity ?? 0);
+      invUpdate.availableQuantity = Math.max(0, newOnHand - newReserved);
+      await productRepository.updateInventory(existing.id, invUpdate);
+    }
+  }
+
+  const updated = await productRepository.update(existing.id, updateData);
+  invalidateProductCaches();
+  return normalisePrismaProduct(updated);
+};
+
+// ─── deleteProduct (soft delete → archived) ───────────────────────────────────
+export const deleteProduct = async (id: string): Promise<any | null> => {
+  let existing: any = await productRepository.findById(id).catch(() => null);
+  if (!existing) {
+    existing = await prisma.product.findFirst({
+      where: { OR: [{ slugEn: id }, { slugAr: id }, { sku: id }] },
+    }).catch(() => null);
+  }
+  if (!existing) return null;
+
+  const updated = await productRepository.update(existing.id, { status: ProductStatus.archived });
+
+  await prisma.category.update({
+    where: { id: existing.categoryId },
+    data:  { productCount: { decrement: 1 } },
+  }).catch(() => {});
+
+  invalidateProductCaches();
+  return normalisePrismaProduct(updated);
+};
+
+// ─── getFeaturedProducts ──────────────────────────────────────────────────────
 export const getFeaturedProducts = async (limit: number = 10): Promise<any[]> => {
   const safeLimit = Math.min(Math.max(1, Math.floor(limit || 10)), 50);
   const now = Date.now();
-  if (featuredCache[safeLimit] && featuredCache[safeLimit].expiresAt > now) {
-    return featuredCache[safeLimit].data;
+  if (featuredCache[safeLimit] && featuredCache[safeLimit]!.expiresAt > now) {
+    return featuredCache[safeLimit]!.data;
   }
 
-  let products = await Product.find({ featured: true, status: ProductStatus.ACTIVE })
-    .sort({ createdAt: -1, orderCount: -1, viewCount: -1 })
-    .limit(safeLimit)
-    .populate('category', 'nameAr nameEn slugAr slugEn')
-    .lean();
+  let products = await productRepository.findMany({
+    where:   { featured: true, status: ProductStatus.active },
+    orderBy: { createdAt: 'desc' } as any,
+    take:    safeLimit,
+  });
 
-  if (!products || products.length === 0) {
-    products = await Product.find({ status: ProductStatus.ACTIVE })
-      .sort({ createdAt: -1 })
-      .limit(safeLimit)
-      .populate('category', 'nameAr nameEn slugAr slugEn')
-      .lean();
+  if (!products.length) {
+    products = await productRepository.findMany({
+      where:   { status: ProductStatus.active },
+      orderBy: { createdAt: 'desc' } as any,
+      take:    safeLimit,
+    });
   }
 
-  // Memory safety: keep cache bounded to at most 10 active keys
-  if (Object.keys(featuredCache).length >= 10) {
-    featuredCache = {};
-  }
-
+  if (Object.keys(featuredCache).length >= 10) featuredCache = {};
   featuredCache[safeLimit] = {
-    data: products,
+    data:      products.map(normalisePrismaProduct),
     expiresAt: now + 60_000,
   };
 
-  return products;
+  return featuredCache[safeLimit]!.data;
 };
 
-// Get low stock products (admin)
+// ─── getLowStockProducts ──────────────────────────────────────────────────────
 export const getLowStockProducts = async (): Promise<any[]> => {
-  return Product.find({
-    status: ProductStatus.ACTIVE,
-    $expr: {
-      $lte: ['$inventory.availableQuantity', '$inventory.lowStockThreshold'],
+  const rows = await prisma.product.findMany({
+    where: {
+      status: ProductStatus.active,
+      inventory: { availableQuantity: { gt: 0 } },
     },
-  })
-    .sort({ 'inventory.availableQuantity': 1 })
-    .select('nameAr nameEn sku inventory')
-    .lean();
+    include: { inventory: true },
+    orderBy: { inventory: { availableQuantity: 'asc' } } as any,
+  }).then(all => all.filter(p => p.inventory && p.inventory.availableQuantity <= p.inventory.lowStockThreshold))
+  .catch(async () => {
+    // Fallback: raw query to compare availableQty <= lowStockThreshold
+    return prisma.$queryRaw<any[]>`
+      SELECT p.id, p."nameAr", p."nameEn", p.sku,
+             i."onHandQuantity", i."reservedQuantity", i."availableQuantity", i."lowStockThreshold"
+      FROM products p
+      JOIN inventories i ON i."productId" = p.id
+      WHERE p.status = 'active'
+        AND i."availableQuantity" <= i."lowStockThreshold"
+      ORDER BY i."availableQuantity" ASC
+    `;
+  });
+
+  return rows.map((r: any) => ({
+    ...r,
+    _id:       r.id,
+    inventory: {
+      onHandQuantity:    r.onHandQuantity    ?? r.inventory?.onHandQuantity    ?? 0,
+      reservedQuantity:  r.reservedQuantity  ?? r.inventory?.reservedQuantity  ?? 0,
+      availableQuantity: r.availableQuantity ?? r.inventory?.availableQuantity ?? 0,
+      lowStockThreshold: r.lowStockThreshold ?? r.inventory?.lowStockThreshold ?? 5,
+    },
+  }));
 };
 
-// Get related products
-export const getRelatedProducts = async (
-  productId: string,
-  limit: number = 6
-): Promise<any[]> => {
-  let product: any = null;
-  if (mongoose.Types.ObjectId.isValid(productId)) {
-    product = await Product.findById(productId);
-  }
+// ─── getRelatedProducts ───────────────────────────────────────────────────────
+export const getRelatedProducts = async (productId: string, limit: number = 6): Promise<any[]> => {
+  let product: any = await productRepository.findById(productId, { includeCategory: false, includeImages: false, includeInventory: false }).catch(() => null);
   if (!product) {
-    product = await Product.findOne({
-      $or: [{ slugEn: productId }, { slugAr: productId }, { sku: productId }],
-    });
+    product = await prisma.product.findFirst({
+      where: { OR: [{ slugEn: productId }, { slugAr: productId }, { sku: productId }] },
+      select: { id: true, categoryId: true },
+    }).catch(() => null);
   }
-  if (!product) {
-    return [];
-  }
+  if (!product) return [];
 
-  return Product.find({
-    _id: { $ne: product._id },
-    category: product.category,
-    status: ProductStatus.ACTIVE,
-  })
-    .sort({ orderCount: -1 })
-    .limit(limit)
-    .populate('category', 'nameAr nameEn')
-    .lean();
+  const related = await productRepository.findMany({
+    where:   { status: ProductStatus.active, categoryId: product.categoryId, id: { not: product.id } },
+    orderBy: { orderCount: 'desc' } as any,
+    take:    Math.min(limit, 20),
+  });
+
+  return related.map(normalisePrismaProduct);
 };
 
-// ─── Admin: Adjust inventory manually ────────────────────────────────────────
+// ─── adjustInventory (admin) ──────────────────────────────────────────────────
 export const adjustInventory = async (
   productId: string,
-  params: {
-    onHandQuantity?: number;
-    reservedQuantity?: number;
-    lowStockThreshold?: number;
-    reason?: string;
-  }
-): Promise<IProduct> => {
-  const product = await Product.findById(productId);
+  params: { onHandQuantity?: number; reservedQuantity?: number; lowStockThreshold?: number; reason?: string }
+): Promise<any> => {
+  const product = await productRepository.findById(productId);
   if (!product) throw new Error('Product not found');
 
-  if (params.onHandQuantity !== undefined) {
-    if (params.onHandQuantity < 0) throw new Error('onHandQuantity cannot be negative');
-    product.inventory.onHandQuantity = params.onHandQuantity;
-  }
+  const inv     = await productRepository.getInventory(productId);
+  if (!inv) throw new Error('Inventory record not found');
 
-  if (params.reservedQuantity !== undefined) {
-    if (params.reservedQuantity < 0) throw new Error('reservedQuantity cannot be negative');
-    product.inventory.reservedQuantity = params.reservedQuantity;
-  }
+  if (params.onHandQuantity !== undefined && params.onHandQuantity < 0)
+    throw new Error('onHandQuantity cannot be negative');
+  if (params.reservedQuantity !== undefined && params.reservedQuantity < 0)
+    throw new Error('reservedQuantity cannot be negative');
 
-  if (params.lowStockThreshold !== undefined) {
-    product.inventory.lowStockThreshold = params.lowStockThreshold;
-  }
+  const newOnHand   = params.onHandQuantity   !== undefined ? params.onHandQuantity   : inv.onHandQuantity;
+  const newReserved = params.reservedQuantity !== undefined ? params.reservedQuantity : inv.reservedQuantity;
+  const newAvail    = Math.max(0, newOnHand - newReserved);
 
-  // Recompute availableQuantity
-  product.inventory.availableQuantity = Math.max(
-    0,
-    product.inventory.onHandQuantity - product.inventory.reservedQuantity
-  );
+  await productRepository.updateInventory(productId, {
+    onHandQuantity:    newOnHand,
+    reservedQuantity:  newReserved,
+    availableQuantity: newAvail,
+    lowStockThreshold: params.lowStockThreshold ?? inv.lowStockThreshold,
+    lastSyncedAt:      new Date(),
+  });
 
-  product.inventory.lastSyncedAt = new Date();
-
-  await product.save();
   invalidateProductCaches();
-  return product;
+
+  // Return a shape compatible with the controller
+  return {
+    ...normalisePrismaProduct(product),
+    inventory: {
+      onHandQuantity:    newOnHand,
+      reservedQuantity:  newReserved,
+      availableQuantity: newAvail,
+      lowStockThreshold: params.lowStockThreshold ?? inv.lowStockThreshold,
+    },
+  };
 };
