@@ -1,16 +1,15 @@
 /**
- * Auto-Cancel Worker
- * Cancels unpaid orders that exceed ORDER_AUTO_CANCEL_UNPAID_HOURS
- * Runs every 30 minutes via node-cron
- * Also releases reserved inventory for cancelled orders
+ * auto-cancel.worker.ts — PostgreSQL/Prisma implementation
+ * Cancels unpaid non-COD orders older than ORDER_AUTO_CANCEL_UNPAID_HOURS.
+ * Runs every 30 minutes. Releases inventory atomically inside a transaction.
  */
 
 import cron from 'node-cron';
-import mongoose from 'mongoose';
-import { Order, OrderStatus, PaymentStatus, PaymentMethod } from '../models/Order';import { Product } from '../models/Product';
-import { OutboxEvent } from '../models/OutboxEvent';
+import { productRepository } from '../repositories/product.repository';
+import { outboxRepository }  from '../repositories/outbox.repository';
+import { prisma }            from '../lib/prisma';
 import { invalidateProductsCache } from '../services/product.service';
-import { env } from '../config/env';
+import { env }               from '../config/env';
 import { logInfo, logError, logWarn } from '../config/logger';
 
 class AutoCancelWorker {
@@ -24,15 +23,11 @@ class AutoCancelWorker {
     if (this.task) {
       this.task.start();
     } else {
-      this.task = cron.schedule('*/30 * * * *', () => {
-        this.cancelExpiredOrders();
-      });
+      this.task = cron.schedule('*/30 * * * *', () => { this.cancelExpiredOrders(); });
     }
 
     logInfo('Auto-cancel worker started (runs every 30 min)');
-
-    // Run immediately on startup
-    this.cancelExpiredOrders();
+    this.cancelExpiredOrders(); // Run immediately on startup
   }
 
   stop(): void {
@@ -44,28 +39,26 @@ class AutoCancelWorker {
 
   async cancelExpiredOrders(): Promise<void> {
     if (!this.isRunning) return;
-
-    // Skip if MongoDB not connected
-    if (mongoose.connection.readyState !== 1) {
-      logInfo('Auto-cancel skipped - MongoDB not connected');
+    if (!process.env.DATABASE_URL) {
+      logInfo('Auto-cancel skipped - PostgreSQL not configured');
       return;
     }
 
     try {
-      const hours     = env.ORDER_AUTO_CANCEL_UNPAID_HOURS;
+      const hours     = env.ORDER_AUTO_CANCEL_UNPAID_HOURS || 24;
       const threshold = new Date(Date.now() - hours * 60 * 60 * 1000);
 
-      // Find orders that are:
-      // - Status: pending or processing
-      // - PaymentStatus: pending or awaiting_payment
-      // - PaymentMethod: NOT cash_on_delivery (COD is always "pending" until delivery)
-      // - Created before the threshold
-      const expiredOrders = await Order.find({
-        status: { $in: [OrderStatus.PENDING, OrderStatus.PROCESSING] },
-        paymentStatus: PaymentStatus.PENDING,
-        paymentMethod: { $ne: PaymentMethod.CASH_ON_DELIVERY },
-        createdAt: { $lt: threshold },
-      }).limit(50); // Process in batches
+      // Find expired unpaid non-COD orders
+      const expiredOrders = await prisma.order.findMany({
+        where: {
+          status:        { in: ['pending', 'processing'] },
+          paymentStatus: 'pending',
+          paymentMethod: { not: 'cod' },  // COD is always "pending" until delivery
+          createdAt:     { lt: threshold },
+        },
+        take:    50,
+        include: { items: true },
+      });
 
       if (expiredOrders.length === 0) return;
 
@@ -82,47 +75,45 @@ class AutoCancelWorker {
   }
 
   private async cancelSingleOrder(order: any): Promise<void> {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-      // Release inventory
-      for (const item of order.items) {
-        await Product.updateOne(
-          { _id: item.product, 'inventory.reservedQuantity': { $gte: item.quantity } },
-          { $inc: { 'inventory.reservedQuantity': -item.quantity } }
-        ).session(session);
-      }
+      await prisma.$transaction(async (tx) => {
+        // Release inventory for each item
+        for (const item of order.items) {
+          if (item.productId && item.inventoryReserved) {
+            await productRepository.releaseStock(item.productId, item.quantity, tx);
+          }
+        }
 
-      // Update order
-      order.status        = OrderStatus.CANCELLED;
-      order.internalNotes = `Auto-cancelled after ${env.ORDER_AUTO_CANCEL_UNPAID_HOURS}h — payment not received`;
-      order.cancelledAt   = new Date();
-      await order.save({ session });
-
-      // Outbox event → SMS notification
-      await OutboxEvent.create(
-        [{
-          aggregateType: 'Order',
-          aggregateId:   order._id,
-          eventType:     'OrderCancelled',
-          payload: {
-            orderId:      order._id,
-            orderNumber:  order.orderNumber,
-            reason:       'auto_cancel_unpaid',
+        // Update order status
+        await tx.order.update({
+          where: { id: order.id },
+          data:  {
+            status:      'cancelled',
+            cancelReason: `Auto-cancelled after ${env.ORDER_AUTO_CANCEL_UNPAID_HOURS || 24}h — payment not received`,
+            cancelledAt: new Date(),
           },
-        }],
-        { session }
-      );
+        });
 
-      await session.commitTransaction();
+        // Outbox event → SMS notification
+        await outboxRepository.createEvent(
+          {
+            aggregateType: 'Order',
+            aggregateId:   order.id,
+            eventType:     'OrderCancelled',
+            payload: {
+              orderId:     order.id,
+              orderNumber: order.orderNumber,
+              reason:      'auto_cancel_unpaid',
+            },
+          },
+          tx
+        );
+      }, { timeout: 30_000, maxWait: 10_000 });
+
       invalidateProductsCache();
       logInfo(`Auto-cancelled order ${order.orderNumber}`);
     } catch (err) {
-      await session.abortTransaction();
       logError(`Failed to auto-cancel order ${order.orderNumber}`, err);
-    } finally {
-      session.endSession();
     }
   }
 }

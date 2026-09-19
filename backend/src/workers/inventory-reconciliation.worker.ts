@@ -1,71 +1,42 @@
-import { Product } from '../models/Product';
-import { ReconciliationReport } from '../models/ReconciliationReport';
-import { odooService } from '../services/odoo.service';
-import { logInfo, logError, logWarn } from '../config/logger';
-import { env } from '../config/env';
-import mongoose from 'mongoose';
-
 /**
- * Inventory Reconciliation Worker
- * Syncs inventory between local database and Odoo ERP
- * Runs periodically to ensure data consistency
+ * inventory-reconciliation.worker.ts — PostgreSQL/Prisma implementation
+ * Syncs inventory between Neon PostgreSQL and Odoo ERP.
+ * All behavior preserved: scheduling, reconciliation reports, discrepancy detection.
  */
+
+import { odooService }     from '../services/odoo.service';
+import { outboxRepository } from '../repositories/outbox.repository';
+import { prisma }           from '../lib/prisma';
+import { invalidateProductsCache } from '../services/product.service';
+import { logInfo, logError, logWarn } from '../config/logger';
+import { env }              from '../config/env';
+
 class InventoryReconciliationWorker {
-  private isRunning: boolean = false;
-  private intervalMs: number = 3600000; // Run every hour
+  private isRunning  = false;
+  private intervalMs = 3_600_000; // 1 hour
   private intervalId: NodeJS.Timeout | null = null;
 
-  /**
-   * Start the worker
-   */
   start(): void {
-    if (this.isRunning) {
-      logInfo('Inventory reconciliation worker already running');
-      return;
-    }
-
+    if (this.isRunning) { logInfo('Inventory reconciliation worker already running'); return; }
     this.isRunning = true;
     logInfo('Starting inventory reconciliation worker');
-
-    // Run immediately on start
     this.reconcile();
-
-    // Then run on interval
-    this.intervalId = setInterval(() => {
-      this.reconcile();
-    }, this.intervalMs);
+    this.intervalId = setInterval(() => this.reconcile(), this.intervalMs);
   }
 
-  /**
-   * Stop the worker
-   */
   stop(): void {
-    if (!this.isRunning) {
-      return;
-    }
-
+    if (!this.isRunning) return;
     this.isRunning = false;
     logInfo('Stopping inventory reconciliation worker');
-
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
+    if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
   }
 
-  /**
-   * Perform full inventory reconciliation
-   */
   private async reconcile(): Promise<void> {
     if (!this.isRunning) return;
-
-    // Skip if MongoDB not connected
-    if (mongoose.connection.readyState !== 1) {
-      logWarn('Inventory reconciliation skipped - MongoDB not connected');
+    if (!process.env.DATABASE_URL) {
+      logWarn('Inventory reconciliation skipped - PostgreSQL not configured');
       return;
     }
-
-    // Skip if Odoo sync is disabled
     if (!env.ODOO_SYNC_ENABLED) {
       logInfo('Inventory reconciliation skipped - Odoo sync disabled');
       return;
@@ -75,183 +46,119 @@ class InventoryReconciliationWorker {
     const startTime = Date.now();
 
     try {
-      // Get all active products
-      const products = await Product.find({ status: 'active' }).select(
-        'sku nameEn inventory'
-      );
-
-      if (products.length === 0) {
-        logInfo('No products to reconcile');
-        return;
-      }
-
-      logInfo(`Reconciling ${products.length} products`);
-
-      // Get SKUs
-      const skus = products.map((p) => p.sku);
-
-      // Fetch inventory from Odoo in batch
-      const odooProducts = await odooService.getMultipleProductsInventory(skus);
-
-      // Create SKU to Odoo product map
-      const odooMap = new Map<string, any>();
-      odooProducts.forEach((op) => {
-        odooMap.set(op.default_code, op);
+      const products = await prisma.product.findMany({
+        where:   { status: 'active' },
+        include: { inventory: true },
       });
 
-      let syncedCount = 0;
-      let errorCount = 0;
-      let discrepancies: any[] = [];
+      if (products.length === 0) { logInfo('No products to reconcile'); return; }
+      logInfo(`Reconciling ${products.length} products`);
 
-      // Update local inventory
+      const skus          = products.map((p: any) => p.sku);
+      const odooProducts  = await odooService.getMultipleProductsInventory(skus);
+      const odooMap       = new Map<string, any>();
+      odooProducts.forEach((op: any) => odooMap.set(op.default_code, op));
+
+      let syncedCount = 0, errorCount = 0;
+      const discrepancies: any[] = [];
+
       for (const product of products) {
         try {
-          const odooProduct = odooMap.get(product.sku);
+          const odoo = odooMap.get((product as any).sku);
+          if (!odoo) { logWarn(`Product ${(product as any).sku} not found in Odoo`); errorCount++; continue; }
 
-          if (!odooProduct) {
-            logWarn(`Product ${product.sku} not found in Odoo`);
-            errorCount++;
-            continue;
-          }
+          const oldQty = (product as any).inventory?.onHandQuantity ?? 0;
+          const newQty = odoo.qty_available;
 
-          const oldQuantity = product.inventory.onHandQuantity;
-          const newQuantity = odooProduct.qty_available;
-
-          // Check for discrepancy
-          if (oldQuantity !== newQuantity) {
+          if (oldQty !== newQty) {
             discrepancies.push({
-              sku: product.sku,
-              name: product.nameEn,
-              oldQuantity,
-              newQuantity,
-              difference: newQuantity - oldQuantity,
+              sku:         (product as any).sku,
+              name:        (product as any).nameEn,
+              oldQuantity: oldQty,
+              newQuantity: newQty,
+              difference:  newQty - oldQty,
             });
           }
 
           // Update inventory
-          product.inventory.onHandQuantity = newQuantity;
-          product.inventory.lastSyncedAt = new Date();
-
-          await product.save();
+          const avail = Math.max(0, newQty - ((product as any).inventory?.reservedQuantity ?? 0));
+          await prisma.inventory.update({
+            where: { productId: (product as any).id },
+            data:  { onHandQuantity: newQty, availableQuantity: avail, lastSyncedAt: new Date() },
+          });
           syncedCount++;
-        } catch (error) {
-          logError(`Failed to reconcile product ${product.sku}`, error);
+        } catch (err) {
+          logError(`Failed to reconcile product ${(product as any).sku}`, err);
           errorCount++;
         }
       }
 
       const durationMs = Date.now() - startTime;
+      logInfo(`Inventory reconciliation complete: ${syncedCount} synced, ${errorCount} errors, ${discrepancies.length} discrepancies`);
+      if (discrepancies.length > 0) logWarn('Inventory discrepancies found:', discrepancies);
 
-      // Log summary
-      logInfo(
-        `Inventory reconciliation complete: ${syncedCount} synced, ${errorCount} errors, ${discrepancies.length} discrepancies`
-      );
-
-      // Log discrepancies
-      if (discrepancies.length > 0) {
-        logWarn('Inventory discrepancies found:', discrepancies);
-      }
-
-      // Persist reconciliation report to database
-      await this.saveReconciliationReport({
-        timestamp: new Date(),
+      // Save report via Prisma repository
+      await outboxRepository.createReconciliationReport({
         totalProducts: products.length,
         syncedCount,
         errorCount,
-        discrepancies,
         durationMs,
+        discrepancies,
       });
-    } catch (error) {
-      logError('Inventory reconciliation failed', error);
+
+      invalidateProductsCache();
+    } catch (err) {
+      logError('Inventory reconciliation failed', err);
     }
   }
 
-  /**
-   * Reconcile single product
-   */
   async reconcileProduct(productId: string): Promise<boolean> {
     try {
-      const product = await Product.findById(productId);
+      const product = await prisma.product.findUnique({
+        where:   { id: productId },
+        include: { inventory: true },
+      });
+      if (!product) throw new Error('Product not found');
 
-      if (!product) {
-        throw new Error('Product not found');
-      }
+      const odoo = await odooService.getProductInventory(product.sku);
+      if (!odoo) throw new Error('Product not found in Odoo');
 
-      const odooProduct = await odooService.getProductInventory(product.sku);
+      const avail = Math.max(0, odoo.qty_available - (product.inventory?.reservedQuantity ?? 0));
+      await prisma.inventory.update({
+        where: { productId },
+        data:  { onHandQuantity: odoo.qty_available, availableQuantity: avail, lastSyncedAt: new Date() },
+      });
 
-      if (!odooProduct) {
-        throw new Error('Product not found in Odoo');
-      }
-
-      product.inventory.onHandQuantity = odooProduct.qty_available;
-      product.inventory.lastSyncedAt = new Date();
-
-      await product.save();
-
-      logInfo(`Reconciled product ${product.sku}: ${odooProduct.qty_available} units`);
+      logInfo(`Reconciled product ${product.sku}: ${odoo.qty_available} units`);
       return true;
-    } catch (error) {
-      logError(`Failed to reconcile product ${productId}`, error);
+    } catch (err) {
+      logError(`Failed to reconcile product ${productId}`, err);
       return false;
     }
   }
 
-  /**
-   * Get products that need reconciliation (not synced recently)
-   */
-  async getStaleProducts(hoursThreshold: number = 24): Promise<any[]> {
+  async getStaleProducts(hoursThreshold = 24): Promise<any[]> {
     const threshold = new Date();
     threshold.setHours(threshold.getHours() - hoursThreshold);
 
-    return Product.find({
-      status: 'active',
-      $or: [
-        { 'inventory.lastSyncedAt': { $lt: threshold } },
-        { 'inventory.lastSyncedAt': null },
-      ],
-    })
-      .select('sku nameEn inventory')
-      .lean();
-  }
-
-  /**
-   * Save reconciliation report to database
-   */
-  private async saveReconciliationReport(report: {
-    timestamp:     Date;
-    totalProducts: number;
-    syncedCount:   number;
-    errorCount:    number;
-    discrepancies: any[];
-    durationMs?:   number;
-  }): Promise<void> {
-    logInfo('Reconciliation Report:', {
-      timestamp: report.timestamp,
-      summary: {
-        total:        report.totalProducts,
-        synced:       report.syncedCount,
-        errors:       report.errorCount,
-        discrepancies: report.discrepancies.length,
-        durationMs:   report.durationMs,
+    return prisma.product.findMany({
+      where: {
+        status: 'active',
+        inventory: {
+          OR: [
+            { lastSyncedAt: { lt: threshold } },
+            { lastSyncedAt: null },
+          ],
+        },
       },
+      include: { inventory: true },
     });
-
-    try {
-      await ReconciliationReport.create(report);
-      logInfo('Reconciliation report saved to database');
-    } catch (err) {
-      logError('Failed to save reconciliation report to database', err);
-    }
   }
 
-  /**
-   * Manual trigger for reconciliation
-   */
   async triggerReconciliation(): Promise<void> {
     logInfo('Manual reconciliation triggered');
     await this.reconcile();
   }
 }
 
-// Export singleton instance
 export const inventoryReconciliationWorker = new InventoryReconciliationWorker();

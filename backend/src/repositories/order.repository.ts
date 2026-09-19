@@ -241,19 +241,19 @@ export class OrderRepository {
   async getDailyRevenue(since: Date): Promise<Array<{ date: string; orders: number; revenue: number }>> {
     const raw = await prisma.$queryRaw<Array<{ day: string; count: bigint; rev: Prisma.Decimal }>>`
       SELECT 
-        TO_CHAR(created_at, 'YYYY-MM-DD') AS day,
-        COUNT(id) AS count,
-        COALESCE(SUM(total), 0) AS rev
+        TO_CHAR("createdAt", 'YYYY-MM-DD') AS day,
+        COUNT(id)                           AS count,
+        COALESCE(SUM(total), 0)             AS rev
       FROM orders
-      WHERE created_at >= ${since}
+      WHERE "createdAt" >= ${since}
         AND status NOT IN ('cancelled', 'failed')
-      GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+      GROUP BY TO_CHAR("createdAt", 'YYYY-MM-DD')
       ORDER BY day ASC;
     `;
 
     return raw.map((r) => ({
-      date: r.day,
-      orders: Number(r.count),
+      date:    r.day,
+      orders:  Number(r.count),
       revenue: Number(r.rev),
     }));
   }

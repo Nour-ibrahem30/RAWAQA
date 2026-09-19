@@ -265,7 +265,7 @@ export const dbGatekeeper = (req: Request, res: Response, next: NextFunction): v
 
   // MongoDB still required for workers (outbox, checkout, orders legacy paths)
   // Only block if MongoDB is actively disconnected (not just slow to start)
-  const mongoState = require('mongoose').connection.readyState;
+  const mongoState = mongoose.connection.readyState;
   if (mongoState === 0) { // 0 = disconnected (not 2=connecting, 3=disconnecting)
     res.setHeader('Retry-After', '2');
     res.status(503).json({
@@ -549,8 +549,9 @@ const startServer = async () => {
 
   const startBackgroundWorkers = () => {
     if (workersRunning) return;
-    if (mongoose.connection.readyState !== 1) {
-      logInfo('Skipping worker start — MongoDB is not connected');
+    // Workers now use Prisma/PostgreSQL — only require DATABASE_URL
+    if (!process.env.DATABASE_URL) {
+      logInfo('Skipping worker start — DATABASE_URL not configured');
       return;
     }
     workersRunning = true;
@@ -562,25 +563,7 @@ const startServer = async () => {
   const bindWorkerLifecycleOnce = () => {
     if (workerLifecycleBound || !env.ENABLE_WORKERS) return;
     workerLifecycleBound = true;
-
-    mongoose.connection.on('reconnected', () => {
-      logInfo('MongoDB reconnected — scheduling worker restart once');
-      stopBackgroundWorkers();
-      workerRestartTimer = setTimeout(() => {
-        workerRestartTimer = null;
-        if (mongoose.connection.readyState !== 1) {
-          logInfo('Skipping worker restart — MongoDB is not connected');
-          return;
-        }
-        logInfo('Starting background workers after reconnect');
-        startBackgroundWorkers();
-      }, 2000);
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      logInfo('MongoDB disconnected — pausing workers once');
-      stopBackgroundWorkers();
-    });
+    // Workers now use Prisma — no MongoDB reconnect dependency needed
   };
 
   // 2. Connect to Database asynchronously in background without blocking port discovery
@@ -596,7 +579,7 @@ const startServer = async () => {
       // Initialize default essential categories once at startup (idempotent, never inside request path)
       await ensureDefaultCategories();
 
-      // 3. Start background workers AFTER DB is confirmed connected
+      // 3. Start background workers after DB is confirmed connected
       if (env.ENABLE_WORKERS) {
         logInfo('Starting background workers');
         startBackgroundWorkers();

@@ -8,7 +8,7 @@ import {
   getDashboardStats,
 } from '../services/admin.service';
 import { logError }          from '../config/logger';
-import { UserRole }          from '../models/User';
+import { UserRole }          from '../generated/prisma/client';
 import { contentRepository } from '../repositories/content.repository';
 import { outboxRepository }  from '../repositories/outbox.repository';
 
@@ -68,7 +68,7 @@ export const changeRole = async (req: Request, res: Response): Promise<void> => 
       return;
     }
     // Only super_admin can grant super_admin
-    if (role === UserRole.SUPER_ADMIN && req.user?.role !== UserRole.SUPER_ADMIN) {
+    if (role === UserRole.super_admin && req.user?.role !== UserRole.super_admin) {
       res.status(403).json({ success: false, message: 'Only super admin can grant super admin role' });
       return;
     }
