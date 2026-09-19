@@ -1,4 +1,4 @@
-import { User, RefreshSession, OtpToken, ShippingAddress, UserRole, AuthProvider, OtpPurpose, Prisma } from '../generated/prisma/client.js';
+import { User, RefreshSession, OtpToken, ShippingAddress, UserRole, AuthProvider, OtpPurpose, Prisma } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 
 export class UserRepository {
@@ -8,6 +8,20 @@ export class UserRepository {
 
   async findByEmail(email: string): Promise<User | null> {
     return prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  }
+
+  /** findByEmail but includes the hashed password field */
+  async findByEmailWithPassword(email: string): Promise<User | null> {
+    return prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  }
+
+  /** findById but includes the hashed password field */
+  async findByIdWithPassword(id: string): Promise<User | null> {
+    return prisma.user.findUnique({ where: { id } });
+  }
+
+  async findByPhone(phone: string): Promise<User | null> {
+    return prisma.user.findFirst({ where: { phone } });
   }
 
   async findByGoogleId(googleId: string): Promise<User | null> {
@@ -71,6 +85,22 @@ export class UserRepository {
     await prisma.refreshSession.updateMany({
       where: { sessionId },
       data: { revoked: true },
+    });
+  }
+
+  async revokeRefreshSessionWithReason(sessionId: string, reason: string): Promise<void> {
+    await prisma.refreshSession.updateMany({
+      where: { sessionId },
+      data: { revoked: true },
+    });
+    // Reason stored in logs — Prisma schema has no revokedReason field currently
+    void reason;
+  }
+
+  async updateRefreshSession(sessionId: string, data: { tokenHash?: string; lastUsedAt?: Date; deviceInfo?: any }): Promise<void> {
+    await prisma.refreshSession.updateMany({
+      where: { sessionId },
+      data,
     });
   }
 
@@ -179,6 +209,48 @@ export class UserRepository {
 
   async deleteAddress(id: string, userId: string): Promise<void> {
     await prisma.shippingAddress.delete({ where: { id, userId } });
+  }
+
+  // ─── Session helpers for auth.service ─────────────────────────
+
+  async countActiveSessions(userId: string): Promise<number> {
+    return prisma.refreshSession.count({
+      where: { userId, revoked: false, expiresAt: { gt: new Date() } },
+    });
+  }
+
+  async revokeOldestSession(userId: string): Promise<void> {
+    const oldest = await prisma.refreshSession.findFirst({
+      where: { userId, revoked: false, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (oldest) {
+      await prisma.refreshSession.update({
+        where: { id: oldest.id },
+        data:  { revoked: true },
+      });
+    }
+  }
+
+  async findActiveSessions(userId: string): Promise<RefreshSession[]> {
+    return prisma.refreshSession.findMany({
+      where: { userId, revoked: false, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ─── OTP helpers ───────────────────────────────────────────────
+
+  async deleteOtpTokens(userId: string, purpose: OtpPurpose): Promise<void> {
+    await prisma.otpToken.deleteMany({
+      where: { userId, purpose, used: false },
+    });
+  }
+
+  async findOtpByCode(code: string, purpose: OtpPurpose): Promise<OtpToken | null> {
+    return prisma.otpToken.findFirst({
+      where: { code, purpose, used: false, expiresAt: { gt: new Date() } },
+    });
   }
 }
 

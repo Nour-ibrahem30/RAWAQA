@@ -1,8 +1,13 @@
+/**
+ * content.controller.ts — PostgreSQL/Prisma implementation
+ * Uses contentRepository (Prisma-backed) instead of the Mongoose SiteContent model.
+ * Business logic and API contract are identical.
+ */
 import { Request, Response } from 'express';
-import { SiteContent } from '../models/SiteContent';
-import { logError } from '../config/logger';
+import { logError }           from '../config/logger';
+import { contentRepository }  from '../repositories/content.repository';
 
-// Default content for each section (used when DB is empty)
+// Default content for each section (fallback when DB has no record yet)
 const DEFAULTS: Record<string, any> = {
   hero: {
     eyebrowAr: 'مصنوع في مصر',
@@ -32,12 +37,12 @@ const DEFAULTS: Record<string, any> = {
     titleAr: 'لماذا رواقة',
     titleEn: 'Why Rawaqa',
     points: [
-      { titleAr: 'مواد عالية الجودة',    titleEn: 'Premium Materials',      bodyAr: 'جلد ناعم وإسفنج عالي الكثافة لراحة تدوم.',                        bodyEn: 'Soft leather and high-density foam for lasting comfort.' },
+      { titleAr: 'مواد عالية الجودة',    titleEn: 'Premium Materials',         bodyAr: 'جلد ناعم وإسفنج عالي الكثافة لراحة تدوم.',                     bodyEn: 'Soft leather and high-density foam for lasting comfort.' },
       { titleAr: 'تصميم مصري أصيل',      titleEn: 'Authentic Egyptian Design', bodyAr: 'مستوحى من الجماليات المحلية، مصنوع بيد صانع ماهر.',            bodyEn: 'Inspired by local aesthetics, crafted by skilled artisans.' },
-      { titleAr: 'شحن سريع',             titleEn: 'Fast Shipping',           bodyAr: 'التوصيل خلال ٣-٥ أيام عمل لجميع المحافظات.',                   bodyEn: 'Delivery in 3–5 business days across Egypt.' },
-      { titleAr: 'دعم العملاء',          titleEn: 'Customer Support',        bodyAr: 'فريقنا متاح ٧ أيام في الأسبوع.',                               bodyEn: 'Our team is available 7 days a week.' },
-      { titleAr: 'ضمان الرضا',           titleEn: 'Satisfaction Guarantee',  bodyAr: 'غير راضٍ؟ نضمن لك استرداد المبلغ خلال ١٤ يوماً.',              bodyEn: 'Not satisfied? We guarantee a refund within 14 days.' },
-      { titleAr: 'توصيل سريع',           titleEn: 'Fast Delivery',           bodyAr: 'توصيل خلال ٣-٥ أيام عمل لجميع محافظات مصر.',                  bodyEn: 'Delivery in 3–5 business days to all Egyptian governorates.' },
+      { titleAr: 'شحن سريع',             titleEn: 'Fast Shipping',             bodyAr: 'التوصيل خلال ٣-٥ أيام عمل لجميع المحافظات.',                   bodyEn: 'Delivery in 3–5 business days across Egypt.' },
+      { titleAr: 'دعم العملاء',          titleEn: 'Customer Support',          bodyAr: 'فريقنا متاح ٧ أيام في الأسبوع.',                               bodyEn: 'Our team is available 7 days a week.' },
+      { titleAr: 'ضمان الرضا',           titleEn: 'Satisfaction Guarantee',    bodyAr: 'غير راضٍ؟ نضمن لك استرداد المبلغ خلال ١٤ يوماً.',              bodyEn: 'Not satisfied? We guarantee a refund within 14 days.' },
+      { titleAr: 'توصيل سريع',           titleEn: 'Fast Delivery',             bodyAr: 'توصيل خلال ٣-٥ أيام عمل لجميع محافظات مصر.',                  bodyEn: 'Delivery in 3–5 business days to all Egyptian governorates.' },
     ],
   },
   stats: {
@@ -66,13 +71,11 @@ const DEFAULTS: Record<string, any> = {
 
 // ─── Public ────────────────────────────────────────────────────────────────────
 
-/** GET /api/content/:section */
 export const getContent = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { section } = req.params;
-    const doc = await SiteContent.findOne({ section }).lean();
-    const sectionKey = section as string;
-    const data = doc?.data ?? DEFAULTS[sectionKey] ?? {};
+    const section = req.params['section']!;
+    const doc  = await contentRepository.getSiteContent(section);
+    const data = (doc?.data as any) ?? (DEFAULTS as any)[section] ?? {};
     res.json({ success: true, data });
   } catch (err) {
     logError('getContent error', err);
@@ -80,12 +83,13 @@ export const getContent = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-/** GET /api/content — all sections */
 export const getAllContent = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const docs = await SiteContent.find().lean();
+    // Prisma doesn't have a findAll helper — we use findMany through raw prisma
+    const { prisma } = await import('../lib/prisma');
+    const docs = await prisma.siteContent.findMany();
     const result: Record<string, any> = { ...DEFAULTS };
-    docs.forEach(d => { result[d.section] = d.data; });
+    docs.forEach((d: any) => { result[d.section] = d.data; });
     res.json({ success: true, data: result });
   } catch (err) {
     logError('getAllContent error', err);
@@ -95,40 +99,64 @@ export const getAllContent = async (_req: Request, res: Response): Promise<void>
 
 // ─── Admin ─────────────────────────────────────────────────────────────────────
 
-/** PUT /api/admin/content/:section */
 export const updateContent = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { section } = req.params;
+    const section = req.params['section']!;
     const { data } = req.body;
     if (!data || typeof data !== 'object') {
       res.status(400).json({ success: false, message: 'data object is required' });
       return;
     }
-    const doc = await SiteContent.findOneAndUpdate(
-      { section },
-      { $set: { data, updatedBy: req.user?.userId } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    res.json({ success: true, data: doc.data });
+    const doc = await contentRepository.updateSiteContent(section, data, req.user?.userId);
+    res.json({ success: true, data: (doc.data as any) });
   } catch (err) {
     logError('updateContent error', err);
     res.status(500).json({ success: false, message: 'Failed to update content' });
   }
 };
 
-/** GET /api/admin/content — list all with defaults filled */
 export const adminGetAllContent = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const docs = await SiteContent.find().lean();
+    const { prisma } = await import('../lib/prisma');
+    const docs = await prisma.siteContent.findMany();
     const result: Record<string, any> = {};
-    // Merge DB data with defaults
     Object.keys(DEFAULTS).forEach(section => {
-      const doc = docs.find(d => d.section === section);
-      result[section] = doc ? doc.data : DEFAULTS[section];
+      const doc = docs.find((d: any) => d.section === section);
+      result[section] = doc ? (doc.data as any) : DEFAULTS[section];
     });
     res.json({ success: true, data: result, sections: Object.keys(DEFAULTS) });
   } catch (err) {
     logError('adminGetAllContent error', err);
     res.status(500).json({ success: false, message: 'Failed to fetch content' });
+  }
+};
+
+// ─── Settings (via admin.controller) ────────────────────────────────────────
+
+export const getSettings = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await contentRepository.getSiteSettings();
+    res.json({ success: true, data: settings.colors });
+  } catch (err) {
+    logError('getSettings error', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch settings' });
+  }
+};
+
+export const updateSettings = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { colors } = req.body;
+    if (!colors || typeof colors !== 'object') {
+      res.status(400).json({ success: false, message: 'colors object is required' });
+      return;
+    }
+    const settings = await contentRepository.updateSiteSettings({
+      colors,
+      updatedBy: req.user?.userId,
+    });
+    res.json({ success: true, data: settings.colors });
+  } catch (err) {
+    logError('updateSettings error', err);
+    res.status(500).json({ success: false, message: 'Failed to update settings' });
   }
 };

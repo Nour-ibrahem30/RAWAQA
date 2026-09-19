@@ -1,4 +1,4 @@
-import { Order, OrderItem, IdempotencyKey, OrderStatus, PaymentStatus, PaymentMethod, Prisma } from '../generated/prisma/client.js';
+import { Order, OrderItem, IdempotencyKey, OrderStatus, PaymentStatus, PaymentMethod, Prisma } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 
 export type OrderWithDetails = Order & {

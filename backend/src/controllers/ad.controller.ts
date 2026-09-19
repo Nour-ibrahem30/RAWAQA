@@ -1,7 +1,13 @@
+/**
+ * ad.controller.ts — PostgreSQL/Prisma implementation
+ * Uses contentRepository (Prisma-backed) instead of the Mongoose Ad model.
+ * Business logic and API contract are identical.
+ */
 import { Request, Response } from 'express';
-import { Ad, AdPlacement } from '../models/Ad';
-import { logError } from '../config/logger';
+import { logError }           from '../config/logger';
+import { contentRepository }  from '../repositories/content.repository';
 import { deleteFromCloudinary } from '../middleware/upload.middleware';
+import type { AdPlacement }   from '../generated/prisma/client';
 
 // ─── Public ────────────────────────────────────────────────────────────────────
 
@@ -9,18 +15,7 @@ import { deleteFromCloudinary } from '../middleware/upload.middleware';
 export const listAds = async (req: Request, res: Response): Promise<void> => {
   try {
     const placement = req.query.placement as AdPlacement | undefined;
-    const now = new Date();
-
-    const query: any = { isActive: true };
-    if (placement) query.placement = placement;
-
-    // Respect date range if set
-    query.$and = [
-      { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
-      { $or: [{ endDate:   null }, { endDate:   { $gte: now } }] },
-    ];
-
-    const ads = await Ad.find(query).sort({ order: 1, createdAt: -1 }).lean();
+    const ads = await contentRepository.findAds({ placement, isActive: true });
     res.json({ success: true, data: ads });
   } catch (err) {
     logError('listAds error', err);
@@ -30,10 +25,10 @@ export const listAds = async (req: Request, res: Response): Promise<void> => {
 
 // ─── Admin ─────────────────────────────────────────────────────────────────────
 
-/** GET /api/admin/ads — all ads (including inactive) */
+/** GET /api/admin/ads */
 export const adminListAds = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const ads = await Ad.find().sort({ placement: 1, order: 1, createdAt: -1 }).lean();
+    const ads = await contentRepository.findAds();
     res.json({ success: true, data: ads });
   } catch (err) {
     logError('adminListAds error', err);
@@ -44,21 +39,22 @@ export const adminListAds = async (_req: Request, res: Response): Promise<void> 
 /** POST /api/admin/ads */
 export const createAd = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { titleAr, titleEn, subtitleAr, subtitleEn, imageUrl, publicId, linkUrl, placement, isActive, order, startDate, endDate } = req.body;
+    const { titleAr, titleEn, subtitleAr, subtitleEn, imageUrl, publicId, linkUrl,
+            placement, isActive, order, startDate, endDate } = req.body;
 
     if (!titleAr || !titleEn || !imageUrl) {
       res.status(400).json({ success: false, message: 'titleAr, titleEn and imageUrl are required' });
       return;
     }
 
-    const ad = await Ad.create({
+    const ad = await contentRepository.createAd({
       titleAr, titleEn, subtitleAr, subtitleEn,
       imageUrl, publicId, linkUrl,
-      placement: placement || 'homepage_banner',
-      isActive: isActive !== undefined ? isActive : true,
-      order:    order ?? 0,
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate:   endDate   ? new Date(endDate)   : undefined,
+      placement:  (placement || 'homepage_banner') as AdPlacement,
+      isActive:   isActive !== undefined ? isActive : true,
+      order:      order ?? 0,
+      startDate:  startDate ? new Date(startDate) : undefined,
+      endDate:    endDate   ? new Date(endDate)   : undefined,
     });
 
     res.status(201).json({ success: true, data: ad });
@@ -71,27 +67,27 @@ export const createAd = async (req: Request, res: Response): Promise<void> => {
 /** PUT /api/admin/ads/:id */
 export const updateAd = async (req: Request, res: Response): Promise<void> => {
   try {
-    const ad = await Ad.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true, runValidators: true }
-    );
+    const ad = await contentRepository.updateAd(req.params['id']!, req.body);
     if (!ad) { res.status(404).json({ success: false, message: 'Ad not found' }); return; }
     res.json({ success: true, data: ad });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === 'P2025') {
+      res.status(404).json({ success: false, message: 'Ad not found' });
+      return;
+    }
     logError('updateAd error', err);
     res.status(500).json({ success: false, message: 'Failed to update ad' });
   }
 };
 
-/** PATCH /api/admin/ads/:id/toggle — flip isActive */
+/** PATCH /api/admin/ads/:id/toggle */
 export const toggleAd = async (req: Request, res: Response): Promise<void> => {
   try {
-    const ad = await Ad.findById(req.params.id);
-    if (!ad) { res.status(404).json({ success: false, message: 'Ad not found' }); return; }
-    ad.isActive = !ad.isActive;
-    await ad.save();
-    res.json({ success: true, data: { id: ad._id, isActive: ad.isActive } });
+    const existing = await contentRepository.findAdById(req.params['id']!);
+    if (!existing) { res.status(404).json({ success: false, message: 'Ad not found' }); return; }
+
+    const updated = await contentRepository.updateAd(req.params['id']!, { isActive: !existing.isActive });
+    res.json({ success: true, data: { id: updated.id, isActive: updated.isActive } });
   } catch (err) {
     logError('toggleAd error', err);
     res.status(500).json({ success: false, message: 'Failed to toggle ad' });
@@ -101,15 +97,14 @@ export const toggleAd = async (req: Request, res: Response): Promise<void> => {
 /** DELETE /api/admin/ads/:id */
 export const deleteAd = async (req: Request, res: Response): Promise<void> => {
   try {
-    const ad = await Ad.findById(req.params.id);
-    if (!ad) { res.status(404).json({ success: false, message: 'Ad not found' }); return; }
+    const existing = await contentRepository.findAdById(req.params['id']!);
+    if (!existing) { res.status(404).json({ success: false, message: 'Ad not found' }); return; }
 
-    // Remove from Cloudinary if stored there
-    if (ad.publicId) {
-      await deleteFromCloudinary(ad.publicId).catch(() => {});
+    if (existing.publicId) {
+      await deleteFromCloudinary(existing.publicId).catch(() => {});
     }
 
-    await ad.deleteOne();
+    await contentRepository.deleteAd(req.params['id']!);
     res.json({ success: true, message: 'Ad deleted' });
   } catch (err) {
     logError('deleteAd error', err);

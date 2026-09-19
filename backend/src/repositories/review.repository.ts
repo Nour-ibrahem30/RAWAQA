@@ -1,4 +1,4 @@
-import { Review, User, Product, Prisma } from '../generated/prisma/client.js';
+import { Review, User, Product, Prisma } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 
 export type ReviewWithUser = Review & {

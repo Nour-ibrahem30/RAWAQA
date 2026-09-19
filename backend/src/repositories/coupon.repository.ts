@@ -1,4 +1,4 @@
-import { Coupon, CouponUsage, CouponType, Prisma } from '../generated/prisma/client.js';
+import { Coupon, CouponUsage, CouponType, Prisma } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 
 export type CouponWithRelations = Coupon & {

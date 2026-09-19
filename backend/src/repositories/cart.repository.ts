@@ -1,4 +1,4 @@
-import { Cart, CartItem, Product, Category, ProductImage, Prisma } from '../generated/prisma/client.js';
+import { Cart, CartItem, Product, Category, ProductImage, Prisma } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 
 export type CartWithDetails = Cart & {

@@ -1,4 +1,4 @@
-import { OutboxEvent, ReconciliationReport, ReconciliationDiscrepancy, Prisma } from '../generated/prisma/client.js';
+import { OutboxEvent, ReconciliationReport, ReconciliationDiscrepancy, Prisma } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 
 export class OutboxRepository {

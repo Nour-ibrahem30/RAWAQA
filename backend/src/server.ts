@@ -19,6 +19,7 @@ import { outboxWorker } from './workers/outbox.worker';
 import { inventoryReconciliationWorker } from './workers/inventory-reconciliation.worker';
 import { autoCancelWorker } from './workers/auto-cancel.worker';
 import { ensureDefaultCategories } from './services/category.service';
+import { checkPrismaConnection as _checkPrismaConnection, disconnectPrisma } from './lib/prisma';
 
 // Express app
 const app: Application = express();
@@ -129,12 +130,14 @@ export const dbDiagnosticHandler = async (_req: Request, res: Response): Promise
 // Standard health check (returns HTTP 200 for cloud platform deployment probes, reporting database state in body)
 export const standardHealthHandler = (_req: Request, res: Response): void => {
   const isDbConnected = database.isConnected();
+  const hasPg = !!process.env.DATABASE_URL;
   res.status(200).json({
-    status: isDbConnected ? 'ok' : 'degraded',
+    status: isDbConnected || hasPg ? 'ok' : 'degraded',
     environment: env.NODE_ENV,
-    database: isDbConnected ? 'connected' : 'disconnected',
-    uptime: Math.floor(process.uptime()),
-    timestamp: new Date().toISOString(),
+    database:    isDbConnected ? 'connected' : 'disconnected',
+    postgresql:  hasPg ? 'configured' : 'not_configured',
+    uptime:      Math.floor(process.uptime()),
+    timestamp:   new Date().toISOString(),
   });
 };
 
@@ -239,26 +242,36 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // =============================================================================
 // DATABASE GATEKEEPER (FAIL-FAST ADMISSION CONTROL)
 // Protects the Node.js event loop, sockets, and memory from operation queuing.
-// Rejects DB-dependent API requests immediately (<1ms) with HTTP 503 if MongoDB
-// is disconnected or connecting. Never allows un-opened Mongoose queries to hang.
+// Rejects DB-dependent API requests immediately (<1ms) with HTTP 503 if the
+// database layer is unavailable. PostgreSQL (Prisma) is now the primary DB.
+// MongoDB gatekeeper retained for workers/legacy paths still using Mongoose.
 // =============================================================================
 export const dbGatekeeper = (req: Request, res: Response, next: NextFunction): void => {
-  // Always allow health checks and documentation through
   const path = req.originalUrl || req.url || req.path;
-  if (
-    path.includes('/health') ||
-    path.includes('/docs')
-  ) {
+  if (path.includes('/health') || path.includes('/docs')) {
     return next();
   }
 
-  // Check live Mongoose connection readyState (1 = connected)
-  if (!database.isConnected()) {
+  // PostgreSQL must be available (Prisma drives auth, products, orders, coupons, etc.)
+  if (!process.env.DATABASE_URL) {
+    res.setHeader('Retry-After', '5');
+    res.status(503).json({
+      success: false,
+      error: 'Service Unavailable',
+      message: 'PostgreSQL database not configured.',
+    });
+    return;
+  }
+
+  // MongoDB still required for workers (outbox, checkout, orders legacy paths)
+  // Only block if MongoDB is actively disconnected (not just slow to start)
+  const mongoState = require('mongoose').connection.readyState;
+  if (mongoState === 0) { // 0 = disconnected (not 2=connecting, 3=disconnecting)
     res.setHeader('Retry-After', '2');
     res.status(503).json({
       success: false,
       error: 'Service Unavailable',
-      message: 'Database is currently connecting or unavailable. Please retry shortly.',
+      message: 'Database is currently unavailable. Please retry shortly.',
     });
     return;
   }
@@ -624,7 +637,14 @@ const startServer = async () => {
       logInfo('HTTP server closed');
 
       try {
-        // Close database connection if open
+        // Close PostgreSQL (Prisma) connection
+        try {
+          await disconnectPrisma();
+        } catch (pgErr) {
+          logError('Error disconnecting Prisma', pgErr);
+        }
+
+        // Close MongoDB connection if open
         if (database.isConnected()) {
           await database.disconnect();
         }

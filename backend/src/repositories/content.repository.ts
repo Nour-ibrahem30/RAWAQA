@@ -1,4 +1,4 @@
-import { SiteSettings, Ad, SiteContent, AdPlacement, Prisma } from '../generated/prisma/client.js';
+import { SiteSettings, Ad, SiteContent, AdPlacement, Prisma } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 
 export class ContentRepository {

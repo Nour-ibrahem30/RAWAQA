@@ -7,9 +7,10 @@ import {
   deleteUser,
   getDashboardStats,
 } from '../services/admin.service';
-import { logError } from '../config/logger';
-import { UserRole } from '../models/User';
-import { SiteSettings } from '../models/SiteSettings';
+import { logError }          from '../config/logger';
+import { UserRole }          from '../models/User';
+import { contentRepository } from '../repositories/content.repository';
+import { outboxRepository }  from '../repositories/outbox.repository';
 
 // GET /api/admin/users
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
@@ -89,7 +90,7 @@ export const toggleStatus = async (req: Request, res: Response): Promise<void> =
     res.json({
       success: true,
       message: user.isActive ? 'User activated' : 'User banned',
-      data: { id: user._id, isActive: user.isActive },
+      data: { id: (user as any).id ?? (user as any)._id, isActive: user.isActive },
     });
   } catch (err) {
     logError('toggleStatus error', err);
@@ -124,9 +125,10 @@ export const dashboardStats = async (_req: Request, res: Response): Promise<void
 };
 
 // GET /api/admin/settings
-export const getSettings = async (_req: Request, res: Response): Promise<void> => {  try {
-    const settings = await SiteSettings.findOne({ key: 'default' }).lean();
-    res.json({ success: true, data: settings?.colors ?? {} });
+export const getSettings = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await contentRepository.getSiteSettings();
+    res.json({ success: true, data: settings.colors ?? {} });
   } catch (err) {
     logError('getSettings error', err);
     res.status(500).json({ success: false, message: 'Failed to fetch settings' });
@@ -141,13 +143,10 @@ export const updateSettings = async (req: Request, res: Response): Promise<void>
       res.status(400).json({ success: false, message: 'colors object is required' });
       return;
     }
-
-    const settings = await SiteSettings.findOneAndUpdate(
-      { key: 'default' },
-      { $set: { colors, updatedBy: req.user?.userId } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
+    const settings = await contentRepository.updateSiteSettings({
+      colors,
+      updatedBy: req.user?.userId,
+    });
     res.json({ success: true, data: settings.colors });
   } catch (err) {
     logError('updateSettings error', err);
@@ -158,24 +157,14 @@ export const updateSettings = async (req: Request, res: Response): Promise<void>
 // GET /api/admin/reconciliation-reports
 export const getReconciliationReports = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { ReconciliationReport } = await import('../models/ReconciliationReport');
     const page  = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
-    const skip  = (page - 1) * limit;
 
-    const [reports, total] = await Promise.all([
-      ReconciliationReport.find()
-        .sort({ timestamp: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      ReconciliationReport.countDocuments(),
-    ]);
-
+    const reports = await outboxRepository.findRecentReports(limit);
     res.json({
       success: true,
-      data: reports,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      data:       reports,
+      pagination: { page, limit, total: reports.length, pages: 1 },
     });
   } catch (err) {
     logError('getReconciliationReports error', err);

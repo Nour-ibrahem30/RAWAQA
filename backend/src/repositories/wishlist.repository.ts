@@ -1,4 +1,4 @@
-import { Wishlist, Product, Category, ProductImage, Inventory } from '../generated/prisma/client.js';
+import { Wishlist, Product, Category, ProductImage, Inventory } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 
 export type WishlistWithProducts = Wishlist & {

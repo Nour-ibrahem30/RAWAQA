@@ -84,18 +84,18 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       message: 'User registered successfully. Please check your email to verify your account.',
       data: {
         user: {
-          id: user._id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
+          id:              user.id,
+          email:           user.email,
+          firstName:       user.firstName,
+          lastName:        user.lastName,
+          role:            user.role,
           isEmailVerified: user.isEmailVerified,
         },
       },
     });
 
     // Send verification email in the background (non-blocking)
-    sendEmailVerification((user._id as any).toString()).catch((err) => {
+    sendEmailVerification(user.id).catch((err) => {
       logError('Failed to send registration verification email', err);
     });
   } catch (error) {
@@ -377,8 +377,8 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
         sessions: sessions.map((session) => ({
           sessionId: session.sessionId,
           deviceInfo: session.deviceInfo,
-          issuedAt: session.issuedAt,
-          lastUsedAt: session.lastUsedAt,
+          issuedAt: session.createdAt,   // Prisma schema uses createdAt instead of issuedAt
+          lastUsedAt: (session as any).lastUsedAt ?? session.updatedAt,
           expiresAt: session.expiresAt,
           isCurrent: session.sessionId === req.user?.sessionId,
         })),
@@ -555,7 +555,7 @@ export const verifyEmailHandler = async (req: Request, res: Response): Promise<v
     res.json({
       success: true,
       message: 'Email verified successfully',
-      data: { id: user._id, email: user.email, isEmailVerified: user.isEmailVerified },
+      data: { id: user.id, email: user.email, isEmailVerified: user.isEmailVerified },
     });
   } catch (err) {
     logError('verifyEmail error', err);

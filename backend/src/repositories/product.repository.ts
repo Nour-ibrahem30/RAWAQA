@@ -1,4 +1,4 @@
-import { Product, ProductImage, Inventory, Category, ProductStatus, Prisma } from '../generated/prisma/client.js';
+import { Product, ProductImage, Inventory, Category, ProductStatus, Prisma } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 
 export interface IProductFilter {
