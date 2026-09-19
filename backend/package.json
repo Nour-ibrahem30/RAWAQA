@@ -7,7 +7,13 @@
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc",
     "start": "node --max-old-space-size=400 dist/server.js",
-    "seed": "ts-node src/scripts/seed.ts",
+    "seed": "ts-node prisma/seed.ts",
+    "db:generate": "node node_modules/prisma/build/index.js generate",
+    "db:migrate": "node node_modules/prisma/build/index.js migrate dev",
+    "db:migrate:deploy": "node node_modules/prisma/build/index.js migrate deploy",
+    "db:validate": "node node_modules/prisma/build/index.js validate",
+    "migrate:mongodb:dry-run": "ts-node src/scripts/migrate-mongodb-to-postgres.ts --dry-run",
+    "migrate:mongodb": "ts-node src/scripts/migrate-mongodb-to-postgres.ts",
     "worker": "ts-node src/workers/outbox.worker.ts",
     "reconcile": "ts-node src/workers/inventory-reconciliation.worker.ts",
     "test": "jest --runInBand",
@@ -25,6 +31,8 @@
   "author": "RAWAQA",
   "license": "UNLICENSED",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "@sentry/node": "^8.55.2",
     "@types/multer": "^2.2.0",
     "@vonage/server-sdk": "^3.30.0",
@@ -46,6 +54,7 @@
     "multer": "^2.3.0",
     "node-cron": "^3.0.3",
     "nodemailer": "^9.1.1",
+    "pg": "^8.23.0",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^4.7.1",
@@ -63,8 +72,10 @@
     "@types/node": "^20.10.6",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^8.0.1",
+    "@types/pg": "^8.23.1",
     "@types/uuid": "^9.0.7",
     "nodemon": "^3.0.2",
+    "prisma": "7.10.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
@@ -73,6 +84,8 @@
     "npm": ">=9.0.0"
   },
   "allowScripts": {
-    "bcrypt@5.1.1": true
+    "bcrypt@5.1.1": true,
+    "prisma@7.10.0": true,
+    "@prisma/engines@7.10.0": true
   }
 }

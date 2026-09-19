@@ -51,3 +51,7 @@ uploads/
 # Database dumps
 *.dump
 *.sql
+
+# Prisma generated client (regenerate with: npm run db:generate)
+src/generated/
+prisma/generated/

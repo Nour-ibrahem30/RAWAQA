@@ -1,20 +1,29 @@
-import { Coupon, ICoupon, CouponType } from '../models/Coupon';
-import { CouponUsage } from '../models/CouponUsage';
-import mongoose from 'mongoose';
-import { supportsTransactions } from '../config/database';
+import { couponRepository } from '../repositories/coupon.repository';
+import { CouponType } from '../generated/prisma/client.js';
+
+const formatCoupon = (c: any) => {
+  if (!c) return null;
+  return {
+    ...c,
+    _id: c.id,
+    value: Number(c.value),
+    minOrderValue: Number(c.minOrderValue),
+    maxDiscount: Number(c.maxDiscount),
+  };
+};
 
 // ─── Validate & calculate discount ───────────────────────────────────────────
 export const applyCoupon = async (params: {
-  code:       string;
-  userId?:    string;
-  cartTotal:  number;
+  code: string;
+  userId?: string;
+  cartTotal: number;
   productIds?: string[];
-}): Promise<{ coupon: ICoupon; discountAmount: number; finalTotal: number }> => {
+}): Promise<{ coupon: any; discountAmount: number; finalTotal: number }> => {
   const { code, userId, cartTotal, productIds = [] } = params;
 
   // 1. Find coupon
-  const coupon = await Coupon.findOne({ code: code.toUpperCase().trim() });
-  if (!coupon)          throw new Error('Coupon not found');
+  const coupon = await couponRepository.findByCode(code);
+  if (!coupon) throw new Error('Coupon not found');
   if (!coupon.isActive) throw new Error('Coupon is not active');
 
   // 2. Check expiry
@@ -28,48 +37,47 @@ export const applyCoupon = async (params: {
   }
 
   // 4. Check per-user limit
-  if (coupon.perUserLimit > 0 && userId && mongoose.Types.ObjectId.isValid(userId)) {
-    const userUsage = await CouponUsage.countDocuments({
-      coupon: coupon._id,
-      user:   new mongoose.Types.ObjectId(userId),
-    });
+  if (coupon.perUserLimit > 0 && userId) {
+    const userUsage = await couponRepository.getUserUsageCount(coupon.id, userId);
     if (userUsage >= coupon.perUserLimit) {
       throw new Error('You have already used this coupon');
     }
   }
 
+  const minOrderValue = Number(coupon.minOrderValue);
   // 5. Check minimum order value
-  if (cartTotal < coupon.minOrderValue) {
+  if (cartTotal < minOrderValue) {
     throw new Error(
-      `Minimum order value for this coupon is ${coupon.minOrderValue} EGP`
+      `Minimum order value for this coupon is ${minOrderValue} EGP`
     );
   }
 
-  // 6. Check product/category restrictions (if any)
-  if (coupon.applicableProducts.length > 0 && productIds.length > 0) {
-    const allowed = coupon.applicableProducts.map((id) => id.toString());
-    const valid   = productIds.some((id) => allowed.includes(id));
+  // 6. Check product restrictions (if any)
+  if (coupon.applicableProducts && coupon.applicableProducts.length > 0 && productIds.length > 0) {
+    const allowed = coupon.applicableProducts.map((p) => p.id);
+    const valid = productIds.some((id) => allowed.includes(id));
     if (!valid) throw new Error('Coupon is not applicable to items in your cart');
   }
 
   // 7. Calculate discount
+  const val = Number(coupon.value);
+  const maxDisc = Number(coupon.maxDiscount);
   let discountAmount: number;
-  if (coupon.type === CouponType.PERCENTAGE) {
-    discountAmount = (cartTotal * coupon.value) / 100;
-    // Apply cap if set
-    if (coupon.maxDiscount > 0) {
-      discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+
+  if (coupon.type === CouponType.percentage) {
+    discountAmount = (cartTotal * val) / 100;
+    if (maxDisc > 0) {
+      discountAmount = Math.min(discountAmount, maxDisc);
     }
   } else {
-    discountAmount = coupon.value;
+    discountAmount = val;
   }
 
-  // Discount can't exceed cart total
   discountAmount = Math.min(discountAmount, cartTotal);
   discountAmount = Math.round(discountAmount * 100) / 100;
 
   return {
-    coupon,
+    coupon: formatCoupon(coupon),
     discountAmount,
     finalTotal: Math.round((cartTotal - discountAmount) * 100) / 100,
   };
@@ -77,66 +85,73 @@ export const applyCoupon = async (params: {
 
 // ─── Record coupon usage (called after order is created) ─────────────────────
 export const recordCouponUsage = async (params: {
-  couponId:  string;
-  userId:    string;
-  orderId:   string;
-  discount:  number;
+  couponId: string;
+  userId: string;
+  orderId: string;
+  discount: number;
 }): Promise<void> => {
-  const canUseTx = supportsTransactions();
-  const session = canUseTx ? await mongoose.startSession() : null;
-  if (session) {
-    session.startTransaction();
-  }
-  try {
-    await CouponUsage.create(
-      [{ coupon: params.couponId, user: params.userId, order: params.orderId, discount: params.discount }],
-      session ? { session } : {}
-    );
-    await Coupon.findByIdAndUpdate(params.couponId, { $inc: { usedCount: 1 } }, session ? { session } : {});
-    if (session) {
-      await session.commitTransaction();
-    }
-  } catch (err) {
-    if (session) {
-      await session.abortTransaction();
-    }
-    throw err;
-  } finally {
-    if (session) {
-      session.endSession();
-    }
-  }
+  await couponRepository.recordUsage({
+    couponId: params.couponId,
+    userId: params.userId,
+    orderId: params.orderId,
+    discount: params.discount,
+  });
 };
 
 // ─── Admin CRUD ───────────────────────────────────────────────────────────────
-export const createCoupon = async (data: any, adminId: string): Promise<ICoupon> => {
-  return Coupon.create({ ...data, createdBy: adminId });
+export const createCoupon = async (data: any, adminId: string): Promise<any> => {
+  const created = await couponRepository.create({
+    code: data.code,
+    type: data.type === 'percentage' ? CouponType.percentage : CouponType.fixed,
+    value: data.value,
+    minOrderValue: data.minOrderValue || 0,
+    maxDiscount: data.maxDiscount || 0,
+    usageLimit: data.usageLimit || 0,
+    perUserLimit: data.perUserLimit !== undefined ? data.perUserLimit : 1,
+    isActive: data.isActive !== undefined ? data.isActive : true,
+    expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
+    createdById: adminId,
+    applicableProductIds: data.applicableProducts,
+    applicableCategoryIds: data.applicableCategories,
+  });
+  return formatCoupon(created);
 };
 
 export const listCoupons = async (
-  page = 1, limit = 20, isActive?: boolean
+  page = 1,
+  limit = 20,
+  isActive?: boolean
 ): Promise<{ coupons: any[]; total: number }> => {
-  const query: any = {};
-  if (isActive !== undefined) query.isActive = isActive;
+  const where: any = {};
+  if (isActive !== undefined) where.isActive = isActive;
   const skip = (page - 1) * limit;
+
   const [coupons, total] = await Promise.all([
-    Coupon.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-    Coupon.countDocuments(query),
+    couponRepository.findMany({
+      skip,
+      take: limit,
+      where,
+      orderBy: { createdAt: 'desc' },
+    }),
+    couponRepository.count(where),
   ]);
-  return { coupons, total };
+
+  return {
+    coupons: coupons.map(formatCoupon),
+    total,
+  };
 };
 
-export const getCouponByCode = async (code: string): Promise<ICoupon | null> => {
-  return Coupon.findOne({ code: code.toUpperCase() });
+export const getCouponByCode = async (code: string): Promise<any | null> => {
+  const coupon = await couponRepository.findByCode(code);
+  return formatCoupon(coupon);
 };
 
-export const updateCoupon = async (id: string, data: Partial<ICoupon>): Promise<ICoupon> => {
-  const coupon = await Coupon.findByIdAndUpdate(id, data, { new: true, runValidators: true });
-  if (!coupon) throw new Error('Coupon not found');
-  return coupon;
+export const updateCoupon = async (id: string, data: any): Promise<any> => {
+  const updated = await couponRepository.update(id, data);
+  return formatCoupon(updated);
 };
 
 export const deleteCoupon = async (id: string): Promise<void> => {
-  const coupon = await Coupon.findByIdAndUpdate(id, { isActive: false });
-  if (!coupon) throw new Error('Coupon not found');
+  await couponRepository.update(id, { isActive: false });
 };

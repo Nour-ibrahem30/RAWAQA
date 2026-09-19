@@ -11,6 +11,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().min(1).max(65535).default(10000),
 
   // Database
+  DATABASE_URL: z.string().default('postgresql://postgres:postgres@localhost:5432/rawaqa?schema=public'),
+  DATABASE_URL_TEST: z.string().optional(),
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/rawaqa'),
   MONGODB_URI_TEST: z.string().optional(),
   MONGODB_MAX_POOL_SIZE: z.coerce.number().positive().default(10),

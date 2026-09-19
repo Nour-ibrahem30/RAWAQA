@@ -1,29 +1,39 @@
-import { Wishlist } from '../models/Wishlist';
-import { Product } from '../models/Product';
-import mongoose from 'mongoose';
+import { wishlistRepository } from '../repositories/wishlist.repository';
+import { productRepository } from '../repositories/product.repository';
 
-// Helper to resolve product ObjectId from id or slug/sku
-const resolveProductId = async (productId: string): Promise<mongoose.Types.ObjectId | null> => {
-  if (mongoose.Types.ObjectId.isValid(productId)) {
-    return new mongoose.Types.ObjectId(productId);
-  }
-  const prod = await Product.findOne({
-    $or: [{ slugEn: productId }, { slugAr: productId }, { sku: productId }],
-  }).select('_id');
-  return prod ? (prod._id as mongoose.Types.ObjectId) : null;
+// Helper to resolve product ID from UUID or slug/sku
+const resolveProductId = async (productId: string): Promise<string | null> => {
+  const prod = await productRepository.findById(productId, { includeCategory: false, includeImages: false, includeInventory: false });
+  if (prod) return prod.id;
+
+  const bySlug = await productRepository.findBySlug(productId);
+  if (bySlug) return bySlug.id;
+
+  const bySku = await productRepository.findBySku(productId);
+  return bySku ? bySku.id : null;
 };
+
+const formatProduct = (p: any) => ({
+  ...p,
+  _id: p.id,
+  price: Number(p.price),
+  compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+  category: p.category ? { ...p.category, _id: p.category.id } : null,
+});
 
 // ─── Get wishlist ─────────────────────────────────────────────────────────────
 export const getWishlist = async (userId: string): Promise<any> => {
-  const wishlist = await Wishlist.findOne({ user: userId })
-    .populate({
-      path: 'products',
-      select: 'nameAr nameEn price compareAtPrice images ratings inventory status slugEn slugAr sku category',
-      populate: { path: 'category', select: 'nameAr nameEn slugAr slugEn' },
-    })
-    .lean();
+  const wishlist = await wishlistRepository.findByUserId(userId);
+  if (!wishlist) {
+    return { id: '', _id: '', user: userId, products: [] };
+  }
 
-  return wishlist ?? { user: userId, products: [] };
+  return {
+    ...wishlist,
+    _id: wishlist.id,
+    user: wishlist.userId,
+    products: wishlist.products.map(formatProduct),
+  };
 };
 
 // ─── Add product ──────────────────────────────────────────────────────────────
@@ -31,11 +41,7 @@ export const addToWishlist = async (userId: string, productId: string): Promise<
   const pid = await resolveProductId(productId);
   if (!pid) return;
 
-  await Wishlist.findOneAndUpdate(
-    { user: userId },
-    { $addToSet: { products: pid } },
-    { upsert: true, new: true }
-  );
+  await wishlistRepository.addProduct(userId, pid);
 };
 
 // ─── Remove product ───────────────────────────────────────────────────────────
@@ -43,28 +49,25 @@ export const removeFromWishlist = async (userId: string, productId: string): Pro
   const pid = await resolveProductId(productId);
   if (!pid) return;
 
-  await Wishlist.findOneAndUpdate(
-    { user: userId },
-    { $pull: { products: pid } }
-  );
+  await wishlistRepository.removeProduct(userId, pid);
 };
 
 // ─── Toggle (add if not there, remove if already there) ──────────────────────
 export const toggleWishlist = async (
-  userId:    string,
+  userId: string,
   productId: string
 ): Promise<{ added: boolean }> => {
   const pid = await resolveProductId(productId);
   if (!pid) return { added: false };
 
-  const wishlist = await Wishlist.findOne({ user: userId });
-  const exists   = wishlist?.products.some((p) => p.equals(pid));
+  const wishlist = await wishlistRepository.findByUserId(userId);
+  const exists = wishlist?.products.some((p) => p.id === pid);
 
   if (exists) {
-    await removeFromWishlist(userId, pid.toString());
+    await wishlistRepository.removeProduct(userId, pid);
     return { added: false };
   } else {
-    await addToWishlist(userId, pid.toString());
+    await wishlistRepository.addProduct(userId, pid);
     return { added: true };
   }
 };
@@ -74,14 +77,11 @@ export const isInWishlist = async (userId: string, productId: string): Promise<b
   const pid = await resolveProductId(productId);
   if (!pid) return false;
 
-  const wishlist = await Wishlist.findOne({
-    user:     userId,
-    products: pid,
-  });
-  return !!wishlist;
+  const wishlist = await wishlistRepository.findByUserId(userId);
+  return !!wishlist?.products.some((p) => p.id === pid);
 };
 
 // ─── Clear wishlist ───────────────────────────────────────────────────────────
 export const clearWishlist = async (userId: string): Promise<void> => {
-  await Wishlist.findOneAndUpdate({ user: userId }, { products: [] });
+  await wishlistRepository.clear(userId);
 };
