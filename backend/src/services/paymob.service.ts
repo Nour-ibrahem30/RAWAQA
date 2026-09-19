@@ -8,6 +8,32 @@
  *  3. getPaymentKey()         → get payment_key (token for iframe)
  *  4. Client opens iframe with payment_key
  *  5. Paymob sends webhook → verifyHmac() → processCallback()
+ *
+ * ─── MIGRATION STATUS ────────────────────────────────────────────────────────
+ * STATUS: NOT MIGRATED — intentionally excluded from Phase 4-7 Prisma cutover.
+ *
+ * REASON: This service is currently inactive / dev-only. The Paymob integration
+ * has never been activated in production. payment.controller.ts routes are not
+ * wired to any active frontend flow.
+ *
+ * CURRENT STATE: Still uses Mongoose (Order, OutboxEvent models) for:
+ *   - processCallback(): updates order.paymentStatus via Mongoose session
+ *   - processCallback(): writes OutboxEvent via Mongoose
+ *
+ * TO MIGRATE (when Paymob goes live):
+ *   1. Replace `Order.findById(...).session(session)` with:
+ *        prisma.order.findUnique({ where: { id: merchantOrderId } })
+ *   2. Replace `order.save({ session })` with:
+ *        prisma.order.update({ where: { id }, data: { paymentStatus, status } })
+ *   3. Replace `OutboxEvent.create([...], { session })` with:
+ *        prisma.outboxEvent.create({ data: { ... } })
+ *   4. Replace `mongoose.startSession()` transaction with:
+ *        prisma.$transaction([...])
+ *   5. Remove imports: Order, OutboxEvent from models/, mongoose
+ *   6. Use prisma from '../lib/prisma'
+ *
+ * DO NOT migrate until Paymob is confirmed active in production.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import axios from 'axios';
