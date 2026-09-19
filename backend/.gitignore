@@ -50,7 +50,9 @@ uploads/
 
 # Database dumps
 *.dump
+# Ignore standalone sql dump files but NOT Prisma migration files
 *.sql
+!prisma/migrations/**/*.sql
 
 # Prisma generated client (regenerate with: npm run db:generate)
 src/generated/
