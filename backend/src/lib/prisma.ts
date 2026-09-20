@@ -1,22 +1,27 @@
 import 'dotenv/config';
 import { PrismaClient } from '../generated/prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaNeon } from '@prisma/adapter-neon';
 import { logInfo, logError, logWarn } from '../config/logger';
 
 // ---------------------------------------------------------------------------
-// Build the pg adapter once and reuse it.
-// In Prisma 7 the driver adapter is required for direct-TCP connections.
+// Build the Neon serverless adapter once and reuse it.
+//
+// We use the Neon serverless driver (WebSocket over 443) instead of the plain
+// pg TCP driver. The host platform's container resolver cannot resolve the Neon
+// endpoint over the normal TCP path (getaddrinfo EAI_AGAIN on :5432), so a
+// standard TCP connection fails. The serverless driver connects over HTTPS/WSS
+// on 443, which the platform allows, bypassing that DNS/TCP failure.
+// The Prisma Client API, schema, and queries are unchanged.
 // ---------------------------------------------------------------------------
 function createAdapter() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    // Allow the app to start without Postgres in environments where only
-    // Mongoose is in use (migration period). Prisma operations will fail at
-    // runtime, not at import time.
-    logWarn('DATABASE_URL is not set — Prisma (PostgreSQL) is disabled. Mongoose-backed features still work.');
+    // Allow the app to start without a DB configured. Prisma operations will
+    // fail at runtime, not at import time.
+    logWarn('DATABASE_URL is not set — Prisma (PostgreSQL) is disabled.');
     return null;
   }
-  return new PrismaPg({ connectionString });
+  return new PrismaNeon({ connectionString });
 }
 
 // ---------------------------------------------------------------------------
