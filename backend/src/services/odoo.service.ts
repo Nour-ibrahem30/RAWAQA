@@ -1,8 +1,18 @@
 import axios, { AxiosInstance } from 'axios';
 import { env } from '../config/env';
 import { logInfo, logError } from '../config/logger';
-import { IOrder } from '../models/Order';
-import { IProduct } from '../models/Product';
+
+// ── Structural types (decoupled from Mongoose — Odoo receives plain data) ──────
+// Only the fields the Odoo sync actually reads. Callers pass Prisma order objects.
+interface OdooOrderItemInput {
+  product?: unknown;   // product identifier (mapped to Odoo product id downstream)
+  quantity: number;
+  price: number | string;
+}
+interface OdooOrderInput {
+  orderNumber: string;
+  items: OdooOrderItemInput[];
+}
 
 interface OdooAuthResponse {
   uid: number;
@@ -176,35 +186,11 @@ class OdooService {
   }
 
   /**
-   * Sync inventory for a product
+   * Create order in Odoo.
+   * Accepts a plain structural order (Prisma order objects are passed here) —
+   * no Mongoose coupling. Only reads orderNumber + items.
    */
-  async syncProductInventory(product: IProduct): Promise<boolean> {
-    try {
-      const odooProduct = await this.getProductInventory(product.sku);
-
-      if (!odooProduct) {
-        logError(`Product with SKU ${product.sku} not found in Odoo`, new Error('Product not found in Odoo'));
-        return false;
-      }
-
-      // Update local inventory
-      product.inventory.onHandQuantity = odooProduct.qty_available;
-      product.inventory.lastSyncedAt = new Date();
-
-      await product.save();
-
-      logInfo(`Synced inventory for ${product.sku}: ${odooProduct.qty_available} units`);
-      return true;
-    } catch (error) {
-      logError(`Failed to sync inventory for ${product.sku}`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Create order in Odoo
-   */
-  async createOrder(order: IOrder): Promise<{ success: boolean; odooOrderId?: string }> {
+  async createOrder(order: OdooOrderInput): Promise<{ success: boolean; odooOrderId?: string }> {
     try {
       await this.ensureAuthenticated();
 

@@ -25,6 +25,13 @@ class SMSService {
    */
   private initialize(): void {
     try {
+      // SMS disabled or running in mock mode — do not initialize a live provider.
+      if (!env.SMS_ENABLED || env.SMS_PROVIDER === 'mock') {
+        this.isConfigured = false;
+        logInfo(`SMS service inactive (SMS_ENABLED=${env.SMS_ENABLED}, provider=${env.SMS_PROVIDER}) — messages will be skipped`);
+        return;
+      }
+
       if (!env.VONAGE_API_KEY || !env.VONAGE_API_SECRET) {
         logError('Vonage credentials not configured', new Error('Missing Vonage credentials'));
         this.isConfigured = false;
@@ -49,7 +56,7 @@ class SMSService {
    */
   async sendSMS(to: string, message: string): Promise<SMSResult> {
     if (!this.isConfigured || !this.vonage) {
-      logError('SMS service not configured', new Error('SMS service not initialized'));
+      logInfo('SMS skipped — service not active');
       return {
         success: false,
         error: 'SMS service not configured',

@@ -1,9 +1,7 @@
 /**
- * Jest global teardown — stops the in-memory MongoDB instance after all suites finish.
+ * Jest global teardown — nothing to tear down (no external DB process is started).
+ * The app runs entirely on PostgreSQL/Prisma (a managed Neon instance in real runs).
  */
 export default async function globalTeardown() {
-  const mongod = (global as any).__MONGOD__;
-  if (mongod) {
-    await mongod.stop();
-  }
+  // no-op
 }

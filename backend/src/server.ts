@@ -4,7 +4,6 @@ import express, { Application, Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import mongoSanitize from 'express-mongo-sanitize';
 import { rateLimit } from 'express-rate-limit';
 
 // ⚠️  Sentry MUST be initialised before any other imports so it can instrument them
@@ -13,12 +12,11 @@ initSentry();
 
 import { env } from './config/env';
 import logger, { logError, logInfo } from './config/logger';
-import database from './config/database';
 import { outboxWorker } from './workers/outbox.worker';
 import { inventoryReconciliationWorker } from './workers/inventory-reconciliation.worker';
 import { autoCancelWorker } from './workers/auto-cancel.worker';
 import { ensureDefaultCategories } from './services/category.service';
-import { checkPrismaConnection as _checkPrismaConnection, disconnectPrisma } from './lib/prisma';
+import { checkPrismaConnection, disconnectPrisma } from './lib/prisma';
 
 // Express app
 const app: Application = express();
@@ -104,36 +102,37 @@ export const liveHealthHandler = (_req: Request, res: Response): void => {
   });
 };
 
-// Readiness probe: returns 200 if MongoDB is connected, 503 if not ready (includes safe redacted diagnostic when disconnected)
-export const readyHealthHandler = async (req: Request, res: Response): Promise<void> => {
-  const isReady = database.isConnected();
-  const runProbes = req.query['probe'] === 'true';
-  const diagnostic = !isReady || req.query['diagnostic'] === 'true'
-    ? await database.getDiagnosticInfo(runProbes)
-    : undefined;
-
+// Readiness probe: returns 200 if PostgreSQL (Prisma) is reachable, 503 if not ready
+export const readyHealthHandler = async (_req: Request, res: Response): Promise<void> => {
+  const isReady = await checkPrismaConnection();
   res.status(isReady ? 200 : 503).json({
     status: isReady ? 'ready' : 'not_ready',
     database: isReady ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
-    ...(diagnostic && { diagnostic }),
   });
 };
 
-// Dedicated safe non-destructive MongoDB diagnostic probe endpoint
+// Dedicated PostgreSQL diagnostic probe endpoint (safe, non-destructive)
 export const dbDiagnosticHandler = async (_req: Request, res: Response): Promise<void> => {
-  const diag = await database.getDiagnosticInfo(true);
-  res.status(200).json(diag);
+  const connected = await checkPrismaConnection();
+  const host = (process.env.DATABASE_URL || '').match(/@([^/?]+)/)?.[1] || null;
+  res.status(200).json({
+    engine: 'postgresql',
+    connected,
+    configured: !!process.env.DATABASE_URL,
+    host,
+    timestamp: new Date().toISOString(),
+  });
 };
 
 // Standard health check (returns HTTP 200 for cloud platform deployment probes, reporting database state in body)
-export const standardHealthHandler = (_req: Request, res: Response): void => {
-  const isDbConnected = database.isConnected();
+export const standardHealthHandler = async (_req: Request, res: Response): Promise<void> => {
   const hasPg = !!process.env.DATABASE_URL;
+  const isConnected = hasPg ? await checkPrismaConnection() : false;
   res.status(200).json({
-    status: isDbConnected || hasPg ? 'ok' : 'degraded',
+    status:      isConnected ? 'ok' : 'degraded',
     environment: env.NODE_ENV,
-    database:    isDbConnected ? 'connected' : 'disconnected',
+    database:    isConnected ? 'connected' : 'disconnected',
     postgresql:  hasPg ? 'configured' : 'not_configured',
     uptime:      Math.floor(process.uptime()),
     timestamp:   new Date().toISOString(),
@@ -180,9 +179,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Sanitize NoSQL injection
-app.use(mongoSanitize());
-
 // Sanitize XSS
 import { xssSanitize } from './middleware/xss.middleware';
 app.use(xssSanitize);
@@ -221,7 +217,6 @@ import cartRoutes            from './routes/cart.routes';
 import checkoutRoutes        from './routes/checkout.routes';
 import orderRoutes           from './routes/order.routes';
 import adminRoutes           from './routes/admin.routes';
-import paymentRoutes         from './routes/payment.routes';
 import couponRoutes          from './routes/coupon.routes';
 import shippingAddressRoutes from './routes/shipping-address.routes';
 import uploadRoutes          from './routes/upload.routes';
@@ -285,7 +280,6 @@ apiPrefixes.forEach(prefix => {
   app.use(`${prefix}/orders`,        orderRoutes);
   app.use(`${prefix}/admin`,         adminRoutes);
   app.use(`${prefix}/admin/reviews`, adminReviewRoutes);
-  app.use(`${prefix}/payments`,      paymentRoutes);
   app.use(`${prefix}/coupons`,       couponRoutes);
   app.use(`${prefix}/addresses`,     shippingAddressRoutes);
   app.use(`${prefix}/upload`,        uploadRoutes);
@@ -461,11 +455,13 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     query: req.query,
   });
 
-  // Handle Mongoose connection / server selection errors gracefully (prevents 502 gateway timeouts)
+  // Handle PostgreSQL/Prisma connection errors gracefully (prevents 502 gateway timeouts)
   const isDbError =
-    err.name === 'MongooseServerSelectionError' ||
-    err.name === 'MongoNotConnectedError' ||
-    err.name === 'MongoNetworkError';
+    err.name === 'PrismaClientInitializationError' ||
+    err.name === 'PrismaClientRustPanicError' ||
+    err.code === 'P1001' ||   // Can't reach database server
+    err.code === 'P1002' ||   // Database server timed out
+    err.code === 'P1017';     // Server has closed the connection
   const status = isDbError ? 503 : (err.status || 500);
 
   // Don't leak error details in production
@@ -552,20 +548,24 @@ const startServer = async () => {
     // Workers now use Prisma — no MongoDB reconnect dependency needed
   };
 
-  // 2. Connect to Database asynchronously in background without blocking port discovery
+  // 2. Verify PostgreSQL (Prisma) connectivity in the background without blocking port discovery
   const initDbAndWorkers = async (
-    retries = parseInt(process.env['MONGODB_CONNECT_MAX_RETRIES'] || '5', 10),
-    delay = parseInt(process.env['MONGODB_CONNECT_RETRY_DELAY_MS'] || '3000', 10)
+    retries = parseInt(process.env['DB_CONNECT_MAX_RETRIES'] || '5', 10),
+    delay = parseInt(process.env['DB_CONNECT_RETRY_DELAY_MS'] || '3000', 10)
   ) => {
     try {
-      await database.connect();
-      console.log('✅ Database connected');
-      logInfo('Database successfully initialized');
+      // All business logic runs on PostgreSQL/Prisma.
+      const connected = await checkPrismaConnection();
+      if (!connected) {
+        throw new Error('PostgreSQL (Prisma) connection check failed');
+      }
+      console.log('✅ PostgreSQL (Prisma) connected');
+      logInfo('PostgreSQL successfully initialized');
 
       // Initialize default essential categories once at startup (idempotent, never inside request path)
       await ensureDefaultCategories();
 
-      // 3. Start background workers after DB is confirmed connected
+      // 3. Start background workers after DB is confirmed reachable
       if (env.ENABLE_WORKERS) {
         logInfo('Starting background workers');
         startBackgroundWorkers();
@@ -613,10 +613,6 @@ const startServer = async () => {
           logError('Error disconnecting Prisma', pgErr);
         }
 
-        // Close MongoDB connection if open
-        if (database.isConnected()) {
-          await database.disconnect();
-        }
         logInfo('Graceful shutdown completed');
         process.exit(0);
       } catch (error) {

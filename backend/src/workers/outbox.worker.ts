@@ -9,6 +9,7 @@ import { smsService }    from '../services/sms.service';
 import { emailService }  from '../services/email.service';
 import { outboxRepository } from '../repositories/outbox.repository';
 import { prisma }           from '../lib/prisma';
+import { env }               from '../config/env';
 import { logInfo, logError } from '../config/logger';
 
 class OutboxWorker {
@@ -94,20 +95,22 @@ class OutboxWorker {
     });
     if (!order) throw new Error(`Order ${orderId} not found`);
 
-    // Sync to Odoo
-    try {
-      const result = await odooService.createOrder(order as any);
-      if (result.success && result.odooOrderId) {
-        const odooId = typeof result.odooOrderId === 'string'
-          ? parseInt(result.odooOrderId, 10) || null
-          : result.odooOrderId as number | null;
-        await prisma.order.update({
-          where: { id: orderId },
-          data:  { odooOrderId: odooId, odooSyncedAt: new Date() },
-        });
+    // Sync to Odoo (only when ERP sync is explicitly enabled)
+    if (env.ODOO_SYNC_ENABLED) {
+      try {
+        const result = await odooService.createOrder(order as any);
+        if (result.success && result.odooOrderId) {
+          const odooId = typeof result.odooOrderId === 'string'
+            ? parseInt(result.odooOrderId, 10) || null
+            : result.odooOrderId as number | null;
+          await prisma.order.update({
+            where: { id: orderId },
+            data:  { odooOrderId: odooId, odooSyncedAt: new Date() },
+          });
+        }
+      } catch (err) {
+        logError('Failed to sync order to Odoo', err);
       }
-    } catch (err) {
-      logError('Failed to sync order to Odoo', err);
     }
 
     // SMS + Email confirmation
@@ -162,8 +165,8 @@ class OutboxWorker {
       }
     }
 
-    // Update Odoo
-    if (order.odooOrderId) {
+    // Update Odoo (only when ERP sync is explicitly enabled)
+    if (env.ODOO_SYNC_ENABLED && order.odooOrderId) {
       await odooService.updateOrderStatus(String(order.odooOrderId), newStatus);
     }
   }

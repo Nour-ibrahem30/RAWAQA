@@ -13,15 +13,6 @@ const envSchema = z.object({
   // Database
   DATABASE_URL: z.string().default('postgresql://postgres:postgres@localhost:5432/rawaqa?schema=public'),
   DATABASE_URL_TEST: z.string().optional(),
-  MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/rawaqa'),
-  MONGODB_URI_TEST: z.string().optional(),
-  MONGODB_MAX_POOL_SIZE: z.coerce.number().positive().default(10),
-  MONGODB_MIN_POOL_SIZE: z.coerce.number().positive().default(2),
-  MONGODB_SOCKET_TIMEOUT: z.coerce.number().positive().default(45000),
-  MONGODB_SERVER_SELECTION_TIMEOUT: z.coerce.number().positive().default(10000),
-  MONGODB_WAIT_QUEUE_TIMEOUT: z.coerce.number().positive().default(5000),
-  MONGODB_MAX_IDLE_TIME_MS: z.coerce.number().positive().default(120000),
-
   // DNS & Resolver Configuration
   DNS_SERVERS: z.string().optional(),
   DNS_FALLBACK_ENABLED: z.string().transform((val) => val === 'true').default('false'),
@@ -63,13 +54,6 @@ const envSchema = z.object({
   SMTP_USER:   z.string().optional(),
   SMTP_PASS:   z.string().optional(),
   SMTP_FROM:   z.string().optional(),
-
-  // Paymob Payment Gateway
-  PAYMOB_API_KEY:               z.string().optional(),
-  PAYMOB_INTEGRATION_ID_CARD:   z.coerce.number().min(0).default(0),
-  PAYMOB_INTEGRATION_ID_WALLET: z.coerce.number().min(0).default(0),
-  PAYMOB_IFRAME_ID:             z.string().optional(),
-  PAYMOB_HMAC_SECRET:           z.string().optional(),
 
   // Odoo
   ODOO_URL: z.string().optional(),
