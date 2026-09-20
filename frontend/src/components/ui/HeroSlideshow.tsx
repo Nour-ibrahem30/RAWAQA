@@ -118,16 +118,17 @@ export default function HeroSlideshow({ className = '', style }: Props) {
       {/* ── Dot indicators ── */}
       <div style={{
         position: 'absolute', bottom: '0.75rem', left: '50%',
-        transform: 'translateX(-50%)', display: 'flex', gap: '0.15rem', zIndex: 10,
+        transform: 'translateX(-50%)', display: 'flex', alignItems: 'center',
+        gap: '0.5rem', zIndex: 10,
       }}>
         {SLIDES.map((_, i) => (
           <button
             key={i}
             aria-label={`Slide ${i + 1}`}
+            aria-current={i === currentIdx ? 'true' : undefined}
             onClick={() => goTo(i)}
             style={{
-              width: 44,
-              height: 44,
+              minHeight: 44,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -135,11 +136,12 @@ export default function HeroSlideshow({ className = '', style }: Props) {
               border: 'none',
               cursor: 'pointer',
               padding: 0,
+              lineHeight: 0,
             }}
           >
             <span
               style={{
-                width: i === currentIdx ? 24 : 7,
+                width: i === currentIdx ? 22 : 7,
                 height: 7,
                 borderRadius: 999,
                 background: i === currentIdx ? 'var(--gold-light)' : 'rgba(247,244,236,.35)',
