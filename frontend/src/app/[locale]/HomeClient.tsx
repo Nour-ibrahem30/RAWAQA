@@ -635,7 +635,6 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
         </div>
       </section>
 
-      {reviews.length > 0 && (
       <section
         ref={reviewsRef}
         style={{ padding:'4.5rem 0', background:'var(--charcoal)', position: 'relative', overflow:'hidden' }}
@@ -659,6 +658,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
           </div>
 
           <div data-reveal="scale" className="relative">
+            {reviews.length > 0 ? (
             <div
               className="relative p-5 sm:p-7 rounded-2xl"
               style={{
@@ -715,21 +715,22 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
 
                 {reviews.length > 1 && (
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-0.5">
+                  <div className="flex items-center gap-1.5">
                     {reviews.map((_, i) => (
                       <button
                         key={i}
                         type="button"
                         onClick={() => setActiveReview(i)}
-                        className="touch-target w-11 h-11 flex items-center justify-center p-0 m-0 border-0 bg-transparent cursor-pointer"
+                        className="flex items-center justify-center p-0 m-0 border-0 bg-transparent cursor-pointer"
+                        style={{ minHeight: 44, lineHeight: 0 }}
                         aria-label={t('reviews.go_to', { n: i + 1 })}
                         aria-current={i === activeReview ? 'true' : undefined}
                       >
                         <span
                           className="transition-all duration-300 rounded-full block"
                           style={{
-                            width: i === activeReview ? 14 : 5,
-                            height: 5,
+                            width: i === activeReview ? 16 : 6,
+                            height: 6,
                             background: i === activeReview ? 'var(--gold-light)' : 'rgba(255,255,255,.25)',
                           }}
                         />
@@ -759,10 +760,36 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                 )}
               </div>
             </div>
+            ) : (
+            <div
+              className="relative p-6 sm:p-8 rounded-2xl text-center"
+              style={{
+                background: 'linear-gradient(165deg, color-mix(in srgb, var(--charcoal-soft) 92%, var(--gold-light) 8%) 0%, var(--charcoal-soft) 100%)',
+                border: '1px solid rgba(210,181,106,.15)',
+                boxShadow: '0 15px 35px rgba(0,0,0,.4)',
+              }}
+            >
+              <div className="flex items-center justify-center gap-1 mb-3" aria-hidden>
+                {Array.from({ length: 5 }).map((_, j) => (
+                  <span key={j} style={{ color: 'var(--gold-light)', fontSize: '1.05rem' }}>★</span>
+                ))}
+              </div>
+              <p className="text-sm sm:text-base text-ivory/70 leading-relaxed">
+                {isAr
+                  ? 'لا توجد آراء بعد — كن أول من يشارك تجربته مع منتجات رواقة.'
+                  : 'No reviews yet — be the first to share your experience with RAWAQA.'}
+              </p>
+              <Link
+                href={`/${locale}/shop`}
+                className="btn btn-line-dark btn-sm inline-flex items-center gap-2 mt-5"
+              >
+                {isAr ? 'تسوّق الآن' : 'Shop Now'}
+              </Link>
+            </div>
+            )}
           </div>
         </div>
       </section>
-      )}
 
       <section style={{
         padding:'3.5rem 0',

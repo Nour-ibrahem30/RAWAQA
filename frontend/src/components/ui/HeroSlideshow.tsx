@@ -119,7 +119,7 @@ export default function HeroSlideshow({ className = '', style }: Props) {
       <div style={{
         position: 'absolute', bottom: '0.75rem', left: '50%',
         transform: 'translateX(-50%)', display: 'flex', alignItems: 'center',
-        gap: '0.5rem', zIndex: 10,
+        gap: '0.375rem', zIndex: 10,
       }}>
         {SLIDES.map((_, i) => (
           <button

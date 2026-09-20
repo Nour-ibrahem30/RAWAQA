@@ -41,7 +41,9 @@ async function apiFetch<T>(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), (fetchOptions as any)?.timeout || 8000);
+  // 30s default: the API may be on a platform with cold starts (e.g. Render free tier),
+  // where the first request after idle can take well over the old 8s budget.
+  const timeoutId = setTimeout(() => controller.abort(), (fetchOptions as any)?.timeout || 30000);
 
   let res: Response;
   try {
@@ -51,6 +53,12 @@ async function apiFetch<T>(
       ...fetchOptions,
       headers,
     });
+  } catch (e: any) {
+    // Turn the cryptic "signal is aborted without reason" DOMException into a clear message.
+    if (e?.name === 'AbortError' || /aborted/i.test(e?.message || '')) {
+      throw new Error('The server took too long to respond. It may be waking up — please try again.');
+    }
+    throw e;
   } finally {
     clearTimeout(timeoutId);
   }

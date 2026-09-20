@@ -124,7 +124,8 @@ export default function ProductCard({ product }: { product: Product }) {
                 key={i}
                 type="button"
                 onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIdx(i); }}
-                className="touch-target inline-flex items-center justify-center rounded-full border-0 bg-transparent p-0"
+                className="inline-flex items-center justify-center rounded-full border-0 bg-transparent p-0"
+                style={{ minHeight: 28, lineHeight: 0 }}
                 aria-label={t('show_image', { n: i + 1, name })}
                 aria-current={i === imgIdx ? 'true' : undefined}
               >
