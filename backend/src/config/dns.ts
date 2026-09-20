@@ -450,25 +450,46 @@ export const configureDns = (options: DnsConfigOptions = {}): void => {
   }
 
   // 4. Strategy & Fallback enablement
-  const rawStrategy = options.strategy || (process.env['DNS_RESOLVER_STRATEGY'] as DnsResolverStrategy) || 'system';
+  //    Auto-default to 'fallback' in production when the DB host is a Neon host, because
+  //    some host platforms' container resolvers return EAI_AGAIN for Neon endpoints.
+  //    Explicit env/options always win over this default.
+  const dbHostForDefault = (process.env['DATABASE_URL'] || process.env['DATABASE_URL_UNPOOLED'] || '');
+  const looksLikeNeon = /neon\.tech/i.test(dbHostForDefault);
+  const productionNeonDefault =
+    process.env['NODE_ENV'] === 'production' && looksLikeNeon ? 'fallback' : 'system';
+
+  const rawStrategy = options.strategy
+    || (process.env['DNS_RESOLVER_STRATEGY'] as DnsResolverStrategy)
+    || productionNeonDefault;
   activeStrategy = ['system', 'fallback', 'public'].includes(rawStrategy) ? rawStrategy : 'system';
 
   const rawFallbackEnabled = options.fallbackEnabled !== undefined
     ? options.fallbackEnabled
-    : process.env['DNS_FALLBACK_ENABLED'] === 'true';
+    : (process.env['DNS_FALLBACK_ENABLED'] === 'true' || productionNeonDefault === 'fallback');
 
   // Fallback is only active if explicitly enabled or if strategy explicitly specifies fallback/public
   fallbackEnabled = rawFallbackEnabled || activeStrategy === 'fallback' || activeStrategy === 'public';
 
-  // 5. MongoDB Host allowlist population
+  // 5. Database host allowlist population.
+  //    The scoped fallback resolver only rescues hosts on this allowlist. Since the
+  //    app now runs on PostgreSQL (Neon), the primary host to protect is DATABASE_URL.
+  //    We also keep any MONGODB_URI host for backward-compat (harmless if unset).
   if (options.mongoHosts) {
     setMongoHostsAllowlist(options.mongoHosts);
   } else {
-    const rawUri = process.env['NODE_ENV'] === 'test'
+    const pgUri = process.env['NODE_ENV'] === 'test'
+      ? (process.env['DATABASE_URL_TEST'] || process.env['DATABASE_URL'])
+      : (process.env['DATABASE_URL'] || process.env['DATABASE_URL_UNPOOLED']);
+    const mongoUri = process.env['NODE_ENV'] === 'test'
       ? (process.env['MONGODB_URI_TEST'] || process.env['MONGODB_URI'])
       : process.env['MONGODB_URI'];
-    const extracted = extractMongoHostsFromUri(rawUri);
-    setMongoHostsAllowlist(extracted);
+    // Also include the unpooled Neon host if present, so migrations/session ops resolve too.
+    const hosts = [
+      ...extractMongoHostsFromUri(pgUri),
+      ...extractMongoHostsFromUri(process.env['DATABASE_URL_UNPOOLED']),
+      ...extractMongoHostsFromUri(mongoUri),
+    ].filter((h, i, arr) => h && arr.indexOf(h) === i);
+    setMongoHostsAllowlist(hosts);
   }
 
   // 6. Install interceptor if fallback is enabled or strategy is non-system

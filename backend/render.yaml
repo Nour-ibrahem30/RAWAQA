@@ -31,6 +31,14 @@ services:
         value: true
       - key: COOKIE_SAME_SITE
         value: none
+      # ── DNS resilience (host platform's resolver returns EAI_AGAIN for Neon) ──
+      # Enables the scoped public-DNS fallback for the DATABASE_URL host.
+      - key: DNS_FALLBACK_ENABLED
+        value: true
+      - key: DNS_RESOLVER_STRATEGY
+        value: fallback
+      - key: DNS_FALLBACK_SERVERS
+        value: 1.1.1.1,8.8.8.8
       # ── Workers ──
       - key: ENABLE_WORKERS
         value: true
