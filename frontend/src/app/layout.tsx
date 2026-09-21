@@ -32,6 +32,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="shortcut icon" href="/favicon.ico?v=3" />
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+        <link rel="preconnect" href="https://rawaqa-backend.onrender.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://rawaqa-backend.onrender.com" />
+        <link rel="preconnect" href="https://accounts.google.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://accounts.google.com" />
       </head>
       <body suppressHydrationWarning>
         {children}

@@ -16,7 +16,7 @@ import { ScrollReveal } from '@/components/ui/ScrollAnimations';
 import BackToTop from '@/components/ui/BackToTop';
 import LocaleHtmlAttrs from '@/components/ui/LocaleHtmlAttrs';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rawaqa.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rawaqa-ruby.vercel.app';
 
 export async function generateMetadata({
   params,

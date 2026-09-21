@@ -31,7 +31,7 @@ interface LoadingScreenProps {
 export default function LoadingScreen({
   isPersistent = false,
   onFinished,
-  minDuration = 3200,
+  minDuration = 1800,
 }: LoadingScreenProps) {
   const params = useParams();
   const locale = ((params?.locale as string) || 'ar') === 'en' ? 'en' : 'ar';
@@ -91,7 +91,7 @@ export default function LoadingScreen({
     // Message cycler — slower so messages are readable
     const msgInterval = setInterval(() => {
       setMsgIdx((curr) => (curr + 1) % messages.length);
-    }, 1600);
+    }, 1100);
 
     // Completion timeout (only when not persistent)
     let tOut: NodeJS.Timeout | null = null;
