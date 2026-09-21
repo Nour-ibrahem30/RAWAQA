@@ -9,8 +9,8 @@ import type { Order } from '@/lib/types';
 
 const STATUS_ORDER: Order['status'][] = ['pending', 'confirmed', 'preparing', 'shipped', 'delivered'];
 
-const DARK   = '#0f0e0a';
-const CARD   = 'rgba(30,27,21,.9)';
+const DARK   = 'var(--charcoal)';
+const CARD   = 'rgba(128,120,100,.08)';
 const BORDER = 'rgba(210,181,106,.1)';
 const IVORY  = 'var(--ivory)';
 const GOLD   = 'var(--gold-light)';

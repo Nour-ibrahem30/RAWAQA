@@ -13,9 +13,9 @@ import type { Order } from '@/lib/types';
 /* ── helpers ─────────────────────────────────────────────────── */
 const GOLD   = 'var(--gold-light)';
 const IVORY  = 'var(--ivory)';
-const CARD   = 'rgba(30,27,21,.92)';
+const CARD   = 'rgba(128,120,100,.08)';
 const BORDER = 'rgba(210,181,106,.1)';
-const DIM    = 'rgba(247,244,236,.38)';
+const DIM    = 'var(--text-on-bg-38)';
 
 const GOVERNORATES = [
   'cairo','giza','alexandria','qalyubia','dakahlia','sharqia','gharbia',
@@ -205,7 +205,7 @@ export default function AccountPage() {
   ];
 
   return (
-    <div style={{ background: '#0f0e0a', minHeight: '100vh', color: IVORY }}>
+    <div style={{ background: 'var(--charcoal)', minHeight: '100vh', color: IVORY }}>
 
       {/* ── Ambient glow ── */}
       <div aria-hidden style={{

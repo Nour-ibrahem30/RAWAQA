@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -84,7 +84,7 @@ export default function Navbar() {
     fontSize:      '.78rem',
     letterSpacing: '.04em',
     fontWeight:    active ? 600 : 400,
-    color:         active ? 'var(--gold-light)' : 'rgba(247,244,236,.72)',
+    color:         active ? 'var(--gold-light)' : 'var(--ivory)',
     transition:    'color 180ms ease',
     position:      'relative',
     padding:       '.2rem 0',
@@ -92,17 +92,17 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ─── Desktop Navbar ──────────────────────────────────────────── */}
+      {/* â”€â”€â”€ Desktop Navbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <nav
         className="fixed top-0 inset-x-0 z-50 transition-all duration-300"
         style={{
           background: solid
-            ? 'rgba(15,14,10,.92)'
-            : 'linear-gradient(to bottom, rgba(15,14,10,.85) 0%, rgba(15,14,10,.4) 70%, transparent 100%)',
+            ? 'color-mix(in srgb, var(--charcoal) 92%, transparent)'
+            : `linear-gradient(to bottom, color-mix(in srgb, var(--charcoal) 85%, transparent) 0%, color-mix(in srgb, var(--charcoal) 40%, transparent) 70%, transparent 100%)`,
           backdropFilter: solid ? 'blur(20px) saturate(1.4)' : 'blur(6px)',
           WebkitBackdropFilter: solid ? 'blur(20px) saturate(1.4)' : 'blur(6px)',
           borderBottom: solid ? '1px solid rgba(210,181,106,.1)' : 'none',
-          boxShadow:    solid ? '0 4px 24px rgba(0,0,0,.3)' : 'none',
+          boxShadow:    solid ? '0 4px 24px rgba(0,0,0,.15)' : 'none',
           padding:      solid ? '.75rem 0' : '1rem 0',
           color: 'var(--ivory)',
         }}
@@ -117,7 +117,7 @@ export default function Navbar() {
           gap: '1rem',
         }}>
 
-          {/* ── Brand / Logo ─────────────────────────────────────────── */}
+          {/* â”€â”€ Brand / Logo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <Link
             href={`/${locale}`}
             aria-label={t('home')}
@@ -142,7 +142,7 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* ── Center nav links (desktop) ───────────────────────────── */}
+          {/* â”€â”€ Center nav links (desktop) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <div className="hidden md:flex items-center" style={{ gap: '2rem' }}>
             {[
               { href: shopHref,            label: t('shop'),  active: isShopActive },
@@ -155,7 +155,7 @@ export default function Navbar() {
                 aria-current={link.active ? 'page' : undefined}
                 className="nav-link-anim"
                 onMouseEnter={e => { if (!link.active) (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ivory)'; }}
-                onMouseLeave={e => { if (!link.active) (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(247,244,236,.72)'; }}
+                onMouseLeave={e => { if (!link.active) (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ivory)'; }}
               >
                 {link.label}
                 {link.active && (
@@ -170,10 +170,10 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* ── Right side actions ───────────────────────────────────── */}
+          {/* â”€â”€ Right side actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '.25rem', flexShrink: 0 }}>
 
-            {/* Language switcher — subtle, text-only on desktop */}
+            {/* Language switcher â€” subtle, text-only on desktop */}
             <button
               type="button"
               onClick={switchLocale}
@@ -182,14 +182,14 @@ export default function Navbar() {
                 alignItems: 'center', justifyContent: 'center',
                 height: 36, padding: '0 .75rem',
                 fontSize: '.65rem', fontWeight: 700, letterSpacing: '.12em',
-                color: 'rgba(247,244,236,.45)',
+                color: 'var(--text-on-bg-45)',
                 background: 'none', border: 'none', cursor: 'pointer',
                 transition: 'color 180ms',
                 borderRadius: 999,
               }}
-              aria-label={t('switch_language', { lang: otherLocale === 'ar' ? 'العربية' : 'English' })}
-              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(247,244,236,.85)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(247,244,236,.45)')}
+              aria-label={t('switch_language', { lang: otherLocale === 'ar' ? 'Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©' : 'English' })}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--ivory)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-on-bg-45)')}
             >
               {otherLocale.toUpperCase()}
             </button>
@@ -197,7 +197,7 @@ export default function Navbar() {
             {/* Divider */}
             <div className="hidden md:block" style={{
               width: 1, height: 18,
-              background: 'rgba(247,244,236,.1)',
+              background: 'rgba(128,120,100,.1)',
               margin: '0 .25rem',
             }} />
 
@@ -207,7 +207,7 @@ export default function Navbar() {
               style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 width: 40, height: 40, borderRadius: 10,
-                color: 'rgba(247,244,236,.7)',
+                color: 'var(--ivory)',
                 transition: 'all 180ms ease',
                 background: 'none',
               }}
@@ -217,7 +217,7 @@ export default function Navbar() {
                 (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(210,181,106,.08)';
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(247,244,236,.7)';
+                (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ivory)';
                 (e.currentTarget as HTMLAnchorElement).style.background = 'none';
               }}
             >
@@ -233,7 +233,7 @@ export default function Navbar() {
                 position: 'relative',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 width: 40, height: 40, borderRadius: 10,
-                color: isCartActive ? 'var(--gold-light)' : 'rgba(247,244,236,.7)',
+                color: isCartActive ? 'var(--gold-light)' : 'var(--ivory)',
                 background: isCartActive ? 'rgba(210,181,106,.08)' : 'none',
                 transition: 'all 180ms ease',
               }}
@@ -244,7 +244,7 @@ export default function Navbar() {
                 (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(210,181,106,.08)';
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLAnchorElement).style.color = isCartActive ? 'var(--gold-light)' : 'rgba(247,244,236,.7)';
+                (e.currentTarget as HTMLAnchorElement).style.color = isCartActive ? 'var(--gold-light)' : 'var(--ivory)';
                 (e.currentTarget as HTMLAnchorElement).style.background = isCartActive ? 'rgba(210,181,106,.08)' : 'none';
               }}
             >
@@ -308,7 +308,7 @@ export default function Navbar() {
                     display: 'inline-flex', alignItems: 'center', gap: '.5rem',
                     height: 34, padding: '0 .625rem',
                     fontSize: '.75rem', fontWeight: 500,
-                    color: isAccountActive ? 'var(--gold-light)' : 'rgba(247,244,236,.75)',
+                    color: isAccountActive ? 'var(--gold-light)' : 'var(--ivory)',
                     background: isAccountActive ? 'rgba(210,181,106,.06)' : 'none',
                     borderRadius: 999,
                     transition: 'all 180ms ease',
@@ -316,7 +316,7 @@ export default function Navbar() {
                   }}
                   aria-current={isAccountActive ? 'page' : undefined}
                   onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ivory)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = isAccountActive ? 'var(--gold-light)' : 'rgba(247,244,236,.75)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = isAccountActive ? 'var(--gold-light)' : 'var(--ivory)'; }}
                 >
                   {/* Avatar circle */}
                   <span style={{
@@ -330,7 +330,7 @@ export default function Navbar() {
                   <span className="hidden lg:inline">{user?.name?.split(' ')[0]}</span>
                 </Link>
 
-                {/* Logout — icon only */}
+                {/* Logout â€” icon only */}
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -338,13 +338,13 @@ export default function Navbar() {
                     width: 34, height: 34, borderRadius: 10, flexShrink: 0,
                     background: 'none', border: 'none', cursor: 'pointer',
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    color: 'rgba(247,244,236,.35)',
+                    color: 'var(--text-on-bg-35)',
                     transition: 'all 180ms',
                   }}
                   aria-label={t('logout')}
                   title={t('logout')}
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f87171'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,.07)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(247,244,236,.35)'; (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-on-bg-35)'; (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
                     <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" strokeLinecap="round" />
@@ -389,7 +389,7 @@ export default function Navbar() {
                 width: 40, height: 40, borderRadius: 10,
                 background: 'none', border: 'none', cursor: 'pointer',
                 alignItems: 'center', justifyContent: 'center',
-                color: 'rgba(247,244,236,.85)',
+                color: 'var(--ivory)',
                 marginInlineStart: '.25rem',
               }}
               onClick={() => { if (window.innerWidth < 768) setMenuOpen(true); }}
@@ -405,7 +405,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* ─── Mobile menu — hidden on md+ ────────────────────────────── */}
+      {/* â”€â”€â”€ Mobile menu â€” hidden on md+ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {menuOpen && (
         <div
           id="mobile-nav-dialog"
@@ -443,12 +443,12 @@ export default function Navbar() {
               onClick={() => setMenuOpen(false)}
               style={{
                 width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,.05)',
-                border: 'none', cursor: 'pointer', color: 'rgba(247,244,236,.6)',
+                border: 'none', cursor: 'pointer', color: 'var(--ivory)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem',
               }}
               aria-label={t('close_menu')}
             >
-              ✕
+              âœ•
             </button>
           </div>
 
@@ -472,7 +472,7 @@ export default function Navbar() {
                 style={{
                   display: 'block', padding: '.875rem 0',
                   fontSize: '1.05rem', fontWeight: l.active ? 600 : 400,
-                  color: l.active ? 'var(--gold-light)' : 'rgba(247,244,236,.8)',
+                  color: l.active ? 'var(--gold-light)' : 'var(--ivory)',
                   borderBottom: '1px solid rgba(255,255,255,.05)',
                   textDecoration: 'none',
                 }}
@@ -487,7 +487,7 @@ export default function Navbar() {
                 style={{
                   display: 'block', padding: '.875rem 0', width: '100%',
                   textAlign: isAr ? 'right' : 'left', background: 'none', border: 'none',
-                  cursor: 'pointer', fontSize: '1.05rem', color: 'rgba(247,244,236,.4)',
+                  cursor: 'pointer', fontSize: '1.05rem', color: 'var(--text-on-bg-40)',
                 }}
               >
                 {t('logout')}
@@ -508,12 +508,12 @@ export default function Navbar() {
                 fontSize: '.7rem', fontWeight: 700, letterSpacing: '.1em',
                 background: 'rgba(255,255,255,.05)',
                 border: '1px solid rgba(255,255,255,.1)',
-                color: 'rgba(247,244,236,.55)',
+                color: 'var(--text-on-bg-55)',
                 cursor: 'pointer',
               }}
-              aria-label={t('switch_language', { lang: otherLocale === 'ar' ? 'العربية' : 'English' })}
+              aria-label={t('switch_language', { lang: otherLocale === 'ar' ? 'Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©' : 'English' })}
             >
-              {otherLocale === 'ar' ? 'العربية' : 'English'}
+              {otherLocale === 'ar' ? 'Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©' : 'English'}
             </button>
           </div>
         </div>
@@ -521,3 +521,4 @@ export default function Navbar() {
     </>
   );
 }
+
