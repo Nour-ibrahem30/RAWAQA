@@ -2,13 +2,38 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { productsApi, categoriesApi, uploadApi } from '@/lib/api';
+import { productsApi, categoriesApi } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { AdminInput, AdminTextarea, AdminSelect } from '@/components/admin/AdminInput';
 import { resolveProductImageUrl } from '@/lib/utils';
 import type { Category, Product } from '@/lib/types';
 
 interface Props { productId?: string; }
+
+// ── Direct Cloudinary upload from browser ─────────────────────────────────────
+async function uploadToCloudinaryDirect(files: File[]): Promise<string[]> {
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const preset    = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  if (!cloudName || !preset) throw new Error('Cloudinary env vars missing');
+
+  return Promise.all(files.map(async (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', preset);
+    fd.append('folder', 'rawaqa/products');
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Cloudinary upload failed');
+    }
+    const data = await res.json();
+    return data.secure_url as string;
+  }));
+}
 
 const EMPTY = {
   sku: '', nameAr: '', nameEn: '', descriptionAr: '', descriptionEn: '',
@@ -201,7 +226,7 @@ export default function ProductForm({ productId }: Props) {
                 if (!files || files.length === 0) return;
                 setUploading(true);
                 try {
-                  const uploadedUrls = await uploadApi.direct(Array.from(files));
+                  const uploadedUrls = await uploadToCloudinaryDirect(Array.from(files));
                   const currentUrls = form.images ? form.images.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
                   const combined = [...currentUrls, ...uploadedUrls];
                   setForm(f => ({ ...f, images: combined.join(', ') }));
