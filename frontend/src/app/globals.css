@@ -27,6 +27,18 @@
   --forest:         #4B5B45;
   --dune:           #C9A876;
 
+  /* ── Admin dashboard theme tokens (dark by default) ── */
+  --admin-bg:        #0f0e0a;
+  --admin-bg-soft:   #15130F;
+  --admin-bg-card:   #15130F;
+  --admin-border:    rgba(210,181,106,.12);
+  --admin-border-sm: rgba(210,181,106,.1);
+  --admin-text:      #F7F4EC;
+  --admin-text-dim:  rgba(247,244,236,.5);
+  --admin-text-faint:rgba(247,244,236,.35);
+  --admin-gold:      #D2B56A;
+  --admin-active-bg: rgba(210,181,106,.12);
+
   /* Spacing scale */
   --sp-xs:   0.5rem;
   --sp-sm:   0.875rem;
@@ -43,6 +55,20 @@
   --dur-fast:    240ms;
   --dur-mid:     420ms;
   --dur-slow:    680ms;
+}
+
+/* ─── ADMIN LIGHT THEME ─────────────────────────────────────── */
+[data-admin-theme="light"] {
+  --admin-bg:        #F4F1EB;
+  --admin-bg-soft:   #FFFFFF;
+  --admin-bg-card:   #FFFFFF;
+  --admin-border:    rgba(173,138,76,.18);
+  --admin-border-sm: rgba(173,138,76,.15);
+  --admin-text:      #1E1A12;
+  --admin-text-dim:  rgba(30,26,18,.5);
+  --admin-text-faint:rgba(30,26,18,.35);
+  --admin-gold:      #AD8A4C;
+  --admin-active-bg: rgba(173,138,76,.1);
 }
 
 /* ─── BASE ──────────────────────────────────────────────────── */

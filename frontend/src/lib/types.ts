@@ -358,5 +358,28 @@ export const THEME_PRESETS: ThemePreset[] = [
       dune: '#BA92A8',
     },
   },
+  {
+    id: 'pure-white',
+    name: 'Pure White & Warm Gold',
+    nameAr: 'الأبيض الناصع والذهب الدافئ',
+    description: 'Clean bright white with warm ivory tones and refined golden accents for a fresh, luxurious look.',
+    colors: {
+      charcoal:     '#FFFFFF',
+      charcoalSoft: '#F8F6F2',
+      ivory:        '#1A1612',
+      ivory2:       '#2C2820',
+      sand:         '#E8E2D8',
+      gold:         '#AD8A4C',
+      goldLight:    '#D2B56A',
+      goldPale:     '#F0E6CC',
+      ink:          '#1A1612',
+      inkSoft:      '#6B6358',
+      clay:         '#A8543A',
+      indigo:       '#3B5578',
+      ochre:        '#BE8F2E',
+      forest:       '#4B5B45',
+      dune:         '#C9A876',
+    },
+  },
 ];
 

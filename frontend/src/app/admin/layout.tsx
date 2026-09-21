@@ -51,12 +51,15 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [lang, setLang] = useState<'en' | 'ar'>('en'); // always start 'en' on server
+  const [lang, setLang] = useState<'en' | 'ar'>('en');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   // Read localStorage only on client after hydration
   useEffect(() => {
     const stored = localStorage.getItem('rawaqa_admin_lang') as 'en' | 'ar' | null;
     if (stored === 'ar') setLang('ar');
+    const storedTheme = localStorage.getItem('rawaqa_admin_theme') as 'dark' | 'light' | null;
+    if (storedTheme === 'light') setTheme('light');
   }, []);
 
   const t   = UI[lang];
@@ -66,6 +69,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     const next = lang === 'en' ? 'ar' : 'en';
     setLang(next);
     localStorage.setItem('rawaqa_admin_lang', next);
+  };
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('rawaqa_admin_theme', next);
   };
 
   useEffect(() => {
@@ -97,8 +106,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       dir={isAr ? 'rtl' : 'ltr'}
+      data-admin-theme={theme}
       className="min-h-screen flex"
-      style={{ background: '#0f0e0a', color: '#F7F4EC', fontFamily: 'var(--font-manrope, sans-serif)' }}
+      style={{
+        background: 'var(--admin-bg)',
+        color: 'var(--admin-text)',
+        fontFamily: 'var(--font-manrope, sans-serif)',
+        transition: 'background 300ms ease, color 300ms ease',
+      }}
     >
       {/* Sidebar */}
       <aside
@@ -107,48 +122,69 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         } lg:relative lg:translate-x-0`}
         style={{
           width: 240,
-          background: '#15130F',
-          [isAr ? 'borderLeft' : 'borderRight']: '1px solid rgba(210,181,106,.12)',
+          background: 'var(--admin-bg-soft)',
+          [isAr ? 'borderLeft' : 'borderRight']: '1px solid var(--admin-border)',
           [isAr ? 'right' : 'left']: 0,
         }}
       >
         {/* Logo + Lang toggle */}
         <div
           className="flex items-center justify-between px-4 py-5 border-b"
-          style={{ borderColor: 'rgba(210,181,106,.12)' }}
+          style={{ borderColor: 'var(--admin-border)' }}
         >
           <div className="flex items-center gap-2.5">
             <svg width="28" height="28" viewBox="0 0 60 60" fill="none">
-              <circle cx="30" cy="30" r="28" stroke="rgba(247,244,236,.4)" strokeWidth="1.1" />
-              <path d="M18 36c0-9 5-16 12-16s12 7 12 16c0 4-5 6-12 6s-12-2-12-6z" stroke="#D2B56A" strokeWidth="1.4" />
+              <circle cx="30" cy="30" r="28" stroke="var(--admin-text-dim)" strokeWidth="1.1" />
+              <path d="M18 36c0-9 5-16 12-16s12 7 12 16c0 4-5 6-12 6s-12-2-12-6z" stroke="var(--admin-gold)" strokeWidth="1.4" />
             </svg>
             <div>
-              <p style={{ fontFamily: 'var(--font-fraunces, serif)', fontSize: '1rem', letterSpacing: '.12em' }}>RAWAQA</p>
-              <p style={{ fontSize: '.62rem', letterSpacing: '.1em', color: 'rgba(247,244,236,.3)', textTransform: 'uppercase' }}>
+              <p style={{ fontFamily: 'var(--font-fraunces, serif)', fontSize: '1rem', letterSpacing: '.12em', color: 'var(--admin-text)' }}>RAWAQA</p>
+              <p style={{ fontSize: '.62rem', letterSpacing: '.1em', color: 'var(--admin-text-faint)', textTransform: 'uppercase' }}>
                 {t.admin}
               </p>
             </div>
           </div>
 
-          {/* Language toggle */}
-          <button
-            onClick={toggleLang}
-            title={lang === 'en' ? 'Switch to Arabic' : 'التبديل للإنجليزية'}
-            style={{
-              background: 'rgba(210,181,106,.1)',
-              border: '1px solid rgba(210,181,106,.2)',
-              borderRadius: 8,
-              padding: '.25rem .5rem',
-              cursor: 'pointer',
-              color: '#D2B56A',
-              fontSize: '.65rem',
-              fontWeight: 700,
-              letterSpacing: '.06em',
-              flexShrink: 0,
-            }}
-          >
-            {lang === 'en' ? 'ع' : 'EN'}
-          </button>
+          <div style={{ display: 'flex', gap: '.4rem' }}>
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              style={{
+                background: 'var(--admin-active-bg)',
+                border: '1px solid var(--admin-border)',
+                borderRadius: 8,
+                padding: '.25rem .45rem',
+                cursor: 'pointer',
+                color: 'var(--admin-gold)',
+                fontSize: '.8rem',
+                lineHeight: 1,
+                flexShrink: 0,
+              }}
+            >
+              {theme === 'dark' ? '☀' : '🌙'}
+            </button>
+
+            {/* Language toggle */}
+            <button
+              onClick={toggleLang}
+              title={lang === 'en' ? 'Switch to Arabic' : 'التبديل للإنجليزية'}
+              style={{
+                background: 'var(--admin-active-bg)',
+                border: '1px solid var(--admin-border)',
+                borderRadius: 8,
+                padding: '.25rem .5rem',
+                cursor: 'pointer',
+                color: 'var(--admin-gold)',
+                fontSize: '.65rem',
+                fontWeight: 700,
+                letterSpacing: '.06em',
+                flexShrink: 0,
+              }}
+            >
+              {lang === 'en' ? 'ع' : 'EN'}
+            </button>
+          </div>
         </div>
 
         {/* Nav */}
@@ -160,8 +196,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               onClick={() => setSidebarOpen(false)}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 text-sm transition-all"
               style={{
-                background: isActive(item.href) ? 'rgba(210,181,106,.12)' : 'transparent',
-                color: isActive(item.href) ? '#D2B56A' : 'rgba(247,244,236,.6)',
+                background: isActive(item.href) ? 'var(--admin-active-bg)' : 'transparent',
+                color: isActive(item.href) ? 'var(--admin-gold)' : 'var(--admin-text-dim)',
                 flexDirection: isAr ? 'row-reverse' : 'row',
                 textAlign: isAr ? 'right' : 'left',
               }}
@@ -176,14 +212,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         <div
           className="px-4 py-4 border-t"
           style={{
-            borderColor: 'rgba(210,181,106,.12)',
+            borderColor: 'var(--admin-border)',
             textAlign: isAr ? 'right' : 'left',
           }}
         >
-          <p style={{ fontSize: '.75rem', color: 'rgba(247,244,236,.5)', marginBottom: 4 }}>{user?.email}</p>
+          <p style={{ fontSize: '.75rem', color: 'var(--admin-text-dim)', marginBottom: 4 }}>{user?.email}</p>
           <button
             onClick={() => logout().then(() => router.push('/ar/login'))}
-            style={{ fontSize: '.72rem', color: 'rgba(247,244,236,.35)', letterSpacing: '.05em' }}
+            style={{ fontSize: '.72rem', color: 'var(--admin-text-faint)', letterSpacing: '.05em' }}
             className="hover:text-ivory transition-colors"
           >
             {t.signOut}
@@ -204,7 +240,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         {/* Top bar */}
         <header
           className="flex items-center justify-between px-6 py-4 border-b sticky top-0 z-20"
-          style={{ background: '#0f0e0a', borderColor: 'rgba(210,181,106,.1)' }}
+          style={{ background: 'var(--admin-bg)', borderColor: 'var(--admin-border-sm)' }}
         >
           <button
             className="lg:hidden"
