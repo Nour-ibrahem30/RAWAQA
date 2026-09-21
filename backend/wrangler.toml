@@ -90,6 +90,37 @@ RATE_LIMIT_MAX_REQUESTS = "2000"
 AUTH_RATE_LIMIT_WINDOW_MS = "900000"
 AUTH_RATE_LIMIT_MAX_REQUESTS = "50"
 
+# JWT expiry (non-secret values)
+JWT_ACCESS_EXPIRES_IN = "15m"
+JWT_REFRESH_EXPIRES_IN = "7d"
+
+# Security
+BCRYPT_ROUNDS = "10"
+
+# Session
+MAX_ACTIVE_SESSIONS_PER_USER = "5"
+SESSION_INACTIVITY_TIMEOUT = "30d"
+
+# SMS (disabled — mock mode)
+SMS_ENABLED = "false"
+SMS_PROVIDER = "mock"
+
+# Odoo ERP (disabled)
+ODOO_SYNC_ENABLED = "false"
+
+# Cloudinary (public, non-secret)
+CLOUDINARY_ENABLED = "true"
+CLOUDINARY_FOLDER = "rawaqa/products"
+CLOUDINARY_CLOUD_NAME = "dr5welrvq"
+
+# Sentry
+SENTRY_ENVIRONMENT = "production"
+
+# DNS fallback
+DNS_FALLBACK_ENABLED = "true"
+DNS_RESOLVER_STRATEGY = "fallback"
+DNS_FALLBACK_SERVERS = "1.1.1.1,8.8.8.8"
+
 # Feature flags (public) — keep aligned with production .env
 FEATURE_GUEST_CHECKOUT = "false"
 FEATURE_REVIEWS = "true"
@@ -99,15 +130,28 @@ FEATURE_REFERRAL = "false"
 # -----------------------------------------------------------------------------
 # SECRETS — do NOT put these here. Set them with `wrangler secret put <NAME>`:
 #
+# REQUIRED (app will crash without these):
 #   wrangler secret put DATABASE_URL
 #   wrangler secret put JWT_ACCESS_SECRET
 #   wrangler secret put JWT_REFRESH_SECRET
+#
+# Email (SMTP — needed for email verification / password reset):
 #   wrangler secret put SMTP_HOST
+#   wrangler secret put SMTP_PORT
+#   wrangler secret put SMTP_SECURE
 #   wrangler secret put SMTP_USER
 #   wrangler secret put SMTP_PASS
-#   # optional (only if enabled): SENTRY_DSN, CLOUDINARY_* (until R2 phase)
+#   wrangler secret put SMTP_FROM
 #
-# DATABASE_URL / JWT_ACCESS_SECRET / JWT_REFRESH_SECRET are REQUIRED — the
-# app's production fail-safe (config/env.ts) throws if they are missing or set
-# to the insecure built-in defaults.
+# Cloudinary (needed for image uploads):
+#   wrangler secret put CLOUDINARY_API_KEY
+#   wrangler secret put CLOUDINARY_API_SECRET
+#
+# Sentry (error monitoring — optional):
+#   wrangler secret put SENTRY_DSN
+#
+# Admin (needed for seeding — optional):
+#   wrangler secret put ADMIN_EMAIL
+#   wrangler secret put ADMIN_PASSWORD
+#   wrangler secret put EXPORT_PASSWORD
 # -----------------------------------------------------------------------------
