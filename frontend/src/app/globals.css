@@ -106,8 +106,8 @@ img, svg { display: block; max-width: 100%; }
   transition-timing-function: cubic-bezier(.22,.61,.36,1);
 }
 /* Don't transition everything that's explicitly animated */
-[data-reveal], [data-stagger] > *, .anim-float, .anim-float-slow,
-.particle, .scroll-progress, .product-card-3d, .category-tile, .why-card,
+.anim-float, .anim-float-slow,
+.particle, .scroll-progress, .product-card-3d, .category-tile,
 .toast {
   transition-property: none;
 }
@@ -249,6 +249,34 @@ img, svg { display: block; max-width: 100%; }
   border-radius: 10px;
 }
 
+/* ─── HERO GRID ──────────────────────────────────────────────── */
+/* Mobile: single column, image above text */
+/* Desktop ≥ lg: two equal columns side by side */
+.hero-grid {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1024px) {
+  .hero-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+  }
+}
+@media (min-width: 1280px) {
+  .hero-grid {
+    grid-template-columns: 55fr 45fr;
+    gap: 5rem;
+  }
+}
+
+/* ─── REVIEW AUTHOR ENTER ───────────────────────────────────── */
+@keyframes reviewAuthorEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.review-author-enter {
+  animation: reviewAuthorEnter 320ms 120ms ease both;
+}
+
 /* ─── TOAST ─────────────────────────────────────────────────── */
 .toast {
   position: fixed;
@@ -287,35 +315,7 @@ img, svg { display: block; max-width: 100%; }
    3D & ANIMATION SYSTEM
    ═══════════════════════════════════════════════════════════════ */
 
-/* ─── SCROLL REVEAL ─────────────────────────────────────────── */
-/* ─── SCROLL REVEAL ─────────────────────────────────────────── */
-[data-reveal] {
-  opacity: 1;
-  transform: none;
-  transition:
-    opacity var(--dur-slow) var(--ease-brand),
-    transform var(--dur-slow) var(--ease-brand);
-}
-
-[data-reveal].revealed {
-  opacity: 1;
-  transform: none;
-}
-
-/* Stagger children */
-[data-stagger] > * {
-  opacity: 1;
-  transform: none;
-  transition:
-    opacity 500ms var(--ease-brand),
-    transform 500ms var(--ease-brand);
-}
-[data-stagger].revealed > *:nth-child(1) { transition-delay: 60ms;  }
-[data-stagger].revealed > *:nth-child(2) { transition-delay: 140ms; }
-[data-stagger].revealed > *:nth-child(3) { transition-delay: 220ms; }
-[data-stagger].revealed > *:nth-child(4) { transition-delay: 300ms; }
-[data-stagger].revealed > *:nth-child(5) { transition-delay: 380ms; }
-[data-stagger].revealed > * { opacity: 1; transform: none; }
+/* ─── SCROLL REVEAL (legacy block removed — see full system below) ── */
 
 /* ─── HERO ANIMATIONS ───────────────────────────────────────── */
 @keyframes heroSlideIn {
@@ -325,6 +325,61 @@ img, svg { display: block; max-width: 100%; }
 @keyframes heroZoom {
   from { transform: scale(1.08); }
   to   { transform: scale(1.0); }
+}
+
+/* Hero-specific richer keyframes */
+@keyframes heroWordDrop {
+  0%   { opacity: 0; transform: translateY(36px); filter: blur(4px); }
+  55%  { filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes heroAccentGrow {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+@keyframes heroEyebrowIn {
+  0%   { opacity: 0; transform: translateX(isAr ? 20px : -20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes heroEyebrowInLtr {
+  0%   { opacity: 0; transform: translateX(-20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes heroEyebrowInRtl {
+  0%   { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes heroSubIn {
+  0%   { opacity: 0; transform: translateY(16px); filter: blur(2px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes heroCTAIn {
+  0%   { opacity: 0; transform: translateY(18px) scale(.95); }
+  65%  { transform: translateY(-3px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes heroScrollBounce {
+  0%, 100% { transform: translateY(0); opacity: .6; }
+  50%       { transform: translateY(7px); opacity: 1; }
+}
+@keyframes heroGoldLinePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(210,181,106,0); }
+  50%       { box-shadow: 0 0 14px 3px rgba(210,181,106,.35); }
+}
+@keyframes heroStatIn {
+  0%   { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes heroImageIn {
+  0%   { opacity: 0; transform: translateX(-24px) scale(.97); filter: blur(6px); }
+  100% { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
+}
+[dir="rtl"] .hero-image-col {
+  animation-name: heroImageInRtl !important;
+}
+@keyframes heroImageInRtl {
+  0%   { opacity: 0; transform: translateX(24px) scale(.97); filter: blur(6px); }
+  100% { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
 }
 
 @keyframes fadeSlideUp {
@@ -803,22 +858,94 @@ img, svg { display: block; max-width: 100%; }
 
 /* ─── HOMEPAGE CARD STAGGER ──────────────────────────────────── */
 .product-card-stagger {
-  animation: cardEntrance 600ms var(--ease-brand) both;
+  opacity: 0;
+  transform: translateY(32px) scale(.97);
+  transition: opacity 560ms cubic-bezier(.4,0,.2,1), transform 560ms cubic-bezier(.4,0,.2,1);
+  will-change: opacity, transform;
 }
-.product-card-stagger:nth-child(1) { animation-delay: 80ms; }
-.product-card-stagger:nth-child(2) { animation-delay: 160ms; }
-.product-card-stagger:nth-child(3) { animation-delay: 240ms; }
-.product-card-stagger:nth-child(4) { animation-delay: 320ms; }
-.product-card-stagger:nth-child(5) { animation-delay: 400ms; }
-.product-card-stagger:nth-child(6) { animation-delay: 480ms; }
+.section-reveal.visible .product-card-stagger,
+.revealed .product-card-stagger {
+  opacity: 1;
+  transform: none;
+}
+.section-reveal.visible .product-card-stagger:nth-child(1),
+.revealed .product-card-stagger:nth-child(1) { transition-delay:  80ms; }
+.section-reveal.visible .product-card-stagger:nth-child(2),
+.revealed .product-card-stagger:nth-child(2) { transition-delay: 170ms; }
+.section-reveal.visible .product-card-stagger:nth-child(3),
+.revealed .product-card-stagger:nth-child(3) { transition-delay: 260ms; }
+.section-reveal.visible .product-card-stagger:nth-child(4),
+.revealed .product-card-stagger:nth-child(4) { transition-delay: 350ms; }
+.section-reveal.visible .product-card-stagger:nth-child(5),
+.revealed .product-card-stagger:nth-child(5) { transition-delay: 430ms; }
+.section-reveal.visible .product-card-stagger:nth-child(6),
+.revealed .product-card-stagger:nth-child(6) { transition-delay: 510ms; }
 
 /* ─── SECTION REVEAL ─────────────────────────────────────────── */
 .section-reveal {
-  opacity: 1;
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 700ms cubic-bezier(.4,0,.2,1), transform 700ms cubic-bezier(.4,0,.2,1);
+  will-change: opacity, transform;
 }
 .section-reveal.visible {
   opacity: 1;
+  transform: none;
 }
+
+/* ── data-reveal elements: hidden by default, animate when .revealed is added to parent ── */
+[data-reveal] {
+  opacity: 0;
+  transition: opacity 650ms cubic-bezier(.4,0,.2,1), transform 650ms cubic-bezier(.4,0,.2,1);
+  will-change: opacity, transform;
+}
+[data-reveal="up"]    { transform: translateY(40px); }
+[data-reveal="down"]  { transform: translateY(-30px); }
+[data-reveal="left"]  { transform: translateX(-40px); }
+[data-reveal="right"] { transform: translateX(40px); }
+[data-reveal="scale"] { transform: scale(.94) translateY(20px); }
+
+/* When parent section gets .visible, children animate in */
+.section-reveal.visible [data-reveal],
+.revealed [data-reveal] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Stagger delays for direct [data-reveal] children */
+.section-reveal.visible [data-reveal]:nth-child(1),
+.revealed [data-reveal]:nth-child(1) { transition-delay: 0ms; }
+.section-reveal.visible [data-reveal]:nth-child(2),
+.revealed [data-reveal]:nth-child(2) { transition-delay: 80ms; }
+.section-reveal.visible [data-reveal]:nth-child(3),
+.revealed [data-reveal]:nth-child(3) { transition-delay: 160ms; }
+.section-reveal.visible [data-reveal]:nth-child(4),
+.revealed [data-reveal]:nth-child(4) { transition-delay: 240ms; }
+
+/* ── data-stagger: children animate in sequence ── */
+[data-stagger] > * {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 550ms cubic-bezier(.4,0,.2,1), transform 550ms cubic-bezier(.4,0,.2,1);
+  will-change: opacity, transform;
+}
+.section-reveal.visible [data-stagger] > *,
+.revealed [data-stagger] > * {
+  opacity: 1;
+  transform: none;
+}
+.section-reveal.visible [data-stagger] > *:nth-child(1),
+.revealed [data-stagger] > *:nth-child(1)  { transition-delay: 60ms; }
+.section-reveal.visible [data-stagger] > *:nth-child(2),
+.revealed [data-stagger] > *:nth-child(2)  { transition-delay: 140ms; }
+.section-reveal.visible [data-stagger] > *:nth-child(3),
+.revealed [data-stagger] > *:nth-child(3)  { transition-delay: 220ms; }
+.section-reveal.visible [data-stagger] > *:nth-child(4),
+.revealed [data-stagger] > *:nth-child(4)  { transition-delay: 300ms; }
+.section-reveal.visible [data-stagger] > *:nth-child(5),
+.revealed [data-stagger] > *:nth-child(5)  { transition-delay: 380ms; }
+.section-reveal.visible [data-stagger] > *:nth-child(6),
+.revealed [data-stagger] > *:nth-child(6)  { transition-delay: 460ms; }
 
 /* ─── SHOP ANIMATIONS ────────────────────────────────────────── */
 .shop-filter-in {

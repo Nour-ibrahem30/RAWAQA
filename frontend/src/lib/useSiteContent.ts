@@ -28,16 +28,10 @@ export function useSiteContent(section: string, initialData?: Record<string, any
     if (cache[section] && Object.keys(cache[section]).length > 0) {
       return cache[section];
     }
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem(`rawaqa_content_${section}`);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          cache[section] = parsed;
-          return parsed;
-        }
-      } catch { /* ignore */ }
-    }
+    // Do NOT read from localStorage during initial render — this causes a
+    // server/client hydration mismatch because the server always renders with {}
+    // while the client would render with whatever is in localStorage.
+    // The localStorage read is deferred to the useEffect after mount.
     return {};
   };
 
@@ -54,6 +48,19 @@ export function useSiteContent(section: string, initialData?: Record<string, any
   }, [section, initialData]);
 
   const refetch = useCallback(() => {
+    // Check localStorage first for a fast paint before the network call
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`rawaqa_content_${section}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && Object.keys(parsed).length > 0) {
+            cache[section] = parsed;
+            setData(parsed);
+          }
+        }
+      } catch { /* ignore */ }
+    }
     contentApi.get(section)
       .then(r => {
         const d = (r as any)?.data ?? r ?? {};

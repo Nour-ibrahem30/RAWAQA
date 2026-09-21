@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
@@ -63,6 +63,13 @@ export default function ProductCard({ product }: { product: Product }) {
   const isAr = locale === 'ar';
 
   const [imgIdx, setImgIdx] = useState(0);
+  const [prevIdx, setPrevIdx] = useState<number | null>(null);
+  const [fading, setFading] = useState(false);
+
+  // Drag/swipe state
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const isDragging = useRef(false);
+
   const images = (product.images ?? [])
     .map((img: any) => (typeof img === 'string' ? img : img?.url))
     .filter(Boolean);
@@ -70,6 +77,52 @@ export default function ProductCard({ product }: { product: Product }) {
   const name        = loc(product.nameAr, product.nameEn, locale);
   const available   = product.inventory.availableQuantity > 0;
   const isLow       = available && product.inventory.availableQuantity <= product.inventory.lowStockThreshold;
+
+  const goTo = (i: number) => {
+    if (i === imgIdx || fading) return;
+    setPrevIdx(imgIdx);
+    setFading(true);
+    setImgIdx(i);
+    setTimeout(() => { setFading(false); setPrevIdx(null); }, 280);
+  };
+
+  const next = () => goTo((imgIdx + 1) % images.length);
+  const prev = () => goTo((imgIdx - 1 + images.length) % images.length);
+
+  // Mouse drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    isDragging.current = false;
+  };
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!dragStart.current) return;
+    if (Math.abs(e.clientX - dragStart.current.x) > 5) isDragging.current = true;
+  };
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!dragStart.current || images.length < 2) { dragStart.current = null; return; }
+    const dx = e.clientX - dragStart.current.x;
+    dragStart.current = null;
+    if (Math.abs(dx) < 30) { isDragging.current = false; return; }
+    // RTL aware: right drag = prev for LTR, next for RTL
+    if (dx < 0) isAr ? prev() : next();
+    else isAr ? next() : prev();
+    isDragging.current = false;
+  };
+  const handleMouseLeave = () => { dragStart.current = null; isDragging.current = false; };
+
+  // Touch handlers
+  const touchStart = useRef<number | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStart.current = e.touches[0]?.clientX ?? null;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart.current === null || images.length < 2) return;
+    const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStart.current;
+    touchStart.current = null;
+    if (Math.abs(dx) < 30) return;
+    if (dx < 0) isAr ? prev() : next();
+    else isAr ? next() : prev();
+  };
 
   const handleAdd = async (e: React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
@@ -84,6 +137,10 @@ export default function ProductCard({ product }: { product: Product }) {
     } catch {
       showToast(isAr ? 'حدث خطأ' : 'Error', 'error');
     }
+  };
+
+  const handleLinkClick = (e: React.MouseEvent) => {
+    if (isDragging.current) e.preventDefault();
   };
 
   const prodId = product.id || (product as any)._id;
@@ -110,32 +167,97 @@ export default function ProductCard({ product }: { product: Product }) {
           aspectRatio: '1/1',
           background: 'rgba(21,19,15,.6)',
           overflow: 'hidden',
+          cursor: images.length > 1 ? 'grab' : 'pointer',
+          userSelect: 'none',
         }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
-        <Link href={href} aria-label={name} className="absolute inset-0 block">
+        {/* Previous image (fading out) */}
+        {prevIdx !== null && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 1,
+            opacity: fading ? 0 : 1,
+            transition: 'opacity 220ms ease',
+            pointerEvents: 'none',
+          }}>
+            <ProductImage src={images[prevIdx] ?? images[0]} name={name} product={product} />
+          </div>
+        )}
+
+        {/* Current image (fading in) */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 2,
+          opacity: fading ? 0 : 1,
+          transition: 'opacity 220ms ease',
+          pointerEvents: 'none',
+        }}>
           <ProductImage src={images[imgIdx] ?? images[0]} name={name} product={product} />
-        </Link>
+        </div>
+
+        {/* Invisible link overlay for navigation */}
+        <Link
+          href={href}
+          aria-label={name}
+          onClick={handleLinkClick}
+          style={{ position: 'absolute', inset: 0, display: 'block', zIndex: 3 }}
+        />
 
         {/* Image dots */}
         {images.length > 1 && (
-          <div className="absolute bottom-2 inset-inline-0 flex items-center justify-center gap-1.5 z-10">
+          <div
+            className="absolute z-[30]"
+            style={{
+              bottom: '0.6rem',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 10px',
+              borderRadius: 999,
+              background: 'rgba(0,0,0,.45)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              border: '1px solid rgba(255,255,255,.1)',
+              pointerEvents: 'auto',
+            }}
+          >
             {images.map((_, i) => (
               <button
                 key={i}
                 type="button"
-                onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIdx(i); }}
-                className="inline-flex items-center justify-center rounded-full border-0 bg-transparent p-0"
-                style={{ minHeight: 28, lineHeight: 0 }}
+                onClick={e => { e.preventDefault(); e.stopPropagation(); goTo(i); }}
+                style={{
+                  padding: 0,
+                  margin: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 20,
+                  minWidth: i === imgIdx ? 18 : 8,
+                }}
                 aria-label={t('show_image', { n: i + 1, name })}
                 aria-current={i === imgIdx ? 'true' : undefined}
               >
                 <span
-                  className="rounded-full block"
                   style={{
-                    width: i === imgIdx ? 14 : 5,
+                    display: 'block',
                     height: 5,
-                    background: i === imgIdx ? 'var(--gold-light)' : 'rgba(255,255,255,.4)',
-                    boxShadow: i === imgIdx ? '0 0 6px rgba(210,181,106,.6)' : 'none',
+                    width: i === imgIdx ? 18 : 5,
+                    borderRadius: 999,
+                    background: i === imgIdx
+                      ? 'var(--gold-light)'
+                      : 'rgba(255,255,255,.5)',
+                    transition: 'all 280ms cubic-bezier(.4,0,.2,1)',
+                    boxShadow: i === imgIdx ? '0 0 8px rgba(210,181,106,.5)' : 'none',
                   }}
                 />
               </button>

@@ -168,7 +168,7 @@ export default function CheckoutPage() {
             governorate: form.governorate,
             notes: form.notes.trim() || undefined,
           },
-          paymentMethod: 'cash_on_delivery',
+          paymentMethod: 'cod',
           couponCode: appliedCoupon?.code || undefined,
           notes: form.notes.trim() || undefined,
         },

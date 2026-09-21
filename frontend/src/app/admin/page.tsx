@@ -42,16 +42,16 @@ function GrowthBadge({ pct }: { pct: number }) {
 // Simple SVG bar chart (no external library)
 function BarChart({ data }: { data: { label: string; value: number }[] }) {
   if (!data.length) return <p style={{ color: DIM, fontSize: '.8rem', textAlign: 'center', padding: '2rem 0' }}>No data yet</p>;
-  const max = Math.max(...data.map(d => d.value), 1);
+  const max = Math.max(...data.map(d => d.value ?? 0), 1);
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 100, padding: '0 4px' }}>
       {data.map((d, i) => (
         <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <div
-            title={`${d.label}: ${formatPrice(d.value, 'en')}`}
+            title={`${d.label ?? ''}: ${formatPrice(d.value ?? 0, 'en')}`}
             style={{
               width: '100%',
-              height: `${Math.max(4, (d.value / max) * 80)}px`,
+              height: `${Math.max(4, ((d.value ?? 0) / max) * 80)}px`,
               background: `linear-gradient(to top, ${GOLD}, rgba(210,181,106,.4))`,
               borderRadius: '4px 4px 0 0',
               transition: 'height 600ms ease',
@@ -59,7 +59,7 @@ function BarChart({ data }: { data: { label: string; value: number }[] }) {
             }}
           />
           <span style={{ fontSize: '.55rem', color: DIM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-            {d.label.slice(5)} {/* show MM-DD */}
+            {(d.label ?? '').slice(5)} {/* show MM-DD */}
           </span>
         </div>
       ))}
@@ -168,9 +168,9 @@ export default function AdminDashboard() {
   })();
 
   const chartData = (stats?.revenueChart ?? []).map(d => ({
-    label: d._id,
-    value: d.revenue,
-  }));
+    label: d._id ?? '',
+    value: d.revenue ?? 0,
+  })).filter(d => d.label);
 
   const orderDonut = stats ? [
     { label: t.orders_pending,   value: stats.orders?.pending   ?? 0, color: '#BE8F2E' },

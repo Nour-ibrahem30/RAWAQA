@@ -149,7 +149,7 @@ export interface Order {
 export interface CheckoutPayload {
   cartId: string;
   shippingAddress: ShippingAddress;
-  paymentMethod: 'cash_on_delivery';
+  paymentMethod: 'cod';
   couponCode?: string;
   notes?: string;
 }

@@ -21,22 +21,30 @@ export default function TrackPage() {
   const locale = (params?.locale as string) || 'ar';
   const isAr   = locale === 'ar';
 
+
   const [input, setInput]   = useState('');
   const [loading, setLoading] = useState(false);
   const [order, setOrder]   = useState<Order | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [denied, setDenied] = useState(false);
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+
     setLoading(true);
     setOrder(null);
     setNotFound(false);
+    setDenied(false);
     try {
       const res = await ordersApi.getByNumber(input.trim(), locale);
       setOrder(res.data);
-    } catch {
-      setNotFound(true);
+    } catch (err: any) {
+      if (err?.status === 401 || err?.status === 403) {
+        setDenied(true);
+      } else {
+        setNotFound(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -90,6 +98,27 @@ export default function TrackPage() {
               {loading ? t('tracking') : t('submit')}
             </button>
           </form>
+
+          {/* Not logged in */}
+          {denied && (
+            <div style={{
+              textAlign: 'center', padding: '3rem',
+              background: CARD, borderRadius: 20, border: `1px solid ${BORDER}`,
+            }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔒</div>
+              <p style={{ fontSize: '1.1rem', fontWeight: 700, color: IVORY, marginBottom: '.5rem' }}>
+                {isAr ? 'يجب تسجيل الدخول أولاً' : 'Sign in required'}
+              </p>
+              <p style={{ fontSize: '.875rem', color: 'rgba(247,244,236,.45)', marginBottom: '1.5rem' }}>
+                {isAr
+                  ? 'لتتبع طلبك، يجب تسجيل الدخول بالحساب المرتبط بهذا الطلب.'
+                  : 'To track your order, please sign in with the account used to place it.'}
+              </p>
+              <a href={`/${locale}/login`} className="btn btn-gold" style={{ display: 'inline-flex' }}>
+                {isAr ? 'تسجيل الدخول' : 'Sign In'}
+              </a>
+            </div>
+          )}
 
           {/* Not found */}
           {notFound && (

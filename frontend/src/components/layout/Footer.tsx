@@ -70,7 +70,7 @@ export default function Footer() {
                 RAWAQA
               </span>
             </Link>
-            <p className="text-xs sm:text-sm text-ivory/60 leading-relaxed">
+            <p className="text-xs sm:text-sm text-ivory/60 leading-relaxed" suppressHydrationWarning>
               {locContent(footerContent, 'tagline', locale) || (isAr
                 ? 'العلامة المصرية الرائدة في صناعة كراسي البين باج الفاخرة للراحة والأناقة.'
                 : 'Leading Egyptian brand crafting luxury bean bag chairs for comfort and elegance.')}
