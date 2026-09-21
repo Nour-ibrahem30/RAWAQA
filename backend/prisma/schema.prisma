@@ -161,6 +161,7 @@ model Category {
   descriptionAr String?
   descriptionEn String?
   image         String?
+  imageAlt      String?
   isActive      Boolean   @default(true)
   order         Int       @default(0)
   productCount  Int       @default(0)

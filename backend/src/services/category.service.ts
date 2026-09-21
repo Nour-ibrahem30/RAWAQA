@@ -191,7 +191,7 @@ export const updateCategory = async (id: string, data: any): Promise<any | null>
   }
 
   const updateData: Prisma.CategoryUpdateInput = {};
-  const fields = ['nameAr', 'nameEn', 'slugAr', 'slugEn', 'descriptionAr', 'descriptionEn', 'image', 'isActive', 'order'];
+  const fields = ['nameAr', 'nameEn', 'slugAr', 'slugEn', 'descriptionAr', 'descriptionEn', 'image', 'imageAlt', 'isActive', 'order'];
   for (const f of fields) {
     if (data[f] !== undefined) (updateData as any)[f] = data[f];
   }

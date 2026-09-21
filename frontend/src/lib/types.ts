@@ -46,6 +46,7 @@ export interface Category {
   descriptionEn?: string;
   slug: string;
   image?: string;
+  imageAlt?: string;  // SEO alt text for the category image
   productCount?: number;
   status: 'active' | 'inactive';
 }
