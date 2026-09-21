@@ -198,7 +198,7 @@ export default function ShopPage() {
               </button>
 
               {hasActiveFilters && (
-                <button onClick={clearFilters} style={{ fontSize: '.8rem', color: 'rgba(247,244,236,.4)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>
+                <button onClick={clearFilters} style={{ fontSize: '.8rem', color: 'var(--text-on-bg-40)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>
                   {t('clear_filters')}
                 </button>
               )}
@@ -218,7 +218,7 @@ export default function ShopPage() {
             <div className="sticky top-28 flex flex-col gap-6">
               {/* Categories */}
               <div>
-                <p style={{ fontSize: '.62rem', letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(247,244,236,.35)', marginBottom: '.875rem', fontWeight: 600 }}>
+                <p style={{ fontSize: '.62rem', letterSpacing: '.18em', textTransform: 'uppercase', color: 'var(--text-on-bg-40)', marginBottom: '.875rem', fontWeight: 600 }}>
                   {isAr ? 'الفئات' : 'Categories'}
                 </p>
                 <ul className="flex flex-col gap-1">
@@ -230,7 +230,7 @@ export default function ShopPage() {
                         fontSize: '.85rem', padding: '.45rem .75rem', borderRadius: 10,
                         cursor: 'pointer', border: 'none',
                         background: !category ? 'rgba(210,181,106,.15)' : 'transparent',
-                        color: !category ? 'var(--gold-light)' : 'rgba(247,244,236,.55)',
+                        color: !category ? 'var(--gold-light)' : 'var(--ivory)',
                         fontWeight: !category ? 700 : 400,
                         transition: 'all 250ms ease',
                       }}
@@ -251,7 +251,7 @@ export default function ShopPage() {
                             fontSize: '.85rem', padding: '.45rem .75rem', borderRadius: 10,
                             cursor: 'pointer', border: 'none',
                             background: isSelected ? 'rgba(210,181,106,.15)' : 'transparent',
-                            color: isSelected ? 'var(--gold-light)' : 'rgba(247,244,236,.55)',
+                            color: isSelected ? 'var(--gold-light)' : 'var(--ivory)',
                             fontWeight: isSelected ? 700 : 400,
                             transition: 'all 250ms ease',
                           }}
@@ -266,7 +266,7 @@ export default function ShopPage() {
 
               {/* Price range */}
               <div>
-                <p style={{ fontSize: '.62rem', letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(247,244,236,.35)', marginBottom: '.875rem', fontWeight: 600 }}>
+                <p style={{ fontSize: '.62rem', letterSpacing: '.18em', textTransform: 'uppercase', color: 'var(--text-on-bg-40)', marginBottom: '.875rem', fontWeight: 600 }}>
                   {t('price_range')}
                 </p>
                 <div className="flex gap-2 items-center">

@@ -152,8 +152,8 @@ export default function ProductCard({ product }: { product: Product }) {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        background: 'rgba(30,27,21,.85)',
-        border: '1px solid rgba(210,181,106,.12)',
+        background: 'color-mix(in srgb, var(--charcoal-soft) 90%, transparent)',
+        border: '1px solid rgba(210,181,106,.15)',
         borderRadius: 20,
         overflow: 'hidden',
         backdropFilter: 'blur(8px)',
@@ -165,7 +165,7 @@ export default function ProductCard({ product }: { product: Product }) {
         style={{
           position: 'relative',
           aspectRatio: '1/1',
-          background: 'rgba(21,19,15,.6)',
+          background: 'color-mix(in srgb, var(--charcoal) 80%, transparent)',
           overflow: 'hidden',
           cursor: images.length > 1 ? 'grab' : 'pointer',
           userSelect: 'none',
@@ -301,7 +301,7 @@ export default function ProductCard({ product }: { product: Product }) {
             pointerEvents: 'none',
             zIndex: 1,
           }}>
-            <span style={{ color: 'rgba(247,244,236,.85)', fontSize: '.78rem', fontWeight: 600, letterSpacing: '.04em' }}>
+            <span style={{ color: 'var(--ivory)', fontSize: '.78rem', fontWeight: 600, letterSpacing: '.04em' }}>
               {t('out_of_stock')}
             </span>
           </div>
@@ -361,7 +361,7 @@ export default function ProductCard({ product }: { product: Product }) {
             {product.compareAtPrice && product.compareAtPrice > product.price && (
               <span style={{
                 fontSize: '.68rem',
-                color: 'rgba(247,244,236,.3)',
+                color: 'var(--text-on-bg-35)',
                 textDecoration: 'line-through',
                 marginInlineStart: '.4rem',
               }}>

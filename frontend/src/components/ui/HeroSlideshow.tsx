@@ -144,7 +144,7 @@ export default function HeroSlideshow({ className = '', style }: Props) {
                 width: i === currentIdx ? 22 : 7,
                 height: 7,
                 borderRadius: 999,
-                background: i === currentIdx ? 'var(--gold-light)' : 'rgba(247,244,236,.35)',
+                background: i === currentIdx ? 'var(--gold-light)' : 'rgba(210,181,106,.35)',
                 transition: 'all 300ms ease',
                 boxShadow: i === currentIdx ? '0 0 10px rgba(210,181,106,.55)' : 'none',
                 display: 'block',
