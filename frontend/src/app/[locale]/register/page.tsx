@@ -195,7 +195,9 @@ export default function RegisterPage() {
       minHeight: '100vh',
       background: 'radial-gradient(ellipse 80% 70% at 50% 0%, color-mix(in srgb, var(--gold) 10%, transparent) 0%, transparent 60%), var(--charcoal)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '2rem 1.25rem', position: 'relative', overflow: 'hidden',
+      padding: '2rem 1.25rem',
+      paddingTop: 'calc(var(--navbar-h, 72px) + 2rem)',
+      position: 'relative', overflow: 'hidden',
     }}>
       <ParticleCanvas />
 
@@ -367,17 +369,16 @@ export default function RegisterPage() {
 
           {/* Login link + back */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.75rem', opacity: cardIn ? 1 : 0, transition: 'opacity 500ms 800ms ease' }}>
-            <p style={{ fontSize: '.83rem', color: 'rgba(247,244,236,.38)' }}>
+            <p style={{ fontSize: '.83rem', color: 'var(--text-on-bg-40)' }}>
               {t('has_account')}{' '}
-              <Link href={`/${locale}/login`} style={{ color: 'var(--gold-light)', fontWeight: 700, textDecoration: 'none' }}>
+              <Link href={`/${locale}/login`} style={{ color: 'var(--gold-light)', fontWeight: 600, textDecoration: 'none' }}>
                 {t('login_link')}
               </Link>
             </p>
             <Link href={`/${locale}/shop`}
-              style={{ fontSize: '.75rem', color: 'rgba(247,244,236,.2)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '.35rem', transition: 'color 250ms ease' }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(247,244,236,.5)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(247,244,236,.2)')}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              style={{ fontSize: '.75rem', color: 'var(--text-on-bg-40)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '.35rem', transition: 'color 250ms ease' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold-light)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-on-bg-40)')}>              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M19 12H5M12 5l-7 7 7 7"/>
               </svg>
               {isAr ? 'العودة للمتجر' : 'Back to shop'}

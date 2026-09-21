@@ -107,6 +107,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     <div
       dir={isAr ? 'rtl' : 'ltr'}
       data-admin-theme={theme}
+      data-theme="dark"
       className="min-h-screen flex"
       style={{
         background: 'var(--admin-bg)',

@@ -27,6 +27,9 @@
   --forest:         #4B5B45;
   --dune:           #C9A876;
 
+  /* ── Navbar height — used by pages with fixed nav ── */
+  --navbar-h: 72px;
+
   /* ── Admin dashboard theme tokens (dark by default) ── */
   --admin-bg:        #0f0e0a;
   --admin-bg-soft:   #15130F;
@@ -132,6 +135,25 @@
 [data-theme="light"] body {
   background: var(--charcoal);
   color: var(--ink);
+}
+
+/* ── Admin area: always stay dark regardless of storefront theme ── */
+[data-theme="dark"],
+[data-admin-theme] {
+  --admin-bg:         #0f0e0a;
+  --admin-bg-soft:    #15130F;
+  --admin-bg-card:    #15130F;
+  --admin-border:     rgba(210,181,106,.12);
+  --admin-border-sm:  rgba(210,181,106,.1);
+  --admin-text:       #F7F4EC;
+  --admin-text-dim:   rgba(247,244,236,.5);
+  --admin-text-faint: rgba(247,244,236,.35);
+  --admin-gold:       #D2B56A;
+  --admin-active-bg:  rgba(210,181,106,.12);
+}
+[data-theme="dark"] body {
+  background: var(--charcoal);
+  color: var(--ivory);
 }
 
 /* ── utility .dark class ── */

@@ -197,10 +197,10 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
         disabled={loading}
         className="w-full flex items-center justify-center gap-3 py-3 px-5 rounded-full border transition-all duration-300 font-semibold text-xs sm:text-sm cursor-pointer"
         style={{
-          background: 'linear-gradient(135deg, rgba(35,31,24,.9) 0%, rgba(20,18,14,.95) 100%)',
+          background: 'color-mix(in srgb, var(--charcoal-soft) 95%, transparent)',
           borderColor: 'rgba(210,181,106,.25)',
           color: 'var(--ivory)',
-          boxShadow: '0 4px 15px rgba(0,0,0,.35)',
+          boxShadow: '0 4px 15px rgba(0,0,0,.15)',
         }}
         onMouseEnter={e => {
           e.currentTarget.style.borderColor = 'var(--gold-light)';
@@ -208,7 +208,7 @@ export default function GoogleAuthButton({ locale, onSuccess, onError }: GoogleA
         }}
         onMouseLeave={e => {
           e.currentTarget.style.borderColor = 'rgba(210,181,106,.25)';
-          e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,.35)';
+          e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,.15)';
         }}
       >
         {loading ? (
