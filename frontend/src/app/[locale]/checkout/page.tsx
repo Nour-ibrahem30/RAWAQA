@@ -141,12 +141,10 @@ export default function CheckoutPage() {
     }
     setPlacing(true);
     try {
-      // 1. Get or sync backend cart
+      // 1. Get or sync backend cart — add all missing items in parallel
       let backendCart = (await cartApi.get(locale)).data;
       if ((!backendCart?.items || backendCart.items.length === 0) && cart.items.length > 0) {
-        for (const item of cart.items) {
-          await cartApi.add(item.product.id, item.quantity);
-        }
+        await Promise.all(cart.items.map(item => cartApi.add(item.product.id, item.quantity)));
         backendCart = (await cartApi.get(locale)).data;
       }
 

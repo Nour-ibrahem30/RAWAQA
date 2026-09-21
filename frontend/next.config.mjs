@@ -4,12 +4,14 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
+  reactStrictMode: true,
+  compress: true,
+
   // Don't fail production build on ESLint warnings/errors
-  // (TypeScript is the type-safety gate; ESLint is for dev guidance only)
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Don't fail on TypeScript errors that tsc already checks
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -17,13 +19,32 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [360, 420, 640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 31536000, // 1 year for optimised images
     remotePatterns: [
       { protocol: 'http',  hostname: 'localhost' },
       { protocol: 'https', hostname: '**' },
     ],
   },
+  // Cache static assets aggressively
+  async headers() {
+    return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/fonts/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ];
+  },
   experimental: {
     instrumentationHook: true,
+    optimizePackageImports: ['next-intl'],
   },
   async redirects() {
     return [

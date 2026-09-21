@@ -601,9 +601,9 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
             <SkeletonGrid count={3} />
           ) : (
             <div data-stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
-              {featured.slice(0, 3).map(p => (
+              {featured.slice(0, 3).map((p, idx) => (
                 <div key={p.id} className="product-card-stagger max-w-[310px] sm:max-w-none mx-auto w-full transition-transform duration-300 hover:-translate-y-1">
-                  <ProductCard product={p} />
+                  <ProductCard product={p} priority={idx < 3} />
                 </div>
               ))}
             </div>

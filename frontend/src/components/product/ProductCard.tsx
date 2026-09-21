@@ -19,7 +19,7 @@ const BAG_SVG: Record<string, string> = {
   'bag-3': 'M200 80 C310 80 370 160 360 260 C350 340 280 370 200 370 C120 370 50 340 40 260 C30 160 90 80 200 80Z',
 };
 
-function ProductImage({ src, name, product }: { src?: string; name: string; product: Product }) {
+function ProductImage({ src, name, product, priority = false }: { src?: string; name: string; product: Product; priority?: boolean }) {
   const [imgError, setImgError] = useState(false);
   const resolved = resolveProductImageUrl(src);
 
@@ -30,6 +30,8 @@ function ProductImage({ src, name, product }: { src?: string; name: string; prod
         alt={name}
         fill
         quality={72}
+        priority={priority}
+        loading={priority ? 'eager' : 'lazy'}
         className="object-cover card-img"
         sizes="(max-width: 640px) 92vw, (max-width: 1024px) 45vw, 360px"
         style={{ transition: 'transform 500ms cubic-bezier(.22,.61,.36,1)' }}
@@ -52,7 +54,7 @@ function ProductImage({ src, name, product }: { src?: string; name: string; prod
   );
 }
 
-export default function ProductCard({ product }: { product: Product }) {
+export default function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const t      = useTranslations('product');
   const params = useParams();
   const router = useRouter();
@@ -65,6 +67,7 @@ export default function ProductCard({ product }: { product: Product }) {
   const [imgIdx, setImgIdx] = useState(0);
   const [prevIdx, setPrevIdx] = useState<number | null>(null);
   const [fading, setFading] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   // Drag/swipe state
   const dragStart = useRef<{ x: number; y: number } | null>(null);
@@ -127,15 +130,19 @@ export default function ProductCard({ product }: { product: Product }) {
   const handleAdd = async (e: React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isAdding) return;                     // prevent double-click
     if (!isLoggedIn) {
       router.push(`/${locale}/login`);
       return;
     }
+    setIsAdding(true);
     try {
       await addToCart(product.id, 1);
       showToast(t('added'), 'success');
     } catch {
       showToast(isAr ? 'حدث خطأ' : 'Error', 'error');
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -156,7 +163,6 @@ export default function ProductCard({ product }: { product: Product }) {
         border: '1px solid rgba(210,181,106,.15)',
         borderRadius: 20,
         overflow: 'hidden',
-        backdropFilter: 'blur(8px)',
       }}
     >
       {/* ── Image ─────────────────────────────────────────── */}
@@ -196,7 +202,7 @@ export default function ProductCard({ product }: { product: Product }) {
           transition: 'opacity 220ms ease',
           pointerEvents: 'none',
         }}>
-          <ProductImage src={images[imgIdx] ?? images[0]} name={name} product={product} />
+          <ProductImage src={images[imgIdx] ?? images[0]} name={name} product={product} priority={priority} />
         </div>
 
         {/* Invisible link overlay for navigation */}
@@ -388,11 +394,17 @@ export default function ProductCard({ product }: { product: Product }) {
           <button
             type="button"
             onClick={handleAdd}
+            disabled={isAdding}
             className="btn btn-gold btn-sm product-card-add text-xs py-1.5 mt-1"
-            style={{ width: '100%', minHeight: 44 }}
+            style={{ width: '100%', minHeight: 44, opacity: isAdding ? 0.7 : 1, transition: 'opacity 200ms' }}
             aria-label={`${t('add_to_cart')}: ${name}`}
           >
-            {t('add_to_cart')}
+            {isAdding ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{ animation: 'rotateSlow 0.8s linear infinite', display: 'inline-block' }}>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+            ) : t('add_to_cart')}
           </button>
         )}
       </div>

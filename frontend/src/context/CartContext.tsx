@@ -98,9 +98,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const local = loadItems();
     if (!local.length) return;
     try {
-      for (const item of local) {
-        await cartApi.add(item.product.id, item.quantity);
-      }
+      // Fire all add requests in parallel instead of sequential
+      await Promise.all(local.map(item => cartApi.add(item.product.id, item.quantity)));
       localStorage.removeItem(STORAGE_KEY);
       await fetchCart();
     } catch {
@@ -190,9 +189,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     mergedRef.current = false;
   }, [persist]);
 
+  const cart = buildLocalCart(items);
+
   return (
     <CartContext.Provider value={{
-      cart: buildLocalCart(items), itemCount: buildLocalCart(items).itemCount,
+      cart, itemCount: cart.itemCount,
       isLoading, fetchCart, addToCart, updateItem, removeItem, clearCart, mergeWithBackend,
     }}>
       {children}
