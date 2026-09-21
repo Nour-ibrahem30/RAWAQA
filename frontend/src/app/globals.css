@@ -441,57 +441,48 @@ img, svg { display: block; max-width: 100%; }
 
 /* ─── HERO RESPONSIVE LAYOUT ────────────────────────────────── */
 .hero-grid-layout {
+  display: grid;
   grid-template-columns: minmax(0, 480px) 1fr;
-  direction: ltr; /* force LTR grid order, RTL handled via rtl-hero */
-}
-.hero-grid-layout.rtl-hero {
-  grid-template-columns: 1fr minmax(0, 480px);
-  direction: rtl;
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: center;
 }
 
-/* Image col: left on LTR, right on RTL */
-.hero-img-col   { grid-column: 1; }
-.rtl-hero .hero-img-col   { grid-column: 2; }
-.hero-content-col { grid-column: 2; }
-.rtl-hero .hero-content-col { grid-column: 1; }
+/* RTL: image on right, content on left — use order */
+[dir="rtl"] .hero-grid-layout {
+  grid-template-columns: 1fr minmax(0, 480px);
+}
+
+[dir="rtl"] .hero-img-col   { order: 2; }
+[dir="rtl"] .hero-content-col { order: 1; }
 
 /* Mobile: single column, image on top */
 @media (max-width: 767px) {
   .hero-grid-layout,
-  .hero-grid-layout.rtl-hero {
+  [dir="rtl"] .hero-grid-layout {
     grid-template-columns: 1fr !important;
-    direction: inherit;
   }
   .hero-img-col,
-  .rtl-hero .hero-img-col {
-    grid-column: 1;
-    grid-row: 1;
-    aspect-ratio: 3/2 !important;  /* landscape on mobile */
+  [dir="rtl"] .hero-img-col {
+    order: 1;
+    aspect-ratio: 3/2 !important;
     max-height: 320px;
   }
-  /* Mobile: center stats row and CTAs */
   .hero-content-col,
-  .rtl-hero .hero-content-col {
-    grid-column: 1;
-    grid-row: 2;
+  [dir="rtl"] .hero-content-col {
+    order: 2;
     text-align: center;
   }
   .hero-stats-row {
-    justify-content: center;
-  }
-  .hero-content-col [style*="inline-flex"],
-  .rtl-hero .hero-content-col [style*="inline-flex"] {
     justify-content: center;
   }
 }
 
 /* Tablet (768–1023): smaller image col */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .hero-grid-layout,
-  .hero-grid-layout.rtl-hero {
+  .hero-grid-layout {
     grid-template-columns: minmax(0, 340px) 1fr !important;
   }
-  .rtl-hero {
+  [dir="rtl"] .hero-grid-layout {
     grid-template-columns: 1fr minmax(0, 340px) !important;
   }
 }
@@ -1089,7 +1080,7 @@ img, svg { display: block; max-width: 100%; }
   opacity: 0;
   transform: translateY(32px) scale(.97);
   transition: opacity 560ms cubic-bezier(.4,0,.2,1), transform 560ms cubic-bezier(.4,0,.2,1);
-  will-change: opacity, transform;
+  /* will-change removed — promotes too many layers in product grids */
 }
 .section-reveal.visible .product-card-stagger,
 .revealed .product-card-stagger {
@@ -1125,7 +1116,7 @@ img, svg { display: block; max-width: 100%; }
 [data-reveal] {
   opacity: 0;
   transition: opacity 650ms cubic-bezier(.4,0,.2,1), transform 650ms cubic-bezier(.4,0,.2,1);
-  will-change: opacity, transform;
+  /* will-change omitted — applied only when animation is imminent */
 }
 [data-reveal="up"]    { transform: translateY(40px); }
 [data-reveal="down"]  { transform: translateY(-30px); }
@@ -1155,7 +1146,6 @@ img, svg { display: block; max-width: 100%; }
   opacity: 0;
   transform: translateY(32px);
   transition: opacity 550ms cubic-bezier(.4,0,.2,1), transform 550ms cubic-bezier(.4,0,.2,1);
-  will-change: opacity, transform;
 }
 .section-reveal.visible [data-stagger] > *,
 .revealed [data-stagger] > * {

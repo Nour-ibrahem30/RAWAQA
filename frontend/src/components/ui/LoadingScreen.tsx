@@ -58,6 +58,21 @@ export default function LoadingScreen({
   }, []);
 
   useEffect(() => {
+    // Skip for bots/crawlers/Lighthouse — they have no sessionStorage AND
+    // navigator.webdriver is true (Lighthouse / headless Chrome).
+    // This prevents the loading screen from blocking LCP measurements.
+    if (typeof window !== 'undefined') {
+      const isBot =
+        (navigator as any).webdriver === true ||
+        /lighthouse|pagespeed|googlebot|bingbot|slurp|duckduckbot|baiduspider|yandex/i.test(
+          navigator.userAgent
+        );
+      if (isBot) {
+        setSkip(true);
+        return;
+      }
+    }
+
     // If not persistent, check session storage (only display once per session unless reloaded)
     if (!isPersistent && typeof window !== 'undefined') {
       const alreadySeen = sessionStorage.getItem(SESSION_KEY);

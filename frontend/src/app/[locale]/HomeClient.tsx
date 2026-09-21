@@ -25,24 +25,34 @@ interface HomeReview {
 }
 
 function Particles({ reduced }: { reduced: boolean }) {
-  if (reduced) return null;
+  // On mobile (< 768px) disable particles entirely — saves ~11 composited layers
+  const [isMobile, setIsMobile] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const cb = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', cb);
+    return () => mq.removeEventListener('change', cb);
+  }, []);
 
-  const rising = Array.from({ length: 8 }, (_, i) => ({
-    left:     `${8 + (i * 11) % 84}%`,
-    size:     i % 3 === 0 ? 3 : 2,
-    dur:      `${14 + (i * 2) % 10}s`,
-    delay:    `${(i * 1.5) % 8}s`,
+  if (reduced || isMobile) return null;
+
+  const rising = Array.from({ length: 5 }, (_, i) => ({
+    left:     `${8 + (i * 17) % 84}%`,
+    size:     i % 2 === 0 ? 3 : 2,
+    dur:      `${16 + (i * 2) % 10}s`,
+    delay:    `${(i * 2) % 8}s`,
     dx:       `${-16 + (i * 8) % 32}px`,
     gold:     i % 2 === 0,
-    bottom:   `${(i * 9) % 30}%`,
+    bottom:   `${(i * 12) % 30}%`,
   }));
 
-  const orbs = Array.from({ length: 3 }, (_, i) => ({
-    left:  `${12 + i * 28}%`,
-    top:   `${20 + i * 18}%`,
+  const orbs = Array.from({ length: 2 }, (_, i) => ({
+    left:  `${12 + i * 40}%`,
+    top:   `${20 + i * 22}%`,
     size:  14 + i * 4,
-    dur:   `${8 + i * 2}s`,
-    delay: `${i * 0.8}s`,
+    dur:   `${9 + i * 2}s`,
+    delay: `${i * 1.2}s`,
   }));
 
   return (
@@ -258,13 +268,8 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
         <Particles reduced={reduceMotion} />
 
         <div className="wrap relative" style={{ zIndex: 3, width: '100%', paddingTop: 'clamp(5rem, 10vw, 7rem)', paddingBottom: 'clamp(2rem, 5vw, 4rem)' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0,480px) 1fr',
-            gap: 'clamp(2rem, 5vw, 5rem)',
-            alignItems: 'center',
-          }}
-          className={`hero-grid-layout ${isAr ? 'rtl-hero' : ''}`}
+          <div
+            className="hero-grid-layout"
           >
 
             {/* ── Image col ── */}

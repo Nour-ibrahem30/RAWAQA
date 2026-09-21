@@ -36,6 +36,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://rawaqa-backend.onrender.com" />
         <link rel="preconnect" href="https://accounts.google.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://accounts.google.com" />
+        {/* Preload LCP hero image — visible immediately on first paint */}
+        <link
+          rel="preload"
+          as="image"
+          href="/hero/hero-1.jpg"
+          fetchPriority="high"
+        />
       </head>
       <body suppressHydrationWarning>
         {children}
