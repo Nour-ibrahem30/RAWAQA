@@ -102,6 +102,16 @@ export function applyColors(colors: Record<string, string>) {
       'color-mix(in srgb, var(--gold-light) 18%, transparent)'
     );
   }
+
+  // Set data-theme attribute so CSS [data-theme="light"] overrides fire.
+  // A "light" theme is detected when --charcoal resolves to a clearly light color
+  // (luminance > 50% — quick heuristic: first char after # is 'f', 'e', 'd', 'c', 'b', 'a' or ≥ 8).
+  if (colors.charcoal) {
+    const hex = colors.charcoal.replace('#', '').toLowerCase();
+    const r = parseInt(hex.slice(0, 2), 16);
+    const isLight = r >= 180; // r channel of charcoal ≥ 180 = light background
+    document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+  }
 }
 
 /** Resolves any image URL safely (handles localhost, /uploads, Cloudinary, fallback) */

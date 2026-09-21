@@ -359,7 +359,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                           style={{
                             display: 'inline-block',
                             marginInlineEnd: '.22em',
-                            color: 'rgba(247,244,236,.94)',
+                            color: 'var(--text-on-bg-94)',
                             ...(reduceMotion ? {} : {
                               animation: `heroWordDrop 700ms ${380 + (line1Words + wi) * 90}ms cubic-bezier(.4,0,.2,1) both`,
                               opacity: 0,
@@ -388,7 +388,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
               <p style={{
                 fontSize:     'clamp(.9rem, 1.2vw, 1rem)',
                 lineHeight:   1.8,
-                color:        'rgba(247,244,236,.58)',
+                color:        'var(--text-on-bg-58)',
                 maxWidth:     '36ch',
                 marginBottom: '2rem',
                 opacity:      reduceMotion ? 1 : 0,
@@ -448,7 +448,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                     }}>
                       {s.num}
                     </p>
-                    <p style={{ fontSize: '.6rem', color: 'rgba(247,244,236,.4)', letterSpacing: '.04em', textAlign: 'center' }}>
+                    <p style={{ fontSize: '.6rem', color: 'var(--text-on-bg-40)', letterSpacing: '.04em', textAlign: 'center' }}>
                       {isAr ? (s.labelAr || s.ar) : (s.labelEn || s.en)}
                     </p>
                   </div>
@@ -527,7 +527,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                         position: 'absolute', inset: 0,
                         background: img
                           ? `linear-gradient(160deg, ${color}88 0%, ${color}cc 100%)`
-                          : `linear-gradient(160deg, ${color} 0%, rgba(21,19,15,.55) 100%)`,
+                          : `linear-gradient(160deg, ${color} 0%, var(--cat-overlay) 100%)`,
                         mixBlendMode: img ? 'multiply' : 'normal',
                       }} />
                       <div aria-hidden style={{
@@ -623,7 +623,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
             <h2 className="display-2" style={{ color:'var(--ivory)',marginBottom:'1.5rem' }}>
               {locContent(aboutContent, 'title', locale) || (isAr ? 'مصنوع لحظات الحياة الحقيقية' : 'Made for Real Life Moments')}
             </h2>
-            <p style={{ fontSize:'1.05rem',lineHeight:1.75,color:'rgba(247,244,236,.62)',maxWidth:'42ch',marginBottom:'2rem' }}>
+            <p style={{ fontSize:'1.05rem',lineHeight:1.75,color:'var(--text-on-bg-60)',maxWidth:'42ch',marginBottom:'2rem' }}>
               {locContent(aboutContent, 'body', locale) || (isAr
                 ? 'كل كرسي رواقة يُصنع بعناية باستخدام مواد مختارة لتحمل الاستخدام اليومي مع الحفاظ على جماله وراحته لسنوات.'
                 : 'Every Rawaqa chair is handcrafted using selected materials built for daily use while maintaining its beauty and comfort for years.')}
@@ -656,9 +656,9 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                 }} />
                 <span style={{
                   position:'absolute',bottom:'1.25rem',insetInlineEnd:'1.25rem',
-                  background:'rgba(21,19,15,.7)',backdropFilter:'blur(8px)',
+                  background:'var(--img-badge-bg)',backdropFilter:'blur(8px)',
                   borderRadius:999,padding:'.35rem .85rem',
-                  fontSize:'.68rem',fontWeight:800,color:'var(--gold-light)',
+                  fontSize:'.68rem',fontWeight:800,color:'var(--img-badge-color)',
                   letterSpacing:'.05em',border:'1px solid rgba(210,181,106,.2)',
                 }}>
                   {isAr ? 'صنع في مصر 🇪🇬' : 'Made in Egypt 🇪🇬'}
@@ -706,7 +706,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                   className="why-card flex flex-col items-start p-5 sm:p-7 rounded-2xl transition-all duration-300"
                   style={{
                     background: 'rgba(255,255,255,.04)',
-                    border: '1px solid rgba(210,181,106,.12)',
+                    border: '1px solid var(--card-border)',
                   }}
                 >
                   <div
@@ -730,7 +730,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                   <h3 style={{ fontWeight: 700, color: 'var(--ivory)', marginBottom: '.45rem', fontSize: '1rem' }}>
                     {title}
                   </h3>
-                  <p style={{ fontSize: '.85rem', color: 'rgba(247,244,236,.6)', lineHeight: 1.65 }}>
+                  <p style={{ fontSize: '.85rem', color: 'var(--text-on-bg-6)', lineHeight: 1.65 }}>
                     {desc}
                   </p>
                 </div>
@@ -775,7 +775,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
           <div data-reveal="scale">
             {reviews.length > 0 ? (
               <div style={{
-                background: 'linear-gradient(150deg, rgba(35,30,22,.98) 0%, rgba(25,22,16,.98) 100%)',
+                background: 'var(--review-bg)',
                 border: '1px solid rgba(210,181,106,.18)',
                 borderRadius: 24,
                 padding: 'clamp(1.5rem, 4vw, 2.25rem)',
@@ -804,7 +804,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                       </svg>
                     ))}
-                    <span style={{ fontSize: '.75rem', fontWeight: 700, color: 'rgba(247,244,236,.45)', marginInlineStart: '.5rem' }}>
+                    <span style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--text-on-bg-45)', marginInlineStart: '.5rem' }}>
                       {(reviews[activeReview]?.rating ?? 0).toFixed(1)}
                     </span>
                   </div>
@@ -829,7 +829,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                   style={{
                     fontSize: 'clamp(.95rem, 1.8vw, 1.1rem)',
                     lineHeight: 1.8,
-                    color: 'rgba(247,244,236,.82)',
+                    color: 'var(--text-on-bg-82)',
                     marginBottom: '1.75rem',
                     fontStyle: 'italic',
                     animation: 'fadeSlideUp 350ms ease both',
@@ -863,7 +863,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                       <p style={{ fontWeight: 700, color: 'var(--ivory)', fontSize: '.9rem', lineHeight: 1.3 }}>
                         {reviews[activeReview]?.name}
                       </p>
-                      <p style={{ fontSize: '.68rem', color: 'rgba(247,244,236,.35)', marginTop: '.15rem' }}>
+                      <p style={{ fontSize: '.68rem', color: 'var(--text-on-bg-35)', marginTop: '.15rem' }}>
                         {isAr ? 'عميل رواقة' : 'RAWAQA Customer'}
                       </p>
                     </div>
@@ -922,7 +922,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                               width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
                               border: '1px solid rgba(210,181,106,.25)',
                               background: 'rgba(210,181,106,.04)',
-                              color: 'rgba(247,244,236,.6)',
+                              color: 'var(--text-on-bg-6)',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               cursor: 'pointer', fontSize: '.85rem', fontWeight: 700,
                               transition: 'all 200ms ease',
@@ -934,7 +934,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
                             }}
                             onMouseLeave={e => {
                               e.currentTarget.style.borderColor = 'rgba(210,181,106,.25)';
-                              e.currentTarget.style.color = 'rgba(247,244,236,.6)';
+                              e.currentTarget.style.color = 'var(--text-on-bg-6)';
                               e.currentTarget.style.background = 'rgba(210,181,106,.04)';
                             }}
                           >
@@ -952,12 +952,12 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
               <div style={{
                 textAlign: 'center',
                 padding: '3.5rem 2rem',
-                background: 'rgba(25,22,16,.95)',
+                background: 'var(--review-empty-bg)',
                 border: '1px solid rgba(210,181,106,.12)',
                 borderRadius: 24,
               }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '.75rem', opacity: .6 }}>★★★★★</div>
-                <p style={{ fontSize: '.95rem', color: 'rgba(247,244,236,.55)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                <p style={{ fontSize: '.95rem', color: 'var(--text-on-bg-55)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
                   {isAr
                     ? 'لا توجد آراء بعد — كن أول من يشارك تجربته مع منتجات رواقة.'
                     : 'No reviews yet — be the first to share your experience with RAWAQA.'}
@@ -986,7 +986,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
           <h2 className="display-3" style={{ color:'var(--ivory)',marginBottom:'0.75rem' }}>
             {locContent(ctaContent, 'title', locale) || t('cta.title')}
           </h2>
-          <p style={{ fontSize:'.9rem',lineHeight:1.6,color:'rgba(247,244,236,.52)',maxWidth:'40ch',margin:'0 auto 1.5rem' }}>
+          <p style={{ fontSize:'.9rem',lineHeight:1.6,color:'var(--text-on-bg-52)',maxWidth:'40ch',margin:'0 auto 1.5rem' }}>
             {locContent(ctaContent, 'sub', locale) || t('cta.sub')}
           </p>
           <Link href={`/${locale}/shop`} className="btn btn-gold" style={{ fontSize:'.8rem', padding:'.45rem 1.6rem', height:'38px', minHeight:'auto', display:'inline-flex', alignItems:'center' }}>

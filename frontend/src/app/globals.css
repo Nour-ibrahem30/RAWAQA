@@ -39,6 +39,25 @@
   --admin-gold:      #D2B56A;
   --admin-active-bg: rgba(210,181,106,.12);
 
+  /* ── Semantic text/surface tokens — overridden in [data-theme="light"] ── */
+  --text-on-bg-94:    rgba(247,244,236,.94);
+  --text-on-bg-82:    rgba(247,244,236,.82);
+  --text-on-bg-60:    rgba(247,244,236,.62);
+  --text-on-bg-58:    rgba(247,244,236,.58);
+  --text-on-bg-55:    rgba(247,244,236,.55);
+  --text-on-bg-52:    rgba(247,244,236,.52);
+  --text-on-bg-45:    rgba(247,244,236,.45);
+  --text-on-bg-40:    rgba(247,244,236,.40);
+  --text-on-bg-35:    rgba(247,244,236,.35);
+  --text-on-bg-38:    rgba(247,244,236,.38);
+  --text-on-bg-6:     rgba(247,244,236,.6);
+  --review-bg:        linear-gradient(150deg, rgba(35,30,22,.98) 0%, rgba(25,22,16,.98) 100%);
+  --review-empty-bg:  rgba(25,22,16,.95);
+  --img-badge-bg:     rgba(21,19,15,.7);
+  --img-badge-color:  var(--gold-light);
+  --cat-overlay:      rgba(21,19,15,.55);
+  --card-border:      rgba(210,181,106,.18);
+
   /* Spacing scale */
   --sp-xs:   0.5rem;
   --sp-sm:   0.875rem;
@@ -69,6 +88,129 @@
   --admin-text-faint:rgba(30,26,18,.35);
   --admin-gold:      #AD8A4C;
   --admin-active-bg: rgba(173,138,76,.1);
+}
+
+/* ─── STOREFRONT LIGHT THEME ────────────────────────────────── */
+/* Fires when applyColors() detects a light charcoal and sets     */
+/* data-theme="light" on <html>. Overrides all hardcoded          */
+/* dark rgba/hex values that CSS vars alone cannot reach.         */
+
+/* ── Extra derived variables for light mode ── */
+[data-theme="light"] {
+  /* text that was rgba(247,244,236,x) = ivory-on-dark */
+  --text-on-bg:        var(--ivory);          /* now dark ink */
+  --text-on-bg-94:     rgba(30,26,18,.94);
+  --text-on-bg-82:     rgba(30,26,18,.82);
+  --text-on-bg-60:     rgba(30,26,18,.62);
+  --text-on-bg-58:     rgba(30,26,18,.58);
+  --text-on-bg-55:     rgba(30,26,18,.55);
+  --text-on-bg-52:     rgba(30,26,18,.52);
+  --text-on-bg-45:     rgba(30,26,18,.45);
+  --text-on-bg-40:     rgba(30,26,18,.40);
+  --text-on-bg-35:     rgba(30,26,18,.35);
+  --text-on-bg-38:     rgba(30,26,18,.38);
+  --text-on-bg-6:      rgba(30,26,18,.6);
+  /* card / surface */
+  --card-bg:           rgba(255,255,255,.85);
+  --card-bg-2:         rgba(248,246,242,.95);
+  --card-border:       rgba(173,138,76,.18);
+  --card-bg-why:       rgba(0,0,0,.035);
+  /* button line-dark becomes line-light */
+  --btn-line-dark-border: rgba(30,26,18,.22);
+  --btn-line-dark-color:  var(--ink);
+  /* review */
+  --review-bg:    linear-gradient(150deg, rgba(255,253,248,.99) 0%, rgba(250,248,243,.99) 100%);
+  --review-empty-bg: rgba(250,248,243,.98);
+  /* overlay on images */
+  --img-badge-bg: rgba(255,253,248,.85);
+  --img-badge-color: var(--ink);
+  /* category dark overlay */
+  --cat-overlay: rgba(240,235,225,.55);
+}
+
+/* ── body ── */
+[data-theme="light"] body {
+  background: var(--charcoal);
+  color: var(--ivory);
+}
+
+/* ── utility .dark class ── */
+[data-theme="light"] .dark { background: var(--charcoal); color: var(--ivory); }
+[data-theme="light"] .dark .lede { color: rgba(30,26,18,.62); }
+
+/* ── section backgrounds via CSS vars work automatically ──── */
+/* (.charcoal → white, .charcoal-soft → near-white) ✓ */
+
+/* ── Buttons ── */
+[data-theme="light"] .btn-line-dark {
+  border-color: rgba(30,26,18,.22);
+  color: var(--ink);
+}
+[data-theme="light"] .btn-line-dark:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(173,138,76,.06);
+}
+[data-theme="light"] .btn-ink {
+  background: var(--ink);
+  color: var(--ivory-2);
+}
+[data-theme="light"] .btn-ink:hover {
+  box-shadow: 0 8px 24px rgba(30,26,18,.2);
+}
+
+/* ── Skeleton ── */
+[data-theme="light"] .skeleton {
+  background: linear-gradient(90deg, #e8e0d2 25%, #f0ead8 50%, #e8e0d2 75%);
+}
+
+/* ── Toast ── */
+[data-theme="light"] .toast {
+  background: rgba(252,250,246,.97);
+  color: var(--ink);
+  border-color: rgba(173,138,76,.3);
+  box-shadow: 0 10px 30px rgba(30,26,18,.15);
+}
+[data-theme="light"] .toast.error   { background: rgba(255,245,245,.97); border-color: rgba(239,68,68,.4); color: #991b1b; }
+[data-theme="light"] .toast.success { background: rgba(245,255,247,.97); border-color: rgba(34,197,94,.4);  color: #14532d; }
+
+/* ── Why card ── */
+[data-theme="light"] .why-card {
+  background: rgba(0,0,0,.035) !important;
+  border-color: rgba(173,138,76,.18) !important;
+}
+[data-theme="light"] .why-card:hover {
+  background: rgba(173,138,76,.06) !important;
+  box-shadow: 0 16px 40px rgba(30,26,18,.1), 0 0 0 1px color-mix(in srgb, var(--gold-light) 30%, transparent);
+}
+
+/* ── Category tiles ── */
+[data-theme="light"] .category-tile:hover {
+  box-shadow: 0 20px 50px rgba(30,26,18,.18), 0 4px 12px rgba(30,26,18,.1);
+}
+
+/* ── Product card ── */
+[data-theme="light"] .product-card-3d:hover {
+  box-shadow:
+    0 24px 60px color-mix(in srgb, var(--charcoal) 30%, transparent),
+    0 8px 24px color-mix(in srgb, var(--gold-light) 25%, transparent);
+}
+
+/* ── Shop filter pill on mobile ── */
+@media (max-width: 768px) {
+  [data-theme="light"] .shop-filter-in {
+    background: #F8F6F2;
+    border-color: rgba(173,138,76,.15);
+    color: var(--ink);
+  }
+}
+
+/* ── Navbar ── */
+[data-theme="light"] nav {
+  background: rgba(250,248,244,.92) !important;
+  backdrop-filter: blur(20px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.2) !important;
+  border-bottom-color: rgba(173,138,76,.15) !important;
 }
 
 /* ─── BASE ──────────────────────────────────────────────────── */
