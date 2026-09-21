@@ -7,6 +7,17 @@ generator client {
   output   = "../src/generated/prisma"
 }
 
+// Cloudflare Workers-only client. Identical schema/models/datasource; differs
+// ONLY in `runtime = "cloudflare"`, which generates an edge-compatible client
+// that loads the query-compiler WASM via @prisma/client/runtime/wasm-compiler-edge
+// instead of the Node path's runtime `new WebAssembly.Module(bytes)` (forbidden
+// on workerd). The Node client above is unchanged and remains what Node/Render use.
+generator clientEdge {
+  provider = "prisma-client"
+  runtime  = "cloudflare"
+  output   = "../src/generated/prisma-edge"
+}
+
 // ─── Enums ─────────────────────────────────────────────────────────
 
 enum UserRole {

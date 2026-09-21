@@ -14,6 +14,7 @@ import fs from 'fs';
 import { Request, Response, NextFunction } from 'express';
 import { env } from '../config/env';
 import { logInfo, logError } from '../config/logger';
+import { isCloudflareWorker } from '../lib/worker-runtime';
 
 // ─── Cloudinary setup ─────────────────────────────────────────────────────────
 let cloudinaryConfigured = false;
@@ -40,7 +41,13 @@ if (env.CLOUDINARY_ENABLED && env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KE
 
 // ─── Local disk setup ─────────────────────────────────────────────────────────
 const uploadDir = path.resolve(env.UPLOAD_DESTINATION || 'uploads/products');
-if (!cloudinaryConfigured) {
+// Local-disk directory bootstrap is Node-only. Cloudflare Workers have no
+// writable filesystem, and this runs at module scope — calling fs.mkdirSync there
+// crashes the Worker on boot ("operation not permitted"). Skip it on the Worker
+// only; Node/Render behavior is unchanged (same existsSync/mkdirSync as before).
+// Note: local-disk uploads themselves are not Worker-ready until the deferred R2
+// phase — this guard only lets the module load so the HTTP API can boot.
+if (!isCloudflareWorker() && !cloudinaryConfigured) {
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }

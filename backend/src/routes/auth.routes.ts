@@ -26,16 +26,22 @@ import {
   refreshTokenSchema,
 } from '../middleware/validation';
 import { env } from '../config/env';
+import { getRuntimeRateLimitStore } from '../lib/worker-runtime';
 
 const router = Router();
 
 // Rate limiter for auth endpoints (stricter)
+// `store` is undefined on Node/Render (default MemoryStore, unchanged behavior);
+// on Cloudflare Workers it is a timer-free store so this limiter can be built at
+// module scope without the forbidden global-scope setInterval. Window/max/message
+// /headers are identical in both runtimes. See src/lib/worker-runtime.ts.
 const authLimiter = rateLimit({
   windowMs: env.AUTH_RATE_LIMIT_WINDOW_MS,
   max: env.AUTH_RATE_LIMIT_MAX_REQUESTS,
   message: 'Too many authentication attempts, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
+  store: getRuntimeRateLimitStore(),
 });
 
 /**

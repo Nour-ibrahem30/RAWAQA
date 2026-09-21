@@ -1,0 +1,107 @@
+# =============================================================================
+# wrangler.toml — Cloudflare Worker configuration for the RAWAQA backend
+# =============================================================================
+# Phase 2: minimum infrastructure to run the existing Express app on Workers.
+# The Worker serves the HTTP REST API only. Background jobs and uploads remain
+# on the Node/Render deployment (see docs/05-database/cloudflare-workers-migration.md).
+#
+# Deployment is NOT performed in Phase 2. This file is prepared for Phase 3+
+# and awaits explicit approval before any `wrangler deploy`.
+# =============================================================================
+
+# Preview/non-production Worker name (Phase 5 verification target). This is NOT
+# the production frontend domain and does not affect Vercel/Render.
+name = "noisy-sun-5690"
+# Points at the esbuild-produced bundle (see [build] below). The cf:* scripts run
+# Wrangler with `--no-bundle` so this pre-built file is uploaded as-is.
+main = "dist-worker/worker.mjs"
+
+# nodejs_compat + nodejs_compat_v2 are enabled by default for compatibility_date
+# >= 2026-08-04, providing runtime-level node:http/net/tls/crypto/buffer/stream.
+# nodejs_compat is listed explicitly for clarity and older-date safety.
+#
+# new_module_registry: rebuilt Node.js-compatible module registry. Required so
+# CommonJS packages that fail to initialize under the legacy registry can load —
+# specifically body-parser -> raw-body -> iconv-lite, which express.json() uses.
+# Without this flag the Worker throws "require_streams(...) is not a function"
+# at startup. Official guidance: https://blog.cloudflare.com/workers-module-registry-nodejs/
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat", "new_module_registry"]
+
+# Custom build: we pre-bundle the Worker with esbuild (platform=node, format=esm)
+# ourselves and hand Wrangler the single output file (main below points at it,
+# used together with `--no-bundle` in the cf:* scripts). This is required because
+# Wrangler's default esbuild pass mangles some transitive CommonJS deps that use
+# BARE "stream"/"buffer" requires (iconv-lite/lib/streams.js via body-parser ->
+# raw-body, and winston-daily-rotate-file), producing a non-callable module and
+# the runtime error "require_streams(...) is not a function". Running esbuild with
+# platform=node keeps node: builtins external so nodejs_compat provides them at
+# runtime. No application logic changes — this is purely a bundling configuration.
+[build]
+command = "npm run cf:bundle"
+
+# Treat emitted .wasm files as WebAssembly modules compiled by workerd at deploy
+# time (NOT at runtime). The esbuild build copies Prisma's query-compiler .wasm
+# next to the bundle; this rule makes Wrangler upload it as a CompiledWasm module
+# so the Cloudflare-generated Prisma client's `import(".wasm?module")` resolves to
+# a ready `WebAssembly.Module`, avoiding the forbidden runtime WASM compilation.
+[[rules]]
+type = "CompiledWasm"
+globs = ["**/*.wasm"]
+
+# Observability: surface console logs in the Cloudflare dashboard / `wrangler tail`.
+[observability]
+enabled = true
+
+# -----------------------------------------------------------------------------
+# Non-sensitive variables ([vars]).
+# These mirror the PUBLIC-classified env vars from the migration doc. Adjust the
+# frontend origin/URLs to the real production values before deploy.
+# -----------------------------------------------------------------------------
+[vars]
+NODE_ENV = "production"
+PORT = "10000"
+
+# CORS / client URLs (public)
+CORS_ORIGIN = "https://rawaqa-ruby.vercel.app"
+CORS_CREDENTIALS = "true"
+CLIENT_URL = "https://rawaqa-ruby.vercel.app"
+CLIENT_URL_AR = "https://rawaqa-ruby.vercel.app/ar"
+CLIENT_URL_EN = "https://rawaqa-ruby.vercel.app/en"
+
+# Cookies / proxy (public)
+COOKIE_SECURE = "true"
+COOKIE_SAME_SITE = "none"
+TRUST_PROXY = "true"
+HELMET_CSP_ENABLED = "false"
+
+# Logging — MUST stay false on Workers (no persistent filesystem for rotate-file)
+LOG_LEVEL = "warn"
+LOG_FILE_ENABLED = "false"
+
+# Background workers are NOT run inside the request Worker (Phase 2 decision).
+ENABLE_WORKERS = "false"
+OUTBOX_WORKER_ENABLED = "false"
+RECONCILIATION_ENABLED = "false"
+
+# Feature flags (public) — keep aligned with production .env
+FEATURE_GUEST_CHECKOUT = "false"
+FEATURE_REVIEWS = "true"
+FEATURE_WISHLIST = "true"
+FEATURE_REFERRAL = "false"
+
+# -----------------------------------------------------------------------------
+# SECRETS — do NOT put these here. Set them with `wrangler secret put <NAME>`:
+#
+#   wrangler secret put DATABASE_URL
+#   wrangler secret put JWT_ACCESS_SECRET
+#   wrangler secret put JWT_REFRESH_SECRET
+#   wrangler secret put SMTP_HOST
+#   wrangler secret put SMTP_USER
+#   wrangler secret put SMTP_PASS
+#   # optional (only if enabled): SENTRY_DSN, CLOUDINARY_* (until R2 phase)
+#
+# DATABASE_URL / JWT_ACCESS_SECRET / JWT_REFRESH_SECRET are REQUIRED — the
+# app's production fail-safe (config/env.ts) throws if they are missing or set
+# to the insecure built-in defaults.
+# -----------------------------------------------------------------------------

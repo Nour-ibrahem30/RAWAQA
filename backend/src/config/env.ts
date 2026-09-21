@@ -156,20 +156,49 @@ const envSchema = z.object({
   FEATURE_REFERRAL: z.string().transform((val) => val === 'true').default('false'),
 });
 
+// Insecure built-in defaults that must never be used in production runtime.
+const DEFAULT_ACCESS_SECRET   = 'rawaqa-jwt-access-secret-default-key-32-chars-minimum';
+const DEFAULT_REFRESH_SECRET  = 'rawaqa-jwt-refresh-secret-default-key-32-chars-minimum';
+const DEFAULT_DATABASE_URL    = 'postgresql://postgres:postgres@localhost:5432/rawaqa?schema=public';
+
+// True only under a real Node process (not on Cloudflare Workers), where a hard
+// process.exit is the correct fail-fast for a misconfigured deployment.
+const isNodeRuntime = typeof process !== 'undefined' && !!process.versions?.node;
+
+/**
+ * Fail-safe for production: refuse to run with insecure built-in defaults for
+ * critical secrets. On Node we exit the process (fast, visible in Render logs).
+ * On non-Node runtimes (Cloudflare Worker) we throw, so the request fails
+ * cleanly instead of silently serving with default secrets.
+ */
+const enforceProductionSecrets = (parsed: z.infer<typeof envSchema>): void => {
+  if (parsed.NODE_ENV !== 'production') return;
+
+  const problems: string[] = [];
+  if (parsed.JWT_ACCESS_SECRET === DEFAULT_ACCESS_SECRET)  problems.push('JWT_ACCESS_SECRET');
+  if (parsed.JWT_REFRESH_SECRET === DEFAULT_REFRESH_SECRET) problems.push('JWT_REFRESH_SECRET');
+  if (!process.env.DATABASE_URL || parsed.DATABASE_URL === DEFAULT_DATABASE_URL) problems.push('DATABASE_URL');
+
+  if (problems.length === 0) return;
+
+  const msg = `🚨 FATAL: Insecure/missing production configuration for: ${problems.join(', ')}. `
+    + 'Set these as real environment variables (Render env / Cloudflare secrets).';
+  console.error(msg);
+  if (isNodeRuntime) {
+    process.exit(1);
+  } else {
+    // Cloudflare Worker: no process.exit — fail loudly at import so requests error out.
+    throw new Error(msg);
+  }
+};
+
 // Parse and validate environment variables
 const parseEnv = () => {
   try {
     const parsed = envSchema.parse(process.env);
 
-    // Warn loudly in production if default JWT secrets are still in use
-    if (parsed.NODE_ENV === 'production') {
-      const DEFAULT_ACCESS_SECRET  = 'rawaqa-jwt-access-secret-default-key-32-chars-minimum';
-      const DEFAULT_REFRESH_SECRET = 'rawaqa-jwt-refresh-secret-default-key-32-chars-minimum';
-      if (parsed.JWT_ACCESS_SECRET === DEFAULT_ACCESS_SECRET || parsed.JWT_REFRESH_SECRET === DEFAULT_REFRESH_SECRET) {
-        console.error('🚨 FATAL: Default JWT secrets detected in production. Set JWT_ACCESS_SECRET and JWT_REFRESH_SECRET environment variables.');
-        process.exit(1);
-      }
-    }
+    // Fail-safe: block insecure defaults for critical secrets in production.
+    enforceProductionSecrets(parsed);
 
     return parsed;
   } catch (error) {

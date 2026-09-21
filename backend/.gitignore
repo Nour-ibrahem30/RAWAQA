@@ -60,3 +60,11 @@ prisma/generated/
 
 # Pre-migration backup files (local only)
 mongo-backup-*.json
+
+# Cloudflare Workers (local dev secrets + build output — never commit)
+.dev.vars
+.dev.vars.*
+dist-worker/
+.wrangler/
+cf-dev*.log
+cf-probe*.log
