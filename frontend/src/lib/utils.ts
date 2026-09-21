@@ -104,13 +104,21 @@ export function applyColors(colors: Record<string, string>) {
   }
 
   // Set data-theme attribute so CSS [data-theme="light"] overrides fire.
-  // A "light" theme is detected when --charcoal resolves to a clearly light color
-  // (luminance > 50% — quick heuristic: first char after # is 'f', 'e', 'd', 'c', 'b', 'a' or ≥ 8).
+  // A "light" theme is detected when --charcoal resolves to a clearly light color.
   if (colors.charcoal) {
     const hex = colors.charcoal.replace('#', '').toLowerCase();
     const r = parseInt(hex.slice(0, 2), 16);
-    const isLight = r >= 180; // r channel of charcoal ≥ 180 = light background
+    const isLight = r >= 180;
     document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+
+    if (isLight) {
+      // In light mode, any element using color:var(--ivory) should show dark text.
+      // We remap --ivory to the ink color so all existing `color: var(--ivory)` calls
+      // automatically read as dark text on the light background.
+      const inkColor = colors.ink || '#1A1612';
+      document.documentElement.style.setProperty('--ivory', inkColor);
+      document.documentElement.style.setProperty('--ivory-2', colors.inkSoft || '#5C5248');
+    }
   }
 }
 

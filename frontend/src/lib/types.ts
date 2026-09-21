@@ -364,16 +364,16 @@ export const THEME_PRESETS: ThemePreset[] = [
     nameAr: 'الأبيض الناصع والذهب الدافئ',
     description: 'Clean bright white with warm ivory tones and refined golden accents for a fresh, luxurious look.',
     colors: {
-      charcoal:     '#FFFFFF',
-      charcoalSoft: '#F8F6F2',
-      ivory:        '#1A1612',
-      ivory2:       '#2C2820',
+      charcoal:     '#F9F7F3',   /* body bg → near-white */
+      charcoalSoft: '#FFFFFF',   /* card bg → pure white */
+      ivory:        '#F9F7F3',   /* kept light so var(--ivory) on sections stays near-white */
+      ivory2:       '#FFFFFF',
       sand:         '#E8E2D8',
-      gold:         '#AD8A4C',
-      goldLight:    '#D2B56A',
+      gold:         '#9A7A3C',   /* slightly darker gold for visibility on white */
+      goldLight:    '#B8973D',
       goldPale:     '#F0E6CC',
-      ink:          '#1A1612',
-      inkSoft:      '#6B6358',
+      ink:          '#1A1612',   /* primary text — dark */
+      inkSoft:      '#5C5248',   /* secondary text */
       clay:         '#A8543A',
       indigo:       '#3B5578',
       ochre:        '#BE8F2E',

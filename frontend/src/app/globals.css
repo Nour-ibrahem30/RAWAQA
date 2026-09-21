@@ -131,11 +131,11 @@
 /* ── body ── */
 [data-theme="light"] body {
   background: var(--charcoal);
-  color: var(--ivory);
+  color: var(--ink);
 }
 
 /* ── utility .dark class ── */
-[data-theme="light"] .dark { background: var(--charcoal); color: var(--ivory); }
+[data-theme="light"] .dark { background: var(--charcoal); color: var(--ink); }
 [data-theme="light"] .dark .lede { color: rgba(30,26,18,.62); }
 
 /* ── section backgrounds via CSS vars work automatically ──── */
