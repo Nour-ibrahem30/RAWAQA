@@ -63,9 +63,12 @@ const DEFAULTS: Record<string, any> = {
   footer: {
     taglineAr: 'راحة حرفية. مصممة للحياة.',
     taglineEn: 'Crafted Comfort. Designed for Life.',
-    phone: '+20 XXX XXX XXXX',
+    phone: '+201000000000',
     email: 'hello@rawaqa.com',
     address: 'القاهرة، مصر',
+    facebookUrl: 'https://facebook.com/rawaqa',
+    instagramUrl: 'https://instagram.com/rawaqa',
+    whatsappPhone: '201000000000',
   },
 };
 

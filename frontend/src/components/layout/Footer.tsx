@@ -17,7 +17,7 @@ export default function Footer() {
   const socialChannels = [
     {
       name: isAr ? 'فيسبوك' : 'Facebook',
-      href: 'https://facebook.com',
+      href: footerContent?.facebookUrl || 'https://facebook.com',
       ariaLabel: 'Facebook',
       icon: (
         <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
@@ -27,7 +27,7 @@ export default function Footer() {
     },
     {
       name: isAr ? 'إنستغرام' : 'Instagram',
-      href: 'https://instagram.com',
+      href: footerContent?.instagramUrl || 'https://instagram.com',
       ariaLabel: 'Instagram',
       icon: (
         <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
@@ -37,7 +37,12 @@ export default function Footer() {
     },
     {
       name: isAr ? 'واتساب' : 'WhatsApp',
-      href: footerContent?.phone ? `https://wa.me/${footerContent.phone.replace(/\\D/g, '')}` : 'https://wa.me/201000000000',
+      // whatsappPhone should be digits only e.g. "201012345678"
+      href: footerContent?.whatsappPhone
+        ? `https://wa.me/${String(footerContent.whatsappPhone).replace(/\D/g, '')}`
+        : footerContent?.phone
+          ? `https://wa.me/${String(footerContent.phone).replace(/\D/g, '')}`
+          : 'https://wa.me/201000000000',
       ariaLabel: 'WhatsApp',
       icon: (
         <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
