@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rawaqa.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rawaqa-ruby.vercel.app';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.rawaqa.com/api';
 
 /** Fetch with a short timeout so a slow API never blocks the build */
