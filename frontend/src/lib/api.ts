@@ -49,8 +49,12 @@ async function apiFetch<T>(
   try {
     res = await fetch(`${apiBase}${path}`, {
       cache: 'no-store',
-      signal: fetchOptions.signal || controller.signal,
+      // Spread first so our explicit signal override wins below.
       ...fetchOptions,
+      // Prefer caller-provided signal (e.g. component unmount); fall back to the
+      // internal 30-second AbortController. Note: must come AFTER the spread so
+      // it is not overwritten by fetchOptions.signal.
+      signal: fetchOptions.signal ?? controller.signal,
       headers,
     });
   } catch (e: any) {

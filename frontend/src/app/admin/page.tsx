@@ -135,19 +135,29 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    // Guard against stale state updates if the component unmounts before the
+    // parallel requests finish (e.g. mid-flight auth redirect from the layout).
+    // Without this flag, an auth-triggered navigation would abort all four
+    // in-flight fetch calls and set state on an unmounted component, producing
+    // the "signal is aborted without reason" error in the browser console.
+    let cancelled = false;
     Promise.all([
       adminApi.dashboardStats().catch(() => null),
       ordersApi.adminList(1).catch(() => ({ data: [] })),
       productsApi.lowStock().catch(() => ({ data: [] })),
       adminApi.customers(1).catch(() => ({ data: { users: [] } })),
     ]).then(([statsRes, ordersRes, stockRes, usersRes]) => {
+      if (cancelled) return;
       if (statsRes?.data) setStats(statsRes.data as any);
       const orders = (ordersRes as any)?.data ?? [];
       setRecentOrders(orders.slice(0, 8));
       setLowStock(((stockRes as any)?.data ?? []).slice(0, 5));
       const usersData = (usersRes as any)?.data?.users ?? (usersRes as any)?.data ?? [];
       setUsers(Array.isArray(usersData) ? usersData.slice(0, 10) : []);
-    }).finally(() => setLoading(false));
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const greeting = (() => {
