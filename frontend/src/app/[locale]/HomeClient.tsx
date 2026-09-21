@@ -237,7 +237,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
           ═══════════════════════════════════════════════════════ */}
       <section style={{
         position:   'relative',
-        minHeight:  'clamp(560px, 88vh, 900px)',
+        minHeight:  'clamp(480px, 88vh, 900px)',
         background: 'var(--charcoal)',
         color:      'var(--ivory)',
         overflow:   'hidden',
@@ -257,18 +257,20 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
 
         <Particles reduced={reduceMotion} />
 
-        <div className="wrap relative" style={{ zIndex: 3, width: '100%', paddingTop: '7rem', paddingBottom: '4rem' }}>
+        <div className="wrap relative" style={{ zIndex: 3, width: '100%', paddingTop: 'clamp(5rem, 10vw, 7rem)', paddingBottom: 'clamp(2rem, 5vw, 4rem)' }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: isAr ? '1fr minmax(280px,480px)' : 'minmax(280px,480px) 1fr',
+            gridTemplateColumns: 'minmax(0,480px) 1fr',
             gap: 'clamp(2rem, 5vw, 5rem)',
             alignItems: 'center',
-          }}>
+          }}
+          className={`hero-grid-layout ${isAr ? 'rtl-hero' : ''}`}
+          >
 
-            {/* ── LEFT col: Slideshow (or RIGHT for LTR) ── */}
+            {/* ── Image col ── */}
             <div
+              className="hero-img-col"
               style={{
-                order: isAr ? 1 : 0,
                 borderRadius: 24,
                 overflow: 'hidden',
                 aspectRatio: '4/5',
@@ -282,8 +284,8 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
               <HeroSlideshow />
             </div>
 
-            {/* ── RIGHT col: Content ── */}
-            <div style={{ order: isAr ? 0 : 1 }}>
+            {/* ── Content col ── */}
+            <div className="hero-content-col">
 
               {/* Eyebrow — slides in from side */}
               <div style={{
@@ -418,7 +420,7 @@ export default function HomeClient({ locale, initialContent }: { locale: string;
               </div>
 
               {/* Stats */}
-              <div ref={statsRef} style={{ display: 'flex', gap: '.6rem' }}>
+              <div ref={statsRef} className="hero-stats-row" style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
                 {(cmsStats.length > 0 ? cmsStats : [
                   { num: '+500',  labelAr: 'عميل سعيد',    labelEn: 'Happy Clients'   },
                   { num: '★4.9', labelAr: 'تقييم العملاء', labelEn: 'Customer Rating' },
