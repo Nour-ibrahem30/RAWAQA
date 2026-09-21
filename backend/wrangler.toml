@@ -84,6 +84,12 @@ ENABLE_WORKERS = "false"
 OUTBOX_WORKER_ENABLED = "false"
 RECONCILIATION_ENABLED = "false"
 
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS = "900000"
+RATE_LIMIT_MAX_REQUESTS = "2000"
+AUTH_RATE_LIMIT_WINDOW_MS = "900000"
+AUTH_RATE_LIMIT_MAX_REQUESTS = "50"
+
 # Feature flags (public) — keep aligned with production .env
 FEATURE_GUEST_CHECKOUT = "false"
 FEATURE_REVIEWS = "true"
