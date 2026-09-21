@@ -22,7 +22,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { rateLimit } from 'express-rate-limit';
 
-import { getRuntimeRateLimitStore, isCloudflareWorker } from './lib/worker-runtime';
+import { getRuntimeRateLimitStore, isCloudflareWorker, getWorkerRateLimitKeyGenerator } from './lib/worker-runtime';
 import { sentryErrorHandler } from './config/sentry';
 import { env } from './config/env';
 import logger, { logError } from './config/logger';
@@ -249,6 +249,12 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: getRuntimeRateLimitStore(),
+  // On Workers, req.ip is undefined (node:http bridge does not populate it the
+  // same way), which causes express-rate-limit's built-in ip validation to throw
+  // ERR_ERL_UNDEFINED_IP_ADDRESS. We supply a Worker-only keyGenerator that reads
+  // CF-Connecting-IP (the real client IP set by Cloudflare's edge) with safe
+  // fallbacks. On Node/Render this returns undefined → default behavior unchanged.
+  ...(getWorkerRateLimitKeyGenerator() ? { keyGenerator: getWorkerRateLimitKeyGenerator()! } : {}),
 });
 app.use(globalLimiter);
 

@@ -69,3 +69,42 @@ export class WorkerMemoryStore extends MemoryStore {
 export const getRuntimeRateLimitStore = (): Store | undefined => {
   return isCloudflareWorker() ? new WorkerMemoryStore() : undefined;
 };
+
+/**
+ * Worker-safe keyGenerator for express-rate-limit.
+ *
+ * The default express-rate-limit keyGenerator calls `validations.ip(req.ip)`,
+ * which throws `ERR_ERL_UNDEFINED_IP_ADDRESS` on Cloudflare Workers because
+ * `req.ip` is `undefined` there (the Worker runtime's node:http layer does not
+ * populate `socket.remoteAddress` / `X-Forwarded-For` the same way Node does).
+ *
+ * On Workers the real client IP is provided by Cloudflare's edge in the
+ * `CF-Connecting-IP` request header.  We fall back to the standard Express
+ * `req.ip` and then to the sentinel `"unknown"` so the key is always a non-empty
+ * string and the limiter never throws.
+ *
+ * On Node/Render this function returns `undefined`, so express-rate-limit keeps
+ * using its own default keyGenerator (req.ip populated by Express proxy logic)
+ * — Node behavior is completely unchanged.
+ */
+export const getWorkerRateLimitKeyGenerator = ():
+  | ((req: import('express').Request) => string)
+  | undefined => {
+  if (!isCloudflareWorker()) return undefined;
+
+  return (req: import('express').Request): string => {
+    // Cloudflare sets CF-Connecting-IP to the visitor's real IP on every request.
+    const cfIp = req.headers['cf-connecting-ip'];
+    if (cfIp && typeof cfIp === 'string' && cfIp.trim()) return cfIp.trim();
+    // Fallback: Express req.ip (may be set if X-Forwarded-For is present).
+    if (req.ip && req.ip.trim()) return req.ip.trim();
+    // Final fallback: X-Forwarded-For first entry.
+    const xff = req.headers['x-forwarded-for'];
+    if (xff) {
+      const xffStr = Array.isArray(xff) ? (xff[0] ?? '') : xff;
+      const first = xffStr.split(',')[0]?.trim();
+      if (first) return first;
+    }
+    return 'unknown';
+  };
+};

@@ -26,7 +26,7 @@ import {
   refreshTokenSchema,
 } from '../middleware/validation';
 import { env } from '../config/env';
-import { getRuntimeRateLimitStore } from '../lib/worker-runtime';
+import { getRuntimeRateLimitStore, getWorkerRateLimitKeyGenerator } from '../lib/worker-runtime';
 
 const router = Router();
 
@@ -42,6 +42,10 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: getRuntimeRateLimitStore(),
+  // Same Worker-only keyGenerator as the global limiter — reads CF-Connecting-IP
+  // to avoid ERR_ERL_UNDEFINED_IP_ADDRESS on Workers where req.ip is undefined.
+  // Node/Render returns undefined here → default unchanged.
+  ...(getWorkerRateLimitKeyGenerator() ? { keyGenerator: getWorkerRateLimitKeyGenerator()! } : {}),
 });
 
 /**
