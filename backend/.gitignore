@@ -68,3 +68,6 @@ dist-worker/
 .wrangler/
 cf-dev*.log
 cf-probe*.log
+
+# Load-test credentials (NEVER commit — plaintext passwords)
+load-test-users.json
