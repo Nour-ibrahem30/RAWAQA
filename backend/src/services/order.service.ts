@@ -68,15 +68,19 @@ export const normaliseOrder = (o: any): any => {
     tax:           toNum(o.tax),
     total:         toNum(o.total),
     couponDiscount: o.couponDiscount != null ? toNum(o.couponDiscount) : undefined,
-    // userId shape: if user included, mimic populated object; else plain string
-    userId: user ? {
-      id:        user.id,
-      _id:       user.id,
-      firstName: user.firstName,
-      lastName:  user.lastName,
-      email:     user.email,
-      phone:     user.phone,
-    } : o.userId,
+    // userId stays as the raw string ID — required for ownership check in getOrder().
+    // The populated user object is exposed separately as `user`.
+    userId: o.userId,
+    user: user
+      ? {
+          id:        user.id,
+          _id:       user.id,
+          firstName: user.firstName,
+          lastName:  user.lastName,
+          email:     user.email,
+          phone:     user.phone,
+        }
+      : null,
     shippingAddress: {
       recipientName: o.shippingRecipientName,
       firstName:     o.shippingRecipientName?.split(' ')[0] ?? '',
