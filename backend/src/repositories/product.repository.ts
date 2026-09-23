@@ -218,6 +218,10 @@ export class ProductRepository {
 
   /**
    * Releases previously reserved stock back to available stock.
+   *
+   * Guards: only decrements reservedQuantity by up to its current value
+   * (GREATEST(0, reservedQuantity - qty)) to prevent underflow if called
+   * twice for the same item.  The re-added availableQuantity is symmetric.
    */
   async releaseStock(
     productId: string,
@@ -225,13 +229,15 @@ export class ProductRepository {
     tx?: Prisma.TransactionClient
   ): Promise<void> {
     const client = tx ?? prisma;
-    await client.inventory.updateMany({
-      where: { productId },
-      data: {
-        reservedQuantity: { decrement: quantity },
-        availableQuantity: { increment: quantity },
-      },
-    });
+    // Use $executeRaw for the guarded update — Prisma's updateMany does not
+    // support GREATEST/LEAST expressions in data clauses.
+    await (client as any).$executeRaw`
+      UPDATE inventories
+      SET    "reservedQuantity"  = GREATEST(0, "reservedQuantity"  - ${quantity}),
+             "availableQuantity" = LEAST("onHandQuantity",
+                                         "availableQuantity" + ${quantity})
+      WHERE  "productId" = ${productId}
+    `;
   }
 
   /**

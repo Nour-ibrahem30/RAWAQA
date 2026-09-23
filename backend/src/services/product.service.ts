@@ -626,25 +626,64 @@ export const adjustInventory = async (
   const product = await productRepository.findById(productId);
   if (!product) throw new Error('Product not found');
 
-  const inv     = await productRepository.getInventory(productId);
-  if (!inv) throw new Error('Inventory record not found');
-
   if (params.onHandQuantity !== undefined && params.onHandQuantity < 0)
     throw new Error('onHandQuantity cannot be negative');
   if (params.reservedQuantity !== undefined && params.reservedQuantity < 0)
     throw new Error('reservedQuantity cannot be negative');
 
-  const newOnHand   = params.onHandQuantity   !== undefined ? params.onHandQuantity   : inv.onHandQuantity;
-  const newReserved = params.reservedQuantity !== undefined ? params.reservedQuantity : inv.reservedQuantity;
-  const newAvail    = Math.max(0, newOnHand - newReserved);
+  // ─── Atomic read-lock-then-write ─────────────────────────────────────────
+  // The original read(inventory) → compute → write(inventory) sequence is a
+  // lost-update race: a concurrent reserveStock() that runs between the read
+  // and the write will have its changes silently overwritten.
+  //
+  // Fix: run inside a transaction and lock the inventory row with
+  // SELECT … FOR UPDATE before reading it.  This serialises concurrent
+  // reserveStock / releaseStock / adjustInventory calls on the same product.
+  // reserveStock / releaseStock use atomic increment/decrement UPDATE statements
+  // which are safe even without a lock, but holding the row lock here prevents
+  // them from committing between our read and our write.
+  // ─────────────────────────────────────────────────────────────────────────
+  const { newOnHand, newReserved, newAvail, newThreshold } =
+    await prisma.$transaction(async (tx) => {
+      // Lock the inventory row for the duration of this transaction.
+      // Any concurrent reserveStock/releaseStock on the same productId will
+      // block on the UPDATE they attempt until this transaction commits.
+      const locked = await tx.$queryRaw<Array<{
+        onHandQuantity: number;
+        reservedQuantity: number;
+        lowStockThreshold: number;
+      }>>`
+        SELECT "onHandQuantity", "reservedQuantity", "lowStockThreshold"
+        FROM   inventories
+        WHERE  "productId" = ${productId}
+        FOR UPDATE
+      `;
 
-  await productRepository.updateInventory(productId, {
-    onHandQuantity:    newOnHand,
-    reservedQuantity:  newReserved,
-    availableQuantity: newAvail,
-    lowStockThreshold: params.lowStockThreshold ?? inv.lowStockThreshold,
-    lastSyncedAt:      new Date(),
-  });
+      if (!locked.length) throw new Error('Inventory record not found');
+      const inv = locked[0]!;
+
+      const newOnHand   = params.onHandQuantity   !== undefined
+        ? params.onHandQuantity
+        : inv.onHandQuantity;
+      const newReserved = params.reservedQuantity !== undefined
+        ? params.reservedQuantity
+        : inv.reservedQuantity;
+      const newAvail    = Math.max(0, newOnHand - newReserved);
+      const newThreshold = params.lowStockThreshold ?? inv.lowStockThreshold;
+
+      await tx.inventory.update({
+        where: { productId },
+        data: {
+          onHandQuantity:    newOnHand,
+          reservedQuantity:  newReserved,
+          availableQuantity: newAvail,
+          lowStockThreshold: newThreshold,
+          lastSyncedAt:      new Date(),
+        },
+      });
+
+      return { newOnHand, newReserved, newAvail, newThreshold };
+    });
 
   invalidateProductCaches();
 
@@ -655,7 +694,7 @@ export const adjustInventory = async (
       onHandQuantity:    newOnHand,
       reservedQuantity:  newReserved,
       availableQuantity: newAvail,
-      lowStockThreshold: params.lowStockThreshold ?? inv.lowStockThreshold,
+      lowStockThreshold: newThreshold,
     },
   };
 };
