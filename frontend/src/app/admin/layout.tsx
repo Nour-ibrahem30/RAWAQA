@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
+import Image from 'next/image';
 import AdminLoadingScreen from '@/components/ui/AdminLoadingScreen';
 import '../globals.css';
 
@@ -87,17 +88,98 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     return <AdminLoadingScreen lang={lang} isPersistent userName={user?.name || (isAr ? 'المشرف' : 'Admin')} />;
   }
 
+  // Nav icons as inline SVG components — each one reflects RAWAQA's product identity
+  // (bean bags, home comfort, Egyptian craftsmanship, retail operations)
+  const NavIcon = ({ id }: { id: string }) => {
+    const icons: Record<string, React.ReactNode> = {
+      // Dashboard — grid of 4 tiles (like a store overview)
+      dashboard: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+      ),
+      // Products — bean bag silhouette (core product identity)
+      products: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 17c0-5 2.5-9 5-9s5 4 5 9c0 2-2.5 3-5 3s-5-1-5-3z"/>
+          <path d="M10 8c.5-2 1.5-3 2-3"/>
+        </svg>
+      ),
+      // Categories — layered collection / folders
+      categories: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 7h5l2-3h6l2 3h3v11a1 1 0 01-1 1H4a1 1 0 01-1-1V7z"/>
+          <circle cx="12" cy="13" r="2.5"/>
+        </svg>
+      ),
+      // Orders — shopping bag with check (fulfillment)
+      orders: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+      ),
+      // Reviews — speech bubble with star
+      reviews: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          <path d="M12 7l1 2.5 2.5.5-1.8 1.8.5 2.7L12 13.2l-2.2 1.3.5-2.7L8.5 10l2.5-.5z"/>
+        </svg>
+      ),
+      // Coupons — ticket / discount tag
+      coupons: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+          <circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/>
+        </svg>
+      ),
+      // Customers — person silhouette (Egyptian family buyer)
+      customers: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      ),
+      // Ads — megaphone / broadcast
+      ads: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+        </svg>
+      ),
+      // Content — document with pen (site copy & CMS)
+      content: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+      ),
+      // Settings — sliders (theme, colors, brand)
+      settings: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
+          <circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/>
+          <circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/>
+          <circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/>
+        </svg>
+      ),
+    };
+    return <span style={{ display: 'flex', alignItems: 'center', width: 20, justifyContent: 'center', flexShrink: 0 }}>{icons[id]}</span>;
+  };
+
   const navItems = [
-    { href: '/admin',            icon: '⌂',  label: t.dashboard  },
-    { href: '/admin/products',   icon: '⊞',  label: t.products   },
-    { href: '/admin/categories', icon: '◈',  label: t.categories },
-    { href: '/admin/orders',     icon: '✦',  label: t.orders     },
-    { href: '/admin/reviews',    icon: '★',  label: t.reviews    },
-    { href: '/admin/coupons',    icon: '🏷️', label: t.coupons    },
-    { href: '/admin/customers',  icon: '◎',  label: t.customers  },
-    { href: '/admin/ads',        icon: '📢', label: t.ads        },
-    { href: '/admin/content',    icon: '✏️', label: t.content    },
-    { href: '/admin/settings',   icon: '◐',  label: t.settings   },
+    { href: '/admin',            id: 'dashboard',  label: t.dashboard  },
+    { href: '/admin/products',   id: 'products',   label: t.products   },
+    { href: '/admin/categories', id: 'categories', label: t.categories },
+    { href: '/admin/orders',     id: 'orders',     label: t.orders     },
+    { href: '/admin/reviews',    id: 'reviews',    label: t.reviews    },
+    { href: '/admin/coupons',    id: 'coupons',    label: t.coupons    },
+    { href: '/admin/customers',  id: 'customers',  label: t.customers  },
+    { href: '/admin/ads',        id: 'ads',        label: t.ads        },
+    { href: '/admin/content',    id: 'content',    label: t.content    },
+    { href: '/admin/settings',   id: 'settings',   label: t.settings   },
   ];
 
   const isActive = (href: string) =>
@@ -134,10 +216,22 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           style={{ borderColor: 'var(--admin-border)' }}
         >
           <div className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 60 60" fill="none">
-              <circle cx="30" cy="30" r="28" stroke="var(--admin-text-dim)" strokeWidth="1.1" />
-              <path d="M18 36c0-9 5-16 12-16s12 7 12 16c0 4-5 6-12 6s-12-2-12-6z" stroke="var(--admin-gold)" strokeWidth="1.4" />
-            </svg>
+            {/* Real brand logo */}
+            <div style={{
+              width: 36, height: 36, borderRadius: 9, overflow: 'hidden', flexShrink: 0,
+              border: '1px solid rgba(210,181,106,.25)',
+              background: 'rgba(210,181,106,.06)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Image
+                src="/logo.png"
+                alt="RAWAQA"
+                width={30}
+                height={30}
+                style={{ objectFit: 'contain', width: 30, height: 30 }}
+                priority
+              />
+            </div>
             <div>
               <p style={{ fontFamily: 'var(--font-fraunces, serif)', fontSize: '1rem', letterSpacing: '.12em', color: 'var(--admin-text)' }}>RAWAQA</p>
               <p style={{ fontSize: '.62rem', letterSpacing: '.1em', color: 'var(--admin-text-faint)', textTransform: 'uppercase' }}>
@@ -203,7 +297,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 textAlign: isAr ? 'right' : 'left',
               }}
             >
-              <span style={{ fontSize: '1rem', width: 20, textAlign: 'center' }}>{item.icon}</span>
+              <NavIcon id={item.id} />
               {item.label}
             </Link>
           ))}

@@ -257,36 +257,17 @@ export default function AdminLoadingScreen({
             alignItems: 'center',
             justifyContent: 'center',
             animation: 'emblemGlow 3.5s ease-in-out infinite',
+            overflow: 'hidden',
           }}
         >
-          {/* Bespoke RAWAQA Lounge Icon */}
-          <svg width="52" height="52" viewBox="0 0 60 60" fill="none">
-            <defs>
-              <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#FFF2D1" />
-                <stop offset="50%" stopColor="#D2B56A" />
-                <stop offset="100%" stopColor="#9E782F" />
-              </linearGradient>
-            </defs>
-            {/* Outer halo disc */}
-            <circle cx="30" cy="30" r="26" stroke="rgba(210,181,106,0.2)" strokeWidth="1" />
-            {/* Silhouette of signature luxury beanbag lounger */}
-            <path
-              d="M16 38c0-11 6.5-19 14-19s14 8 14 19c0 5-6.5 7.5-14 7.5s-14-2.5-14-7.5z"
-              stroke="url(#goldGrad)"
-              strokeWidth="2.2"
-              fill="rgba(210,181,106,0.06)"
-              strokeLinejoin="round"
-            />
-            {/* Elegant comfort tufting accent line */}
-            <path
-              d="M25 25c2.2-4 5-5.5 8-5.5"
-              stroke="url(#goldGrad)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-            <circle cx="30" cy="37" r="2" fill="#D2B56A" />
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt="RAWAQA"
+            width={56}
+            height={56}
+            style={{ objectFit: 'contain', width: 56, height: 56 }}
+          />
         </div>
       </div>
 
