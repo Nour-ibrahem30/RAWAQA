@@ -78,10 +78,19 @@ export default function ProductCard({ product, priority = false }: { product: Pr
     .filter(Boolean);
 
   const name        = loc(product.nameAr, product.nameEn, locale);
-  // Guard against missing inventory data from API (treat as available to always show the button)
+  // Show the button unless the product is explicitly marked out-of-stock
+  // in the database (status = 'out_of_stock') OR inventory exists AND
+  // availableQuantity is confirmed 0.
+  // If inventory is missing entirely from the API response, treat as available.
+  const hasInventory = !!product.inventory;
   const availableQty = product.inventory?.availableQuantity ?? 1;
-  const available    = availableQty > 0;
-  const isLow        = available && availableQty <= (product.inventory?.lowStockThreshold ?? 0);
+  const statusIsOut  = (product as any).status === 'out_of_stock';
+  const available    = !statusIsOut && (
+    !hasInventory ||      // no inventory record → assume available
+    availableQty > 0      // has real stock
+  );
+  const isLow = available && hasInventory && availableQty > 0 &&
+    availableQty <= (product.inventory?.lowStockThreshold ?? 0);
 
   const goTo = (i: number) => {
     if (i === imgIdx || fading) return;
@@ -392,7 +401,7 @@ export default function ProductCard({ product, priority = false }: { product: Pr
           )}
         </div>
 
-        {available && (
+        {available ? (
           <button
             type="button"
             onClick={handleAdd}
@@ -407,6 +416,37 @@ export default function ProductCard({ product, priority = false }: { product: Pr
                 <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
               </svg>
             ) : t('add_to_cart')}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="btn btn-sm text-xs py-1.5 mt-1"
+            style={{
+              width: '100%',
+              minHeight: 44,
+              background: 'rgba(255,255,255,.04)',
+              border: '1px solid rgba(255,255,255,.08)',
+              borderRadius: 999,
+              color: 'rgba(247,244,236,.35)',
+              cursor: 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '.45rem',
+              fontSize: '.78rem',
+              fontWeight: 600,
+              letterSpacing: '.04em',
+            }}
+            aria-label={isAr ? 'نفذ من المخزون' : 'Out of stock'}
+          >
+            {/* X circle icon */}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, opacity: .6 }}>
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="15" y1="9" x2="9" y2="15"/>
+              <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            {isAr ? 'نفذ من المخزون' : 'Out of stock'}
           </button>
         )}
       </div>
