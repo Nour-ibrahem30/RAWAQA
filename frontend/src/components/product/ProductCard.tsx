@@ -78,8 +78,10 @@ export default function ProductCard({ product, priority = false }: { product: Pr
     .filter(Boolean);
 
   const name        = loc(product.nameAr, product.nameEn, locale);
-  const available   = product.inventory.availableQuantity > 0;
-  const isLow       = available && product.inventory.availableQuantity <= product.inventory.lowStockThreshold;
+  // Guard against missing inventory data from API (treat as available to always show the button)
+  const availableQty = product.inventory?.availableQuantity ?? 1;
+  const available    = availableQty > 0;
+  const isLow        = available && availableQty <= (product.inventory?.lowStockThreshold ?? 0);
 
   const goTo = (i: number) => {
     if (i === imgIdx || fading) return;

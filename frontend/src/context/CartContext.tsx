@@ -82,9 +82,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             total: price * qty,
           };
         });
-        persist(mapped);
+        // Only overwrite local state if the backend returned real items.
+        // If the backend returns an empty cart after we just added something,
+        // keep the local optimistic state so items don't vanish.
+        const localItems = loadItems();
+        if (mapped.length > 0 || localItems.length === 0) {
+          persist(mapped);
+        }
+        // else: backend returned empty but local has items — keep local state
       }
     } catch {
+      // On any API error fall back to localStorage so items are not lost
       setItems(loadItems());
     } finally {
       setIsLoading(false);
@@ -122,7 +130,41 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (token) {
       try {
         await cartApi.add(productId, quantity);
-        await fetchCart();
+        // Optimistically add to local state immediately so the UI reflects the
+        // change even before fetchCart resolves (avoids the "empty cart" flash).
+        if (product) {
+          const selectedImageOpt = product.images?.[imageIndex] ?? product.images?.[0];
+          setItems(prev => {
+            const existing = prev.find(i => i.product.id === productId || i.product.sku === product?.sku);
+            let newItems: CartItem[];
+            if (existing) {
+              newItems = prev.map(i =>
+                (i.product.id === productId || i.product.sku === product?.sku)
+                  ? { ...i, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.price }
+                  : i
+              );
+            } else {
+              newItems = [...prev, {
+                product: {
+                  id: product.id, nameAr: product.nameAr, nameEn: product.nameEn,
+                  price: product.price, images: selectedImageOpt ? [selectedImageOpt] : product.images,
+                  sku: product.sku,
+                },
+                quantity, price: product.price, total: product.price * quantity,
+              }];
+            }
+            saveItems(newItems);
+            return newItems;
+          });
+        }
+        // Then sync with backend; if it fails or returns empty, keep optimistic state
+        try {
+          const res = await cartApi.get();
+          if (res.data?.items && res.data.items.length > 0) {
+            await fetchCart();
+          }
+          // If backend returns empty items after a successful add, keep local optimistic state
+        } catch { /* keep optimistic state */ }
         return;
       } catch { /* fall through to local */ }
     }

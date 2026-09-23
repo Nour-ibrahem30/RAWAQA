@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -54,22 +55,37 @@ function ParticleCanvas() {
   return <canvas ref={ref} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />;
 }
 
-/* ── animated logo ring ───────────────────────────────────── */
-function LogoRing({ size = 60 }: { size?: number }) {
+/* ── brand logo ───────────────────────────────────────────── */
+function BrandLogo() {
   return (
-    <div style={{ position: 'relative', width: size, height: size, margin: '0 auto' }}>
-      <svg width={size} height={size} viewBox="0 0 64 64" fill="none"
-        style={{ position: 'absolute', inset: 0, animation: 'rotateSlow 12s linear infinite' }}>
-        <circle cx="32" cy="32" r="30" stroke="rgba(210,181,106,.18)" strokeWidth="1" strokeDasharray="4 6" />
-      </svg>
-      <svg width={size} height={size} viewBox="0 0 64 64" fill="none"
-        style={{ position: 'absolute', inset: 0, animation: 'pulse3d 3s ease-in-out infinite' }}>
-        <circle cx="32" cy="32" r="24" stroke="rgba(210,181,106,.28)" strokeWidth="1" />
-      </svg>
-      <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ position: 'absolute', inset: 0 }}>
-        <path d="M20 38c0-9 5-15 12-15s12 6 12 15c0 4-5 6-12 6s-12-2-12-6z" stroke="var(--gold-light)" strokeWidth="1.5" fill="none" />
-        <path d="M26 23c1-4 3-6 6-6" stroke="rgba(210,181,106,.5)" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.7rem' }}>
+      <div style={{
+        width: 68, height: 68, borderRadius: 18,
+        background: 'rgba(210,181,106,.07)',
+        border: '1px solid rgba(210,181,106,.18)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 0 28px rgba(210,181,106,.12)',
+        overflow: 'hidden',
+      }}>
+        <Image
+          src="/logo.png"
+          alt="RAWAQA"
+          width={52}
+          height={52}
+          style={{ objectFit: 'contain', width: 52, height: 52 }}
+          priority
+        />
+      </div>
+      <span style={{
+        fontFamily: 'var(--font-fraunces, serif)',
+        fontSize: '1.1rem',
+        letterSpacing: '.22em',
+        textTransform: 'uppercase',
+        color: 'var(--gold-light)',
+        fontWeight: 400,
+      }}>
+        RAWAQA
+      </span>
     </div>
   );
 }
@@ -251,18 +267,25 @@ export default function RegisterPage() {
           )}
 
           {/* Logo */}
-          <div style={{ marginBottom: '2rem', opacity: cardIn ? 1 : 0, transform: cardIn ? 'translateY(0)' : 'translateY(-12px)', transition: 'opacity 500ms 150ms ease, transform 500ms 150ms ease' }}>
-            <LogoRing size={60} />
+          <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center', opacity: cardIn ? 1 : 0, transform: cardIn ? 'translateY(0)' : 'translateY(-12px)', transition: 'opacity 500ms 150ms ease, transform 500ms 150ms ease' }}>
+            <BrandLogo />
           </div>
 
           {/* Heading */}
           <div style={{ textAlign: 'center', marginBottom: '2rem', opacity: cardIn ? 1 : 0, transform: cardIn ? 'translateY(0)' : 'translateY(12px)', transition: 'opacity 500ms 250ms ease, transform 500ms 250ms ease' }}>
-            <p style={{ fontSize: '.62rem', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '.5rem' }}>
-              {isAr ? 'انضم إلى رواقة' : 'Join RAWAQA'}
-            </p>
-            <h1 style={{ fontFamily: 'var(--font-fraunces,serif)', fontSize: 'clamp(1.6rem, 3vw, 2rem)', color: 'var(--ivory)', fontWeight: 300, lineHeight: 1.2 }}>
+            <h1 style={{
+              fontFamily: 'var(--font-cairo, var(--font-fraunces, serif))',
+              fontSize: 'clamp(1.4rem, 3vw, 1.75rem)',
+              color: 'var(--ivory)',
+              fontWeight: 700,
+              lineHeight: 1.3,
+              marginBottom: '.4rem',
+            }}>
               {t('register_title')}
             </h1>
+            <p style={{ fontSize: '.78rem', color: 'rgba(247,244,236,.4)', letterSpacing: '.04em' }}>
+              {isAr ? 'انضم إلى رواقة' : 'Join RAWAQA'}
+            </p>
           </div>
 
           {/* Form */}
