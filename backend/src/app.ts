@@ -82,8 +82,9 @@ const isAllowedOrigin = (origin: string): boolean => {
     // 2. Allow official brand domain & subdomains
     if (hostname === 'rawaqa.com' || hostname.endsWith('.rawaqa.com')) return true;
 
-    // 3. Allow local development
-    if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+    // 3. Allow local development ONLY in non-production environments
+    // SECURITY: Prevents production API from accepting requests from localhost origins
+    if (env.NODE_ENV !== 'production' && (hostname === 'localhost' || hostname === '127.0.0.1')) return true;
 
     // 4. Allow any explicitly configured origins in ENV
     if (configuredOrigins.some((allowed) => allowed.includes(hostname))) return true;
@@ -122,6 +123,61 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     res.status(204).end();
     return;
   }
+  next();
+});
+
+// =============================================================================
+// CSRF PROTECTION (Origin/Referer Validation for State-Changing Requests)
+// =============================================================================
+// Defense-in-depth against CSRF attacks when using SameSite=None cookies.
+// Validates that state-changing requests (POST, PUT, PATCH, DELETE) originate
+// from allowed domains by checking Origin or Referer headers.
+// This complements JWT authentication but provides additional protection for
+// cookie-based authentication flows.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  // Only validate state-changing methods
+  const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  if (!stateChangingMethods.includes(req.method)) {
+    return next();
+  }
+
+  // Skip CSRF check for health endpoints and API docs
+  const path = req.originalUrl || req.url || req.path;
+  if (path.includes('/health') || path.includes('/docs')) {
+    return next();
+  }
+
+  // Get Origin or fall back to Referer
+  const origin = req.headers.origin;
+  const referer = req.headers.referer;
+
+  // If Origin header is present, validate it
+  if (origin) {
+    if (isAllowedOrigin(origin)) {
+      return next();
+    }
+    // Origin present but not allowed - reject
+    res.status(403).json({
+      error: 'Forbidden',
+      message: 'Cross-origin request blocked by CSRF protection',
+    });
+    return;
+  }
+
+  // If no Origin, check Referer (less reliable but provides some protection)
+  if (referer) {
+    try {
+      const refererOrigin = new URL(referer).origin;
+      if (isAllowedOrigin(refererOrigin)) {
+        return next();
+      }
+    } catch {
+      // Invalid referer URL, continue to allow (mobile apps, API clients)
+    }
+  }
+
+  // No Origin/Referer header - allow for API clients (curl, mobile apps, server-to-server)
+  // These requests cannot carry cross-site cookies anyway (browser-only behavior)
   next();
 });
 
@@ -190,6 +246,16 @@ app.get('/health', standardHealthHandler);
 app.use(
   helmet({
     contentSecurityPolicy: env.HELMET_CSP_ENABLED ? undefined : false,
+    // Additional security headers for defense-in-depth
+    hsts: {
+      maxAge: 31536000, // 1 year
+      includeSubDomains: true,
+      preload: true,
+    },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    noSniff: true,
+    xssFilter: true,
+    frameguard: { action: 'deny' },
   })
 );
 
@@ -357,12 +423,28 @@ apiPrefixes.forEach(prefix => {
 // Standalone review actions (delete, approve, helpful, recent)
 import { removeReview, approve, markHelpful, getRecentReviews } from './controllers/review.controller';
 import { authenticate, requireAdmin } from './middleware/auth.middleware';
+
+// Helpful vote rate limiter for standalone routes (matches review.routes.ts config)
+const helpfulVoteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 votes per window per IP
+  message: {
+    success: false,
+    error: 'Too Many Requests',
+    message: 'Too many helpful votes from this IP. Please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: getRuntimeRateLimitStore(),
+  ...(getWorkerRateLimitKeyGenerator() ? { keyGenerator: getWorkerRateLimitKeyGenerator()! } : {}),
+});
+
 apiPrefixes.forEach(prefix => {
   app.get(   `${prefix}/reviews/recent`,      getRecentReviews);
   app.get(   `${prefix}/reviews`,             getRecentReviews);
   app.delete(`${prefix}/reviews/:id`,         authenticate, removeReview);
   app.put(   `${prefix}/reviews/:id/approve`, authenticate, requireAdmin, approve);
-  app.post(  `${prefix}/reviews/:id/helpful`, featureFlag('FEATURE_REVIEWS'), markHelpful);
+  app.post(  `${prefix}/reviews/:id/helpful`, featureFlag('FEATURE_REVIEWS'), helpfulVoteLimiter, markHelpful);
 });
 
 // Root Route
