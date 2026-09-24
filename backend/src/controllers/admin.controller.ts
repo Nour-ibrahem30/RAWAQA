@@ -13,10 +13,14 @@ import { contentRepository } from '../repositories/content.repository';
 import { outboxRepository }  from '../repositories/outbox.repository';
 
 // GET /api/admin/users
+// Resource-safety: admin endpoint, but apply reasonable bounds to prevent
+// accidental oversized requests. Large exports use dedicated export endpoints.
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
-    const page   = parseInt(req.query.page  as string) || 1;
-    const limit  = parseInt(req.query.limit as string) || 20;
+    const rawPage = parseInt(req.query.page as string) || 1;
+    const rawLimit = parseInt(req.query.limit as string) || 20;
+    const page = Math.min(Math.max(1, rawPage), 10000);
+    const limit = Math.min(Math.max(1, rawLimit), 100);
     const role   = req.query.role   as UserRole | undefined;
     const search = req.query.search as string | undefined;
     const isActive =
@@ -155,10 +159,13 @@ export const updateSettings = async (req: Request, res: Response): Promise<void>
 };
 
 // GET /api/admin/reconciliation-reports
+// Resource-safety: apply reasonable bounds
 export const getReconciliationReports = async (req: Request, res: Response): Promise<void> => {
   try {
-    const page  = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const rawPage = parseInt(req.query.page as string) || 1;
+    const rawLimit = parseInt(req.query.limit as string) || 20;
+    const page = Math.min(Math.max(1, rawPage), 10000);
+    const limit = Math.min(Math.max(1, rawLimit), 100);
 
     const reports = await outboxRepository.findRecentReports(limit);
     res.json({

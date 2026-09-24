@@ -35,10 +35,13 @@ export const apply = async (req: Request, res: Response): Promise<void> => {
 };
 
 // GET /api/coupons  (admin)
+// Resource-safety: apply reasonable bounds
 export const list = async (req: Request, res: Response): Promise<void> => {
   try {
-    const page     = parseInt(req.query.page     as string) || 1;
-    const limit    = parseInt(req.query.limit    as string) || 20;
+    const rawPage = parseInt(req.query.page as string) || 1;
+    const rawLimit = parseInt(req.query.limit as string) || 20;
+    const page = Math.min(Math.max(1, rawPage), 10000);
+    const limit = Math.min(Math.max(1, rawLimit), 100);
     const isActive = req.query.isActive !== undefined
       ? req.query.isActive === 'true' : undefined;
     const result = await listCoupons(page, limit, isActive);

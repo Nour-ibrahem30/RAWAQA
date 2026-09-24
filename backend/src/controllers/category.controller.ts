@@ -141,8 +141,12 @@ export const getCategoryProducts = async (
       return;
     }
 
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    // Resource-safety: clamp public pagination so no request can request an
+    // uncontrolled result size. Defaults and normal ranges are unchanged.
+    const rawPage  = parseInt(req.query.page as string)  || 1;
+    const rawLimit = parseInt(req.query.limit as string) || 20;
+    const page  = Math.min(Math.max(1, rawPage), 10000);
+    const limit = Math.min(Math.max(1, rawLimit), 100);
 
     const result = await getCategoryWithProducts(id, page, limit);
 

@@ -243,7 +243,9 @@ export const getRelatedProductsHandler = async (
       return;
     }
     
-    const limit = parseInt(req.query.limit as string) || 6;
+    // Resource-safety: clamp limit for related products
+    const rawLimit = parseInt(req.query.limit as string) || 6;
+    const limit = Math.min(Math.max(1, rawLimit), 20);
     const products = await getRelatedProducts(id, limit);
     res.status(200).json({ success: true, data: transformProducts(products) });
   } catch (error) {

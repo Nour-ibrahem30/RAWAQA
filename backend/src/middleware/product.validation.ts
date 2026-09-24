@@ -117,10 +117,18 @@ export const getProductByIdSchema = z.object({
 });
 
 // Query products schema
+// Production resource-safety: page and limit are hard-bounded at the validation
+// boundary so no public request can trigger an uncontrolled DB `take`/`skip`.
+//   - limit: 1..100 (default 20) — matches the existing default page size
+//   - page:  1..10000 (default 1) — prevents pathological skip values
+// Requests outside these bounds are rejected by the existing validate()
+// middleware (HTTP 400), exactly like any other invalid query parameter.
 export const queryProductsSchema = z.object({
   query: z.object({
-    page: z.string().regex(/^\d+$/).transform(Number).default('1'),
-    limit: z.string().regex(/^\d+$/).transform(Number).default('20'),
+    page: z.string().regex(/^\d+$/).transform(Number)
+      .pipe(z.number().int().min(1).max(10000)).default('1'),
+    limit: z.string().regex(/^\d+$/).transform(Number)
+      .pipe(z.number().int().min(1).max(100)).default('20'),
     category: z.string().optional(),
     status: z.enum(['active', 'draft', 'archived', 'out_of_stock']).optional(),
     featured: z.string().transform((val) => val === 'true').optional(),

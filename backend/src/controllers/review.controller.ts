@@ -30,8 +30,11 @@ export const addReview = async (req: Request, res: Response): Promise<void> => {
 export const listReviews = async (req: Request, res: Response): Promise<void> => {
   try {
     const productId = req.params.productId ?? '';
-    const page  = parseInt(req.query.page  as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    // Resource-safety: clamp public pagination. Defaults/normal ranges unchanged.
+    const rawPage  = parseInt(req.query.page  as string) || 1;
+    const rawLimit = parseInt(req.query.limit as string) || 10;
+    const page  = Math.min(Math.max(1, rawPage), 10000);
+    const limit = Math.min(Math.max(1, rawLimit), 100);
     const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
     const result = await getProductReviews(productId, page, limit, !isAdmin);
     res.json({
@@ -88,10 +91,13 @@ export const markHelpful = async (req: Request, res: Response): Promise<void> =>
 };
 
 // GET /api/admin/reviews/pending
+// Resource-safety: apply reasonable bounds
 export const pending = async (req: Request, res: Response): Promise<void> => {
   try {
-    const page  = parseInt(req.query.page  as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const rawPage = parseInt(req.query.page as string) || 1;
+    const rawLimit = parseInt(req.query.limit as string) || 20;
+    const page = Math.min(Math.max(1, rawPage), 10000);
+    const limit = Math.min(Math.max(1, rawLimit), 100);
     const result = await getPendingReviews(page, limit);
     res.json({
       success: true,
@@ -105,10 +111,13 @@ export const pending = async (req: Request, res: Response): Promise<void> => {
 };
 
 // GET /api/admin/reviews
+// Resource-safety: apply reasonable bounds
 export const listAllAdminReviews = async (req: Request, res: Response): Promise<void> => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const rawPage = parseInt(req.query.page as string) || 1;
+    const rawLimit = parseInt(req.query.limit as string) || 20;
+    const page = Math.min(Math.max(1, rawPage), 10000);
+    const limit = Math.min(Math.max(1, rawLimit), 100);
     const filter = (req.query.status as 'all' | 'pending' | 'approved') || 'all';
     const result = await getAllReviewsAdmin(filter, page, limit);
     res.json({
@@ -129,7 +138,9 @@ export const listAllAdminReviews = async (req: Request, res: Response): Promise<
 // GET /api/reviews/recent (public for home page)
 export const getRecentReviews = async (req: Request, res: Response): Promise<void> => {
   try {
-    const limit = parseInt(req.query.limit as string) || 6;
+    // Resource-safety: clamp public "recent reviews" limit (home page widget).
+    const rawLimit = parseInt(req.query.limit as string) || 6;
+    const limit = Math.min(Math.max(1, rawLimit), 50);
     const { getRecentApprovedReviews } = await import('../services/review.service');
     const reviews = await getRecentApprovedReviews(limit);
     res.json({ success: true, data: reviews });

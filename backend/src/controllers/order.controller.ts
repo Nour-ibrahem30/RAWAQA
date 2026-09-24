@@ -13,10 +13,14 @@ import { logError } from '../config/logger';
 import { OrderStatus, PaymentStatus } from '../services/order.service';
 
 // Get all orders (admin)
+// Resource-safety: admin endpoint, but still apply reasonable bounds to prevent
+// accidental oversized requests. Admins can use the export endpoint for bulk data.
 export const listOrders = async (req: Request, res: Response): Promise<void> => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const rawPage = parseInt(req.query.page as string) || 1;
+    const rawLimit = parseInt(req.query.limit as string) || 20;
+    const page = Math.min(Math.max(1, rawPage), 10000);
+    const limit = Math.min(Math.max(1, rawLimit), 100);
     const status = req.query.status as OrderStatus;
     const paymentStatus = req.query.paymentStatus as PaymentStatus;
 
@@ -175,8 +179,11 @@ export const getMyOrders = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    // Resource-safety: clamp public pagination. Defaults/normal ranges unchanged.
+    const rawPage = parseInt(req.query.page as string) || 1;
+    const rawLimit = parseInt(req.query.limit as string) || 10;
+    const page = Math.min(Math.max(1, rawPage), 10000);
+    const limit = Math.min(Math.max(1, rawLimit), 100);
 
     const { orders, total } = await getUserOrders(req.user.userId, page, limit);
 

@@ -205,16 +205,65 @@ const startServer = async () => {
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-  // Handle uncaught exceptions
-  process.on('uncaughtException', (error: Error) => {
-    logError('Uncaught Exception', error);
-    captureException(error, { source: 'uncaughtException' });
+  // ─── Fatal Error Handling (Production-Safe) ─────────────────────────────────
+  // An uncaughtException indicates the process is in an undefined state. The
+  // safest strategy is to log, report to Sentry, stop accepting new work, and
+  // let the hosting platform (Render) restart the process. We do NOT call
+  // process.exit() synchronously to allow Sentry flush and graceful cleanup.
+  //
+  // unhandledRejection is typically less fatal but can indicate a programming
+  // error. We log and report but do NOT crash, matching Node's default behavior
+  // for unhandled rejections (warning, not exit). Truly fatal rejections often
+  // escalate to uncaughtException anyway.
+  // ────────────────────────────────────────────────────────────────────────────
+
+  let isShuttingDown = false;
+
+  // Handle uncaught exceptions — these are fatal, initiate graceful shutdown
+  process.on('uncaughtException', (error: Error, origin: string) => {
+    // Prevent recursive shutdown if an error occurs during shutdown
+    if (isShuttingDown) {
+      console.error('Fatal error during shutdown:', error);
+      process.exit(1);
+    }
+
+    logError(`Uncaught Exception [${origin}]`, error);
+    captureException(error, { source: 'uncaughtException', origin });
+
+    // Mark as shutting down and initiate graceful shutdown
+    isShuttingDown = true;
+    logError('Fatal uncaught exception — initiating graceful shutdown', error);
+
+    // Give Sentry time to flush, then shutdown
+    setTimeout(() => {
+      gracefulShutdown('uncaughtException').catch(() => {
+        process.exit(1);
+      });
+    }, 1000);
   });
 
-  // Handle unhandled promise rejections
-  process.on('unhandledRejection', (reason: any) => {
+  // Handle unhandled promise rejections — log and report, but don't crash
+  // unless it's a critical error that would leave the system in a bad state
+  process.on('unhandledRejection', (reason: any, _promise: Promise<any>) => {
     logError('Unhandled Rejection', reason);
     captureException(reason, { source: 'unhandledRejection' });
+
+    // Check if this is a critical database/connection error that warrants shutdown
+    const isCritical =
+      reason?.name === 'PrismaClientInitializationError' ||
+      reason?.name === 'PrismaClientRustPanicError' ||
+      reason?.code === 'ECONNREFUSED' ||
+      reason?.code === 'ENOTFOUND';
+
+    if (isCritical && !isShuttingDown) {
+      isShuttingDown = true;
+      logError('Critical unhandled rejection — initiating graceful shutdown', reason);
+      setTimeout(() => {
+        gracefulShutdown('unhandledRejection:critical').catch(() => {
+          process.exit(1);
+        });
+      }, 1000);
+    }
   });
 };
 
