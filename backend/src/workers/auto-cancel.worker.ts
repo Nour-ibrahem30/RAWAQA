@@ -4,7 +4,7 @@
  * Runs every 30 minutes. Releases inventory atomically inside a transaction.
  */
 
-import cron from 'node-cron';
+import cron, { type ScheduledTask } from 'node-cron';
 import { productRepository } from '../repositories/product.repository';
 import { outboxRepository }  from '../repositories/outbox.repository';
 import { prisma }            from '../lib/prisma';
@@ -14,7 +14,7 @@ import { logInfo, logError, logWarn } from '../config/logger';
 
 class AutoCancelWorker {
   private isRunning = false;
-  private task: cron.ScheduledTask | null = null;
+  private task: ScheduledTask | null = null;
 
   start(): void {
     if (this.isRunning) return;
