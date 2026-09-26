@@ -129,10 +129,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     // Try backend first if logged in
     if (token) {
       try {
-        await cartApi.add(productId, quantity);
-        // Optimistically add to local state immediately so the UI reflects the
-        // change even before fetchCart resolves (avoids the "empty cart" flash).
-        if (product) {
+        // PERF FIX: The backend returns the updated cart in the response.
+        // Use it directly instead of making 2 extra HTTP calls (cartApi.get + fetchCart).
+        // This reduces add-to-cart from 3 HTTP requests to 1 — critical for mobile latency.
+        const res = await cartApi.add(productId, quantity);
+
+        if (res.data?.items && res.data.items.length > 0) {
+          // Map backend response directly to local state
+          const mapped: CartItem[] = res.data.items.map((i: any) => {
+            const prod = i.product || {};
+            const prodId = prod._id || prod.id || String(prod);
+            const rawImages = Array.isArray(prod.images) ? prod.images : [];
+            const images = rawImages.map((img: any) => typeof img === 'string' ? img : (img?.url || '')).filter(Boolean);
+            const price = typeof i.price === 'number' ? i.price : (prod.price || 0);
+            const qty = typeof i.quantity === 'number' ? i.quantity : 1;
+            return {
+              product: {
+                id: prodId,
+                nameAr: prod.nameAr || '',
+                nameEn: prod.nameEn || '',
+                price: prod.price || price,
+                images: images.length > 0 ? images : ['/products/chair-lounge-new/img-1.jpg'],
+                sku: prod.sku || '',
+              },
+              quantity: qty,
+              price,
+              total: price * qty,
+            };
+          });
+          persist(mapped);
+        } else if (product) {
+          // Backend returned empty items (unlikely) — use optimistic update
           const selectedImageOpt = product.images?.[imageIndex] ?? product.images?.[0];
           setItems(prev => {
             const existing = prev.find(i => i.product.id === productId || i.product.sku === product?.sku);
@@ -157,14 +184,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             return newItems;
           });
         }
-        // Then sync with backend; if it fails or returns empty, keep optimistic state
-        try {
-          const res = await cartApi.get();
-          if (res.data?.items && res.data.items.length > 0) {
-            await fetchCart();
-          }
-          // If backend returns empty items after a successful add, keep local optimistic state
-        } catch { /* keep optimistic state */ }
         return;
       } catch { /* fall through to local */ }
     }
@@ -172,7 +191,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!product) throw new Error('Product not found');
     const selectedImage = product.images?.[imageIndex] ?? product.images?.[0];
 
-    // Local cart
+    // Local cart (guest user)
     setItems(prev => {
       const existing = prev.find(i => i.product.id === productId || i.product.sku === product?.sku);
       let newItems: CartItem[];
@@ -195,7 +214,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       saveItems(newItems);
       return newItems;
     });
-  }, [fetchCart]);
+  }, [persist]);
 
   const updateItem = useCallback(async (productId: string, quantity: number) => {
     if (quantity < 1) return;

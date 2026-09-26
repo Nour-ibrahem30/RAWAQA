@@ -58,6 +58,59 @@ const allowedMimes = (env.UPLOAD_ALLOWED_TYPES || 'image/jpeg,image/png,image/we
   .split(',')
   .map((t) => t.trim());
 
+// =============================================================================
+// MAGIC BYTE SIGNATURES — actual file content validation
+// =============================================================================
+// SECURITY: MIME types are attacker-controlled. We must verify the actual file
+// content by checking magic bytes (file signatures). This prevents attackers
+// from uploading malicious files disguised as images.
+// =============================================================================
+const MAGIC_SIGNATURES: Record<string, { bytes: number[]; offset?: number }[]> = {
+  'image/jpeg': [
+    { bytes: [0xFF, 0xD8, 0xFF] }, // JPEG/JFIF
+  ],
+  'image/png': [
+    { bytes: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] }, // PNG
+  ],
+  'image/webp': [
+    { bytes: [0x52, 0x49, 0x46, 0x46], offset: 0 }, // RIFF header
+    // WebP also has WEBP at offset 8, but RIFF at 0 is sufficient for basic check
+  ],
+  'image/gif': [
+    { bytes: [0x47, 0x49, 0x46, 0x38, 0x37, 0x61] }, // GIF87a
+    { bytes: [0x47, 0x49, 0x46, 0x38, 0x39, 0x61] }, // GIF89a
+  ],
+};
+
+/**
+ * Validates that the file buffer matches the expected magic bytes for its MIME type.
+ * Returns true if the file content matches, false otherwise.
+ */
+const validateMagicBytes = (buffer: Buffer, mimetype: string): boolean => {
+  const signatures = MAGIC_SIGNATURES[mimetype];
+  if (!signatures) {
+    // No signature defined for this type — fall back to MIME check only
+    // (this is less secure but maintains backward compatibility for edge cases)
+    return true;
+  }
+
+  for (const sig of signatures) {
+    const offset = sig.offset ?? 0;
+    if (buffer.length < offset + sig.bytes.length) continue;
+
+    let matches = true;
+    for (let i = 0; i < sig.bytes.length; i++) {
+      if (buffer[offset + i] !== sig.bytes[i]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return true;
+  }
+
+  return false;
+};
+
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback): void => {
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
@@ -100,6 +153,7 @@ export interface UploadResult {
 /**
  * Upload a single file buffer to Cloudinary.
  * Returns the secure URL and public_id (needed for deletion).
+ * SECURITY: Validates magic bytes before upload to prevent malicious file uploads.
  */
 export const uploadToCloudinary = async (
   file: Express.Multer.File,
@@ -107,6 +161,11 @@ export const uploadToCloudinary = async (
 ): Promise<UploadResult> => {
   if (!cloudinaryConfigured || !cloudinaryV2) {
     throw new Error('Cloudinary is not configured');
+  }
+
+  // SECURITY: Validate magic bytes before uploading
+  if (!validateMagicBytes(file.buffer, file.mimetype)) {
+    throw new Error(`Invalid file content: file does not match declared type ${file.mimetype}`);
   }
 
   return new Promise((resolve, reject) => {

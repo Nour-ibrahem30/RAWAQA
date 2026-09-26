@@ -55,9 +55,17 @@ function addTitle(sheet: ExcelJSType.Worksheet, title: string, subtitle: string,
 const toNum = (v: any) => (v == null ? 0 : Number(v));
 
 // ─── exportOrders ─────────────────────────────────────────────────────────────
+// SECURITY: Export limits are enforced to prevent resource exhaustion attacks.
+// Maximum 10,000 records per export request.
+const MAX_EXPORT_LIMIT = 10_000;
+
 export const exportOrders = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { status, from, to, limit = '5000' } = req.query;
+    const { status, from, to, limit: rawLimit = '5000' } = req.query;
+
+    // Validate and clamp limit to safe bounds
+    const parsedLimit = parseInt(rawLimit as string, 10);
+    const limit = Math.min(Math.max(1, isNaN(parsedLimit) ? 5000 : parsedLimit), MAX_EXPORT_LIMIT);
 
     const where: Prisma.OrderWhereInput = {};
     if (status) where.status = status as any;
@@ -70,7 +78,7 @@ export const exportOrders = async (req: Request, res: Response): Promise<void> =
     const orders = await prisma.order.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take:    parseInt(limit as string),
+      take:    limit,
     });
 
     logInfo(`Export: ${orders.length} orders requested by admin ${req.user?.userId}`);

@@ -361,18 +361,24 @@ export const processCheckout = async (input: CheckoutInput): Promise<CheckoutRes
             throw new Error('Coupon usage limit reached');
           }
 
-          // (b) Enforce perUserLimit with a live COUNT inside the transaction.
-          //     We read the current count under the tx snapshot to prevent the
-          //     same user from consuming the coupon multiple times concurrently.
-          const coupon = await tx.coupon.findUnique({
-            where:  { id: resolvedCouponId },
-            select: { perUserLimit: true },
-          });
-          if (coupon && coupon.perUserLimit > 0) {
+          // (b) Enforce perUserLimit atomically with SELECT FOR UPDATE + COUNT.
+          //     The SELECT FOR UPDATE on the coupon row serialises concurrent
+          //     per-user checks on the same coupon. Without this lock, two
+          //     concurrent transactions could both see userUsage=0 and both
+          //     proceed, exceeding the perUserLimit.
+          const lockedCoupon = await tx.$queryRaw<Array<{ perUserLimit: number }>>`
+            SELECT "perUserLimit"
+            FROM   coupons
+            WHERE  id = ${resolvedCouponId}
+            FOR UPDATE
+          `;
+
+          if (lockedCoupon.length > 0 && lockedCoupon[0]!.perUserLimit > 0) {
+            const perUserLimit = lockedCoupon[0]!.perUserLimit;
             const userUsage = await tx.couponUsage.count({
               where: { couponId: resolvedCouponId, userId: input.userId },
             });
-            if (userUsage >= coupon.perUserLimit) {
+            if (userUsage >= perUserLimit) {
               throw new Error('You have already used this coupon');
             }
           }

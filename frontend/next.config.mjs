@@ -43,7 +43,6 @@ const nextConfig = {
     ];
   },
   experimental: {
-    instrumentationHook: true,
     optimizePackageImports: ['next-intl'],
   },
   async redirects() {

@@ -70,14 +70,31 @@ if (env.TRUST_PROXY) {
 // Universal Strict CORS & Preflight Handler (Enterprise Security Whitelist)
 const configuredOrigins = env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map((o) => o.trim()) : [];
 
+// =============================================================================
+// ALLOWED ORIGINS — Production Security Allowlist
+// =============================================================================
+// SECURITY: Only explicitly trusted origins are allowed. DO NOT use wildcard
+// patterns like "*.vercel.app" — any attacker can deploy a malicious site on
+// Vercel and bypass CSRF protection.
+//
+// Production origins must be explicitly listed here or in CORS_ORIGIN env var.
+// =============================================================================
+const PRODUCTION_ALLOWED_ORIGINS = [
+  // Official RAWAQA Vercel deployment
+  'https://rawaqa-ruby.vercel.app',
+  // Add additional trusted Vercel preview URLs here if needed (e.g., for staging)
+  // 'https://rawaqa-staging.vercel.app',
+];
+
 const isAllowedOrigin = (origin: string): boolean => {
   if (!origin) return true;
   try {
     const url = new URL(origin);
     const hostname = url.hostname;
+    const fullOrigin = url.origin; // includes protocol
 
-    // 1. Allow production & preview Vercel domains
-    if (hostname.endsWith('.vercel.app')) return true;
+    // 1. Check explicit production origins (exact match, including protocol)
+    if (PRODUCTION_ALLOWED_ORIGINS.includes(fullOrigin)) return true;
 
     // 2. Allow official brand domain & subdomains
     if (hostname === 'rawaqa.com' || hostname.endsWith('.rawaqa.com')) return true;
@@ -86,7 +103,11 @@ const isAllowedOrigin = (origin: string): boolean => {
     // SECURITY: Prevents production API from accepting requests from localhost origins
     if (env.NODE_ENV !== 'production' && (hostname === 'localhost' || hostname === '127.0.0.1')) return true;
 
-    // 4. Allow any explicitly configured origins in ENV
+    // 4. Allow any explicitly configured origins in ENV (exact match)
+    // CORS_ORIGIN should contain full origins like "https://example.com"
+    if (configuredOrigins.includes(fullOrigin)) return true;
+
+    // 5. Fallback: check if hostname appears in configured origins (legacy compat)
     if (configuredOrigins.some((allowed) => allowed.includes(hostname))) return true;
 
     return false;
