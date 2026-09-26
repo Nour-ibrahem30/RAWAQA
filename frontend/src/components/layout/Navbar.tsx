@@ -187,7 +187,7 @@ export default function Navbar() {
                 transition: 'color 180ms',
                 borderRadius: 999,
               }}
-              aria-label={t('switch_language', { lang: otherLocale === 'ar' ? 'Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©' : 'English' })}
+              aria-label={t('switch_language', { lang: otherLocale === 'ar' ? 'العربية' : 'English' })}
               onMouseEnter={e => (e.currentTarget.style.color = 'var(--ivory)')}
               onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-on-bg-45)')}
             >
@@ -448,7 +448,7 @@ export default function Navbar() {
               }}
               aria-label={t('close_menu')}
             >
-              âœ•
+              ✕
             </button>
           </div>
 
@@ -511,9 +511,9 @@ export default function Navbar() {
                 color: 'var(--text-on-bg-55)',
                 cursor: 'pointer',
               }}
-              aria-label={t('switch_language', { lang: otherLocale === 'ar' ? 'Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©' : 'English' })}
+              aria-label={t('switch_language', { lang: otherLocale === 'ar' ? 'العربية' : 'English' })}
             >
-              {otherLocale === 'ar' ? 'Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©' : 'English'}
+              {otherLocale === 'ar' ? 'العربية' : 'English'}
             </button>
           </div>
         </div>
