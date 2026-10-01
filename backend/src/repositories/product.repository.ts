@@ -90,7 +90,7 @@ export class ProductRepository {
     compareAtPrice?: Prisma.Decimal | number;
     costPrice?: Prisma.Decimal | number;
     categoryId: string;
-    color?: string;
+    colors?: string[];
     material?: string;
     status?: ProductStatus;
     featured?: boolean;

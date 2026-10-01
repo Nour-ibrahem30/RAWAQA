@@ -387,7 +387,7 @@ export const createProduct = async (data: any): Promise<any> => {
     price:         Number(data.price ?? 0),
     compareAtPrice: data.compareAtPrice != null ? Number(data.compareAtPrice) : undefined,
     costPrice:      data.costPrice      != null ? Number(data.costPrice)      : undefined,
-    color:    data.color ?? null,
+    colors:   Array.isArray(data.colors) ? data.colors : (data.color ? [data.color] : []),
     material: data.material ?? null,
     status:   (data.status as ProductStatus) ?? ProductStatus.active,
     featured: data.featured ?? data.isFeatured ?? false,
@@ -434,7 +434,7 @@ export const updateProduct = async (id: string, data: any): Promise<any | null> 
   // Scalar field mapping
   const scalarFields = ['nameAr', 'nameEn', 'descriptionAr', 'descriptionEn',
     'shortDescriptionAr', 'shortDescriptionEn', 'slugAr', 'slugEn',
-    'odooProductId', 'color', 'material', 'featured', 'tags',
+    'odooProductId', 'colors', 'material', 'featured', 'tags',
     'metaTitleAr', 'metaTitleEn', 'metaDescriptionAr', 'metaDescriptionEn'];
 
   for (const f of scalarFields) {

@@ -41,6 +41,7 @@ const EMPTY = {
   category: '', onHandQuantity: '0', lowStockThreshold: '5',
   featured: false, status: 'active' as 'active' | 'draft' | 'inactive' | 'archived' | 'out_of_stock',
   images: '',
+  colors: [] as string[],
 };
 
 export default function ProductForm({ productId }: Props) {
@@ -77,6 +78,7 @@ export default function ProductForm({ productId }: Props) {
           featured: Boolean(p.featured),
           status: (p.status === 'draft' || p.status === 'archived' || p.status === 'out_of_stock') ? p.status : 'active',
           images: p.images?.map((img: any) => (typeof img === 'string' ? img : img?.url)).filter(Boolean).join(', ') || '',
+          colors: Array.isArray((p as any).colors) ? (p as any).colors : [],
         });
         setLoading(false);
       }).catch(() => router.push('/admin/products'));
@@ -123,6 +125,7 @@ export default function ProductForm({ productId }: Props) {
         featured: form.featured,
         status: form.status,
         images: form.images.split(/[\n,]+/).map(s => s.trim()).filter(Boolean),
+        colors: form.colors.filter(c => c.trim()),
       };
       if (productId) {
         await productsApi.update(productId, payload as Partial<Product>);
@@ -207,6 +210,93 @@ export default function ProductForm({ productId }: Props) {
           <AdminInput label="On Hand Quantity" type="number" min="0" value={form.onHandQuantity} onChange={set('onHandQuantity')} />
           <AdminInput label="Low Stock Threshold" type="number" min="0" value={form.lowStockThreshold} onChange={set('lowStockThreshold')} />
         </div>
+      </div>
+
+      {/* Colors */}
+      <div style={CARD}>
+        <p className="text-sm font-semibold mb-4" style={{ color: '#D2B56A' }}>Colors / الألوان</p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {form.colors.map((color, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+              style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)' }}
+            >
+              <span
+                className="w-4 h-4 rounded-full border border-white/20"
+                style={{ background: color }}
+              />
+              <span className="text-sm" style={{ color: '#F7F4EC' }}>{color}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const newColors = [...form.colors];
+                  newColors.splice(idx, 1);
+                  setForm(f => ({ ...f, colors: newColors }));
+                }}
+                className="text-red-400 hover:text-red-300 text-xs ml-1"
+                title="Remove color"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
+            <label className="block text-xs mb-1" style={{ color: 'rgba(247,244,236,.45)' }}>Add Color / إضافة لون</label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                id="colorPicker"
+                defaultValue="#D2B56A"
+                className="w-12 h-10 rounded cursor-pointer border-0"
+                style={{ background: 'transparent' }}
+              />
+              <input
+                type="text"
+                id="colorInput"
+                placeholder="#D2B56A or red"
+                className="flex-1 px-3 py-2 rounded-lg text-sm"
+                style={{
+                  background: 'rgba(255,255,255,.04)',
+                  border: '1px solid rgba(255,255,255,.08)',
+                  color: '#F7F4EC',
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const input = e.currentTarget;
+                    const val = input.value.trim();
+                    if (val && !form.colors.includes(val)) {
+                      setForm(f => ({ ...f, colors: [...f.colors, val] }));
+                      input.value = '';
+                    }
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const colorPicker = document.getElementById('colorPicker') as HTMLInputElement;
+              const colorInput = document.getElementById('colorInput') as HTMLInputElement;
+              const val = colorInput.value.trim() || colorPicker.value;
+              if (val && !form.colors.includes(val)) {
+                setForm(f => ({ ...f, colors: [...f.colors, val] }));
+                colorInput.value = '';
+              }
+            }}
+            className="px-4 py-2 rounded-lg text-sm font-semibold"
+            style={{ background: 'rgba(210,181,106,.15)', border: '1px solid #D2B56A', color: '#D2B56A' }}
+          >
+            + Add
+          </button>
+        </div>
+        <p className="text-xs mt-2" style={{ color: 'rgba(247,244,236,.35)' }}>
+          Use hex codes (#FF0000) or color names (red, blue, gold). Press Enter or click Add.
+        </p>
       </div>
 
       {/* Images */}
