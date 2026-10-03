@@ -154,6 +154,14 @@ const envSchema = z.object({
   FEATURE_REVIEWS: z.string().transform((val) => val === 'true').default('true'),
   FEATURE_WISHLIST: z.string().transform((val) => val === 'true').default('true'),
   FEATURE_REFERRAL: z.string().transform((val) => val === 'true').default('false'),
+
+  // Kashier Payment Gateway
+  KASHIER_SECRET_KEY: z.string().optional(),
+  KASHIER_PAYMENT_API_KEY: z.string().optional(),
+  KASHIER_MERCHANT_ID: z.string().optional(),
+  KASHIER_MODE: z.enum(['test', 'live']).default('test'),
+  MAX_PAYMENT_ATTEMPTS: z.coerce.number().positive().default(5),
+  KASHIER_SESSION_TIMEOUT_MINUTES: z.coerce.number().positive().default(30),
 });
 
 // Insecure built-in defaults that must never be used in production runtime.

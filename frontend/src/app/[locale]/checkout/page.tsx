@@ -7,7 +7,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { formatPrice } from '@/lib/utils';
-import { checkoutApi, cartApi, couponsApi } from '@/lib/api';
+import { checkoutApi, cartApi, couponsApi, paymentsApi } from '@/lib/api';
 
 const DARK   = '#0f0e0a';
 const CARD   = 'rgba(30,27,21,.95)';
@@ -15,6 +15,8 @@ const BORDER = 'rgba(210,181,106,.1)';
 const IVORY  = 'var(--ivory)';
 const GOLD   = 'var(--gold-light)';
 const FREE   = 1000; // Free shipping threshold — must match backend calculateShipping()
+
+type PaymentMethodType = 'cod' | 'kashier';
 
 const GOVERNORATES = [
   'cairo','giza','alexandria','qalyubia','dakahlia','sharqia','gharbia',
@@ -65,6 +67,7 @@ export default function CheckoutPage() {
     finalTotal: number;
   } | null>(null);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('cod');
 
   const sub      = cart?.subtotal ?? 0;
   const shipping = sub >= FREE ? 0 : sub > 0 ? 50 : 0;
@@ -166,7 +169,7 @@ export default function CheckoutPage() {
             governorate: form.governorate,
             notes: form.notes.trim() || undefined,
           },
-          paymentMethod: 'cod',
+          paymentMethod,
           couponCode: appliedCoupon?.code || undefined,
           notes: form.notes.trim() || undefined,
         },
@@ -174,6 +177,26 @@ export default function CheckoutPage() {
       );
 
       const createdOrder = res.data;
+
+      // Handle Kashier payment redirect
+      if (paymentMethod === 'kashier' && res.requiresPaymentRedirect) {
+        try {
+          const paymentRes = await paymentsApi.createSession(createdOrder._id || createdOrder.id);
+          // Redirect to Kashier hosted checkout
+          window.location.href = paymentRes.data.paymentUrl;
+          return;
+        } catch (paymentErr: unknown) {
+          showToast(
+            (paymentErr as Error).message || (isAr ? 'فشل إنشاء جلسة الدفع' : 'Failed to create payment session'),
+            'error'
+          );
+          // Order created but payment session failed - user can retry from order page
+          router.push(`/${locale}/order-confirmation/${createdOrder.orderNumber}?payment=pending`);
+          return;
+        }
+      }
+
+      // COD flow - go to confirmation
       await clearCart();
       showToast(isAr ? 'تم تأكيد طلبك بنجاح!' : 'Order placed successfully!', 'success');
       router.push(`/${locale}/order-confirmation/${createdOrder.orderNumber}`);
@@ -314,15 +337,83 @@ export default function CheckoutPage() {
                 <h2 style={{ fontWeight: 700, color: IVORY, marginBottom: '1.25rem', fontSize: '.95rem', letterSpacing: '.04em' }}>
                   {t('payment')}
                 </h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', borderRadius: 12, border: `1.5px solid rgba(210,181,106,.3)`, background: 'rgba(210,181,106,.06)' }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: GOLD, boxShadow: `0 0 8px ${GOLD}` }} />
-                  <div>
-                    <p style={{ fontWeight: 600, color: IVORY, fontSize: '.9rem' }}>{t('cod')}</p>
-                    <p style={{ fontSize: '.75rem', color: 'rgba(247,244,236,.4)' }}>
-                      {isAr ? 'ادفع عند استلام الطلب' : 'Pay when you receive your order'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
+                  {/* COD Option */}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('cod')}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', borderRadius: 12,
+                      border: `1.5px solid ${paymentMethod === 'cod' ? 'rgba(210,181,106,.5)' : BORDER}`,
+                      background: paymentMethod === 'cod' ? 'rgba(210,181,106,.08)' : 'transparent',
+                      cursor: 'pointer', transition: 'all 200ms ease', textAlign: isAr ? 'right' : 'left',
+                    }}
+                  >
+                    <div style={{
+                      width: 20, height: 20, borderRadius: '50%',
+                      border: `2px solid ${paymentMethod === 'cod' ? GOLD : 'rgba(247,244,236,.3)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {paymentMethod === 'cod' && (
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: GOLD }} />
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 600, color: IVORY, fontSize: '.9rem' }}>{t('cod')}</p>
+                      <p style={{ fontSize: '.75rem', color: 'rgba(247,244,236,.4)' }}>
+                        {isAr ? 'ادفع عند استلام الطلب' : 'Pay when you receive your order'}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: '1.5rem' }}>💵</span>
+                  </button>
+
+                  {/* Kashier Online Payment Option */}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('kashier')}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', borderRadius: 12,
+                      border: `1.5px solid ${paymentMethod === 'kashier' ? 'rgba(74,222,128,.5)' : BORDER}`,
+                      background: paymentMethod === 'kashier' ? 'rgba(74,222,128,.08)' : 'transparent',
+                      cursor: 'pointer', transition: 'all 200ms ease', textAlign: isAr ? 'right' : 'left',
+                    }}
+                  >
+                    <div style={{
+                      width: 20, height: 20, borderRadius: '50%',
+                      border: `2px solid ${paymentMethod === 'kashier' ? '#4ade80' : 'rgba(247,244,236,.3)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {paymentMethod === 'kashier' && (
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#4ade80' }} />
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 600, color: IVORY, fontSize: '.9rem' }}>
+                        {isAr ? 'الدفع الإلكتروني' : 'Online Payment'}
+                      </p>
+                      <p style={{ fontSize: '.75rem', color: 'rgba(247,244,236,.4)' }}>
+                        {isAr ? 'بطاقة ائتمان / فيزا / ماستركارد' : 'Credit Card / Visa / Mastercard'}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: '1.5rem' }}>💳</span>
+                  </button>
+                </div>
+
+                {/* Kashier security note */}
+                {paymentMethod === 'kashier' && (
+                  <div style={{
+                    marginTop: '1rem', padding: '.75rem', borderRadius: 10,
+                    background: 'rgba(74,222,128,.05)', border: '1px solid rgba(74,222,128,.15)',
+                    display: 'flex', alignItems: 'center', gap: '.5rem',
+                  }}>
+                    <span style={{ fontSize: '.9rem' }}>🔐</span>
+                    <p style={{ fontSize: '.72rem', color: 'rgba(247,244,236,.5)' }}>
+                      {isAr
+                        ? 'ستتم إعادة توجيهك إلى صفحة دفع آمنة من Kashier'
+                        : 'You will be redirected to a secure Kashier payment page'}
                     </p>
                   </div>
-                </div>
+                )}
               </section>
             </div>
 

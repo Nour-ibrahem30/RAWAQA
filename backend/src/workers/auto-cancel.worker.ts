@@ -1,6 +1,7 @@
 /**
  * auto-cancel.worker.ts — PostgreSQL/Prisma implementation
  * Cancels unpaid non-COD orders older than ORDER_AUTO_CANCEL_UNPAID_HOURS.
+ * Also handles Kashier payment expiration (30 minutes for pending_payment orders).
  * Runs every 30 minutes. Releases inventory atomically inside a transaction.
  */
 
@@ -45,50 +46,177 @@ class AutoCancelWorker {
     }
 
     try {
-      const hours     = env.ORDER_AUTO_CANCEL_UNPAID_HOURS || 24;
-      const threshold = new Date(Date.now() - hours * 60 * 60 * 1000);
-
-      // Find expired unpaid non-COD orders
-      const expiredOrders = await prisma.order.findMany({
-        where: {
-          status:        { in: ['pending', 'processing'] },
-          paymentStatus: 'pending',
-          paymentMethod: { not: 'cod' },  // COD is always "pending" until delivery
-          createdAt:     { lt: threshold },
-        },
-        take:    50,
-        include: { items: true },
-      });
-
-      if (expiredOrders.length === 0) return;
-
-      logWarn(`Auto-cancelling ${expiredOrders.length} unpaid orders older than ${hours}h`);
-
-      for (const order of expiredOrders) {
-        await this.cancelSingleOrder(order);
-      }
-
-      logInfo(`Auto-cancel complete: ${expiredOrders.length} orders cancelled`);
+      // Run both cleanup tasks
+      await this.cancelExpiredUnpaidOrders();
+      await this.cleanupExpiredKashierPayments();
     } catch (err) {
       logError('Auto-cancel worker error', err);
     }
   }
 
-  private async cancelSingleOrder(order: any): Promise<void> {
+  /**
+   * Cancel unpaid non-COD orders older than ORDER_AUTO_CANCEL_UNPAID_HOURS.
+   * Excludes pending_payment orders (handled separately).
+   */
+  private async cancelExpiredUnpaidOrders(): Promise<void> {
+    const hours     = env.ORDER_AUTO_CANCEL_UNPAID_HOURS || 24;
+    const threshold = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+    // Find expired unpaid non-COD orders (excluding pending_payment which has its own logic)
+    const expiredOrders = await prisma.order.findMany({
+      where: {
+        status:        { in: ['pending', 'processing'] },
+        paymentStatus: 'pending',
+        paymentMethod: { not: 'cod' },  // COD is always "pending" until delivery
+        createdAt:     { lt: threshold },
+      },
+      take:    50,
+      include: { items: true },
+    });
+
+    if (expiredOrders.length === 0) return;
+
+    logWarn(`Auto-cancelling ${expiredOrders.length} unpaid orders older than ${hours}h`);
+
+    for (const order of expiredOrders) {
+      await this.cancelSingleOrder(order, `Auto-cancelled after ${hours}h — payment not received`);
+    }
+
+    logInfo(`Auto-cancel complete: ${expiredOrders.length} orders cancelled`);
+  }
+
+  /**
+   * Cleanup expired Kashier payments (pending_payment orders older than timeout).
+   * Uses a shorter timeout (default 30 minutes) since online payments should complete quickly.
+   */
+  private async cleanupExpiredKashierPayments(): Promise<void> {
+    const timeoutMinutes = env.KASHIER_SESSION_TIMEOUT_MINUTES || 30;
+    const threshold = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+
+    // Find expired pending_payment Kashier orders
+    const expiredOrders = await prisma.order.findMany({
+      where: {
+        status:        'pending_payment',
+        paymentMethod: 'kashier',
+        createdAt:     { lt: threshold },
+        // Ensure no successful payment exists
+        payments: {
+          none: { status: 'paid' },
+        },
+      },
+      take:    50,
+      include: { items: true, payments: true },
+    });
+
+    if (expiredOrders.length === 0) return;
+
+    logWarn(`Cleaning up ${expiredOrders.length} expired Kashier pending_payment orders`);
+
+    for (const order of expiredOrders) {
+      await this.expireKashierOrder(order);
+    }
+
+    logInfo(`Kashier cleanup complete: ${expiredOrders.length} orders expired`);
+  }
+
+  /**
+   * Expire a Kashier order that has timed out.
+   * Marks pending payments as expired, releases stock, cancels order.
+   */
+  private async expireKashierOrder(order: any): Promise<void> {
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Re-read the order inside the transaction to guard against race
+        const fresh = await tx.order.findUnique({
+          where:  { id: order.id },
+          select: { status: true, paymentStatus: true },
+        });
+
+        // Skip if already processed or paid
+        if (!fresh || 
+            fresh.status === 'cancelled' || 
+            fresh.status === 'confirmed' ||
+            fresh.paymentStatus === 'paid') {
+          return;
+        }
+
+        // Check one more time for successful payment (race with late webhook)
+        const successfulPayment = await tx.payment.findFirst({
+          where: { orderId: order.id, status: 'paid' },
+        });
+
+        if (successfulPayment) {
+          // Late webhook succeeded - don't cancel
+          logInfo(`Skipping expiration for order ${order.orderNumber} - payment succeeded`);
+          return;
+        }
+
+        // Mark all pending payments as expired
+        await tx.payment.updateMany({
+          where: { orderId: order.id, status: 'pending' },
+          data: { status: 'expired', failedAt: new Date() },
+        });
+
+        // Release inventory for each reserved item
+        await Promise.all(
+          order.items
+            .filter((item: any) => item.productId && item.inventoryReserved)
+            .map((item: any) => productRepository.releaseStock(item.productId, item.quantity, tx))
+        );
+
+        // Clear inventory reserved flags
+        await tx.orderItem.updateMany({
+          where: { orderId: order.id },
+          data: { inventoryReserved: false },
+        });
+
+        // Update order status
+        await tx.order.update({
+          where: { id: order.id },
+          data:  {
+            status:       'cancelled',
+            paymentStatus: 'failed',
+            cancelReason: `Payment expired after ${env.KASHIER_SESSION_TIMEOUT_MINUTES || 30} minutes`,
+            cancelledAt:  new Date(),
+          },
+        });
+
+        // Outbox event
+        await outboxRepository.createEvent(
+          {
+            aggregateType: 'Order',
+            aggregateId:   order.id,
+            eventType:     'OrderCancelled',
+            payload: {
+              orderId:     order.id,
+              orderNumber: order.orderNumber,
+              reason:      'payment_expired',
+            },
+          },
+          tx
+        );
+      }, { timeout: 30_000, maxWait: 10_000 });
+
+      invalidateProductsCache();
+      logInfo(`Expired Kashier order ${order.orderNumber}`);
+    } catch (err) {
+      logError(`Failed to expire Kashier order ${order.orderNumber}`, err);
+    }
+  }
+
+  private async cancelSingleOrder(order: any, reason: string): Promise<void> {
     try {
       await prisma.$transaction(async (tx) => {
         // Re-read the order inside the transaction to guard against double-cancel
-        // (two worker instances or concurrent cancel requests on the same order).
         const fresh = await tx.order.findUnique({
           where:  { id: order.id },
           select: { status: true },
         });
         if (!fresh || fresh.status === 'cancelled' || fresh.status === 'delivered') {
-          // Already processed — skip silently
           return;
         }
 
-        // Release inventory for each reserved item (parallel)
+        // Release inventory for each reserved item
         await Promise.all(
           order.items
             .filter((item: any) => item.productId && item.inventoryReserved)
@@ -100,12 +228,12 @@ class AutoCancelWorker {
           where: { id: order.id },
           data:  {
             status:      'cancelled',
-            cancelReason: `Auto-cancelled after ${env.ORDER_AUTO_CANCEL_UNPAID_HOURS || 24}h — payment not received`,
+            cancelReason: reason,
             cancelledAt: new Date(),
           },
         });
 
-        // Outbox event → SMS notification
+        // Outbox event
         await outboxRepository.createEvent(
           {
             aggregateType: 'Order',

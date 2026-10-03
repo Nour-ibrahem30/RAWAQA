@@ -324,7 +324,7 @@ export const cartApi = {
 /* ============ CHECKOUT ============ */
 export const checkoutApi = {
   create: (payload: CheckoutPayload, idempotencyKey: string) =>
-    apiFetch<Order>('/checkout', {
+    apiFetch<Order & { requiresPaymentRedirect?: boolean }>('/checkout', {
       method: 'POST',
       body: JSON.stringify(payload),
       headers: { 'Idempotency-Key': idempotencyKey } as HeadersInit,
@@ -334,6 +334,27 @@ export const checkoutApi = {
       method: 'POST',
       body: JSON.stringify({ reason }),
     }),
+};
+
+/* ============ PAYMENTS ============ */
+export interface PaymentSessionResponse {
+  paymentId: string;
+  paymentUrl: string;
+  kashierOrderId: string;
+}
+
+export const paymentsApi = {
+  createSession: (orderId: string) =>
+    apiFetch<PaymentSessionResponse>('/payments/create-session', {
+      method: 'POST',
+      body: JSON.stringify({ orderId }),
+    }),
+  
+  get: (paymentId: string) =>
+    apiFetch<any>(`/payments/${paymentId}`),
+  
+  getByOrder: (orderId: string) =>
+    apiFetch<any[]>(`/payments/order/${orderId}`),
 };
 
 /* ============ COUPONS ============ */

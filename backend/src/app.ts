@@ -280,6 +280,15 @@ app.use(
   })
 );
 
+// =============================================================================
+// WEBHOOK ROUTES (must be mounted BEFORE express.json() middleware)
+// Webhooks need raw body for signature verification
+// =============================================================================
+const apiPrefixesForWebhooks = ['/api', '/api/v1'];
+apiPrefixesForWebhooks.forEach(prefix => {
+  app.use(`${prefix}/webhooks`, webhookRoutes);
+});
+
 // Body Parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -365,6 +374,8 @@ import reviewRoutes, { adminReviewRoutes } from './routes/review.routes';
 import adRoutes, { adminAdRoutes } from './routes/ad.routes';
 import contentRoutes, { adminContentRoutes } from './routes/content.routes';
 import exportRoutes from './routes/export.routes';
+import paymentRoutes from './routes/payment.routes';
+import webhookRoutes from './routes/webhook.routes';
 import { getSettings } from './controllers/admin.controller';
 
 import { featureFlag } from './middleware/feature-flag.middleware';
@@ -439,6 +450,7 @@ apiPrefixes.forEach(prefix => {
   app.use(`${prefix}/admin/content`, adminContentRoutes);
   app.get(`${prefix}/settings`,      getSettings);
   app.use(`${prefix}/admin/export`,  exportRoutes);
+  app.use(`${prefix}/payments`,      paymentRoutes);
 });
 
 // Standalone review actions (delete, approve, helpful, recent)

@@ -150,7 +150,7 @@ export interface Order {
 export interface CheckoutPayload {
   cartId: string;
   shippingAddress: ShippingAddress;
-  paymentMethod: 'cod';
+  paymentMethod: 'cod' | 'kashier';
   couponCode?: string;
   notes?: string;
 }

@@ -30,11 +30,15 @@ export const checkout = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (paymentMethod && paymentMethod !== 'cod') {
+    // Validate payment method - accept cod and kashier
+    const validPaymentMethods = ['cod', 'kashier'];
+    const selectedPaymentMethod = paymentMethod || 'cod';
+    
+    if (!validPaymentMethods.includes(selectedPaymentMethod)) {
       res.status(400).json({
         success: false,
         error: 'Bad Request',
-        message: 'Cash on delivery (cod) is the only supported payment method',
+        message: 'Invalid payment method. Supported: cod, kashier',
       });
       return;
     }
@@ -46,17 +50,21 @@ export const checkout = async (req: Request, res: Response): Promise<void> => {
       userId: req.user.userId,
       cartId,
       shippingAddress,
-      paymentMethod: (paymentMethod || 'cod'),
+      paymentMethod: selectedPaymentMethod,
       couponCode,
       notes,
       idempotencyKey,
     });
+
+    // Indicate if payment redirect is needed (for Kashier)
+    const requiresPaymentRedirect = selectedPaymentMethod === 'kashier';
 
     res.status(result.fromCache ? 200 : 201).json({
       success: true,
       message: result.fromCache ? 'Order retrieved from cache' : 'Order created successfully',
       data: result.order,
       fromCache: result.fromCache,
+      requiresPaymentRedirect,
     });
   } catch (error) {
     logError('Checkout error', error);

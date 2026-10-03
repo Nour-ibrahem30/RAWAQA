@@ -393,7 +393,8 @@ export const processCheckout = async (input: CheckoutInput): Promise<CheckoutRes
           {
             orderNumber,
             userId:        input.userId,
-            status:        OrderStatus.pending,
+            // Kashier orders start as pending_payment; COD orders start as pending
+            status:        input.paymentMethod === 'kashier' ? OrderStatus.pending_payment : OrderStatus.pending,
             paymentMethod: input.paymentMethod,
             paymentStatus: PaymentStatus.pending,
             subtotal:      toDecimal(subtotal),
