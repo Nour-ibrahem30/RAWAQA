@@ -39,6 +39,7 @@ enum ProductStatus {
 
 enum OrderStatus {
   pending
+  pending_payment
   pending_odoo
   confirmed
   processing
@@ -53,11 +54,14 @@ enum PaymentStatus {
   pending
   paid
   failed
+  expired
+  voided
   refunded
 }
 
 enum PaymentMethod {
   cod
+  kashier
   paymob
   wallet
 }
@@ -353,6 +357,7 @@ model Order {
   items                 OrderItem[]
   reviews               Review[]
   couponUsage           CouponUsage?
+  payments              Payment[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -570,4 +575,43 @@ model SiteContent {
   updatedAt DateTime @updatedAt
 
   @@map("site_contents")
+}
+
+model Payment {
+  id                   String        @id @default(uuid())
+  orderId              String
+  attemptNumber        Int
+  status               PaymentStatus @default(pending)
+  method               PaymentMethod
+  amount               Decimal       @db.Decimal(12, 2)
+  kashierOrderId       String        @unique
+  kashierSessionId     String?       @unique
+  kashierTransactionId String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  paidAt               DateTime?
+  failedAt             DateTime?
+
+  order                Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  webhookEvents        WebhookEvent[]
+
+  @@unique([orderId, attemptNumber])
+  @@index([orderId, status])
+  @@map("payments")
+}
+
+model WebhookEvent {
+  id           String   @id @default(uuid())
+  fingerprint  String   @unique
+  paymentId    String
+  eventData    Json
+  processed    Boolean  @default(false)
+  ignored      Boolean  @default(false)
+  ignoreReason String?
+  createdAt    DateTime @default(now())
+
+  payment      Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("webhook_events")
 }
