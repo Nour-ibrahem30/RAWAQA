@@ -24,15 +24,23 @@ interface KashierConfig {
 }
 
 function getKashierConfig(): KashierConfig {
-  const mode = (env.KASHIER_MODE || 'test') as 'test' | 'live';
+  // Read directly from process.env to avoid issues with env validation fallback
+  const processEnvSecret = process.env.KASHIER_SECRET_KEY;
+  const envModuleSecret = env.KASHIER_SECRET_KEY;
+  
+  const secretKey = processEnvSecret || envModuleSecret || '';
+  const paymentApiKey = process.env.KASHIER_PAYMENT_API_KEY || env.KASHIER_PAYMENT_API_KEY || '';
+  const merchantId = process.env.KASHIER_MERCHANT_ID || env.KASHIER_MERCHANT_ID || '';
+  const mode = (process.env.KASHIER_MODE || env.KASHIER_MODE || 'test') as 'test' | 'live';
+  
   const apiBaseUrl = mode === 'live'
     ? 'https://api.kashier.io'
     : 'https://test-api.kashier.io';
 
   return {
-    secretKey: env.KASHIER_SECRET_KEY || '',
-    paymentApiKey: env.KASHIER_PAYMENT_API_KEY || '',
-    merchantId: env.KASHIER_MERCHANT_ID || '',
+    secretKey,
+    paymentApiKey,
+    merchantId,
     mode,
     apiBaseUrl,
   };
@@ -158,17 +166,22 @@ export async function createPaymentSession(
 
   const requestBody = {
     merchantId: config.merchantId,
-    orderId: params.merchantOrderId,
+    order: params.merchantOrderId,  // Kashier uses 'order' not 'orderId'
     amount: params.amount.toFixed(2),
     currency: params.currency || 'EGP',
-    customerEmail: params.customerEmail,
-    customerMobile: params.customerPhone,
-    customerName: params.customerName,
     display: 'en',  // English by default, can be 'ar'
-    successUrl: params.successUrl,
-    failureUrl: params.failureUrl,
-    webhookUrl: params.webhookUrl,
+    merchantRedirect: params.successUrl,  // Kashier uses 'merchantRedirect' for success URL
+    failureRedirect: false,  // Use merchantRedirect for both success and failure
+    serverWebhook: params.webhookUrl,  // Kashier uses 'serverWebhook' for webhook URL
     description: params.description || `Order ${params.merchantOrderId}`,
+    paymentType: 'credit',  // Required field
+    type: 'one-time',  // One-time payment
+    allowedMethods: 'card,wallet',  // Card and wallet payments
+    // customer is REQUIRED by Kashier API
+    customer: {
+      email: params.customerEmail || 'customer@rawaqa.com',
+      reference: params.merchantOrderId,  // Use order ID as customer reference
+    },
   };
 
   const url = `${config.apiBaseUrl}/v3/payment/sessions`;
@@ -208,11 +221,13 @@ export async function createPaymentSession(
     }
 
     // Extract session info from response
-    const sessionId = data.data?.sessionId || data.sessionId;
-    const paymentUrl = data.data?.paymentUrl || data.paymentUrl;
+    // Kashier returns different structures - handle both formats
+    const sessionData = data.data || data;
+    const sessionId = sessionData.sessionId || sessionData._id;
+    const paymentUrl = sessionData.sessionUrl || sessionData.paymentUrl;
 
     if (!sessionId || !paymentUrl) {
-      logError('Invalid Kashier response - missing sessionId or paymentUrl', { data });
+      logError('Invalid Kashier response - missing sessionId or sessionUrl', { data });
       throw new Error('Invalid Kashier response: missing session data');
     }
 

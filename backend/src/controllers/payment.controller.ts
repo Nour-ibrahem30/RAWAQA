@@ -28,7 +28,7 @@ export async function createPaymentSessionHandler(
   res: Response
 ): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
       return;
@@ -88,7 +88,7 @@ export async function getPaymentHandler(
   res: Response
 ): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
       return;
@@ -132,7 +132,7 @@ export async function getPaymentsByOrderHandler(
   res: Response
 ): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
       return;

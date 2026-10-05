@@ -28,6 +28,9 @@ import { env } from './config/env';
 import logger, { logError } from './config/logger';
 import { checkPrismaConnection, runWithRequestPrisma } from './lib/prisma';
 
+// Webhook routes imported early - must be mounted BEFORE express.json() for raw body access
+import webhookRoutes from './routes/webhook.routes';
+
 // Express app
 const app: Application = express();
 
@@ -375,7 +378,7 @@ import adRoutes, { adminAdRoutes } from './routes/ad.routes';
 import contentRoutes, { adminContentRoutes } from './routes/content.routes';
 import exportRoutes from './routes/export.routes';
 import paymentRoutes from './routes/payment.routes';
-import webhookRoutes from './routes/webhook.routes';
+// webhookRoutes imported early at top of file (before express.json middleware)
 import { getSettings } from './controllers/admin.controller';
 
 import { featureFlag } from './middleware/feature-flag.middleware';
