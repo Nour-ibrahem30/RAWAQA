@@ -177,9 +177,10 @@ export default function CheckoutPage() {
       );
 
       const createdOrder = res.data;
+      const requiresRedirect = (res as any).requiresPaymentRedirect;
 
       // Handle Kashier payment redirect
-      if (paymentMethod === 'kashier' && createdOrder.requiresPaymentRedirect) {
+      if (paymentMethod === 'kashier' && requiresRedirect) {
         try {
           const paymentRes = await paymentsApi.createSession(createdOrder.id);
           // Redirect to Kashier hosted checkout
