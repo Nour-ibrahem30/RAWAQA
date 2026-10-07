@@ -358,6 +358,14 @@ export const paymentsApi = {
 };
 
 /* ============ COUPONS ============ */
+// Normalize coupon response to ensure _id is always present
+const normalizeCoupon = (coupon: any): Coupon => ({
+  ...coupon,
+  _id: coupon._id || coupon.id,
+});
+
+const normalizeCoupons = (coupons: any[]): Coupon[] => coupons.map(normalizeCoupon);
+
 export const couponsApi = {
   apply: (code: string, cartTotal: number, productIds?: string[]) =>
     apiFetch<CouponApplyResult>('/coupons/apply', {
@@ -368,28 +376,28 @@ export const couponsApi = {
   list: (page = 1, isActive?: boolean) => {
     const q = new URLSearchParams({ page: String(page), limit: '50' });
     if (isActive !== undefined) q.set('isActive', String(isActive));
-    return apiFetch<Coupon[]>(`/coupons?${q}`);
+    return apiFetch<Coupon[]>(`/coupons?${q}`).then(r => ({ ...r, data: normalizeCoupons(r.data) }));
   },
 
-  getByCode: (code: string) => apiFetch<Coupon>(`/coupons/${code}`),
+  getByCode: (code: string) => apiFetch<Coupon>(`/coupons/${code}`).then(r => ({ ...r, data: normalizeCoupon(r.data) })),
 
   create: (data: Partial<Coupon>) =>
     apiFetch<Coupon>('/coupons', {
       method: 'POST',
       body: JSON.stringify(data),
-    }),
+    }).then(r => ({ ...r, data: normalizeCoupon(r.data) })),
 
   update: (id: string, data: Partial<Coupon>) =>
     apiFetch<Coupon>(`/coupons/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
-    }),
+    }).then(r => ({ ...r, data: normalizeCoupon(r.data) })),
 
   toggle: (id: string, isActive: boolean) =>
     apiFetch<Coupon>(`/coupons/${id}`, {
       method: 'PUT',
       body: JSON.stringify({ isActive }),
-    }),
+    }).then(r => ({ ...r, data: normalizeCoupon(r.data) })),
 
   delete: (id: string) =>
     apiFetch(`/coupons/${id}`, {
@@ -475,6 +483,7 @@ export const wishlistApi = {
 /* ============ REVIEWS ============ */
 export interface Review {
   id: string;
+  _id?: string;
   user: { id: string; name: string; email?: string };
   product?: any;
   rating: number;
@@ -487,23 +496,32 @@ export interface Review {
   createdAt: string;
 }
 
+// Normalize review response to ensure both id and _id are present
+const normalizeReview = (review: any): Review => ({
+  ...review,
+  id: review.id || review._id,
+  _id: review._id || review.id,
+});
+
+const normalizeReviews = (reviews: any[]): Review[] => reviews.map(normalizeReview);
+
 export const reviewsApi = {
-  recent: (limit = 6) => apiFetch<Review[]>(`/reviews/recent?limit=${limit}`),
+  recent: (limit = 6) => apiFetch<Review[]>(`/reviews/recent?limit=${limit}`).then(r => ({ ...r, data: normalizeReviews(r.data) })),
   list: (productId: string, page = 1, locale = 'ar') =>
-    apiFetch<Review[]>(`/products/${productId}/reviews?page=${page}&limit=10`, { locale }),
+    apiFetch<Review[]>(`/products/${productId}/reviews?page=${page}&limit=10`, { locale }).then(r => ({ ...r, data: normalizeReviews(r.data) })),
   add: (productId: string, payload: { rating: number; comment: string; titleAr?: string; titleEn?: string }) =>
     apiFetch<Review>(`/products/${productId}/reviews`, {
       method: 'POST',
       body: JSON.stringify(payload),
-    }),
+    }).then(r => ({ ...r, data: normalizeReview(r.data) })),
   markHelpful: (reviewId: string) =>
     apiFetch(`/reviews/${reviewId}/helpful`, { method: 'POST' }),
   remove: (reviewId: string) =>
     apiFetch(`/reviews/${reviewId}`, { method: 'DELETE' }),
   adminAll: (status = 'all', page = 1) =>
-    apiFetch<any[]>(`/admin/reviews?status=${status}&page=${page}&limit=20`),
+    apiFetch<any[]>(`/admin/reviews?status=${status}&page=${page}&limit=20`).then(r => ({ ...r, data: normalizeReviews(r.data) })),
   adminPending: (page = 1) =>
-    apiFetch<any[]>(`/admin/reviews/pending?page=${page}&limit=20`),
+    apiFetch<any[]>(`/admin/reviews/pending?page=${page}&limit=20`).then(r => ({ ...r, data: normalizeReviews(r.data) })),
   adminApprove: (id: string, approve = true) =>
     apiFetch(`/reviews/${id}/approve`, { method: 'PUT', body: JSON.stringify({ approve }) }),
   adminDelete: (id: string) =>
@@ -607,6 +625,8 @@ export const uploadApi = {
 };
 
 export interface ShippingAddressPayload {
+  _id?: string;
+  id?: string;
   firstName: string;
   lastName: string;
   phone: string;
@@ -619,11 +639,19 @@ export interface ShippingAddressPayload {
   isDefault?: boolean;
 }
 
+// Normalize address response to ensure _id is always present
+const normalizeAddress = (addr: any): ShippingAddressPayload => ({
+  ...addr,
+  _id: addr._id || addr.id,
+});
+
+const normalizeAddresses = (addrs: any[]): ShippingAddressPayload[] => addrs.map(normalizeAddress);
+
 export const addressesApi = {
-  list: () => apiFetch<ShippingAddressPayload[]>('/addresses'),
+  list: () => apiFetch<ShippingAddressPayload[]>('/addresses').then(r => ({ ...r, data: normalizeAddresses(r.data) })),
   create: (payload: ShippingAddressPayload) =>
-    apiFetch<ShippingAddressPayload>('/addresses', { method: 'POST', body: JSON.stringify(payload) }),
+    apiFetch<ShippingAddressPayload>('/addresses', { method: 'POST', body: JSON.stringify(payload) }).then(r => ({ ...r, data: normalizeAddress(r.data) })),
   update: (id: string, payload: Partial<ShippingAddressPayload>) =>
-    apiFetch<ShippingAddressPayload>(`/addresses/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    apiFetch<ShippingAddressPayload>(`/addresses/${id}`, { method: 'PUT', body: JSON.stringify(payload) }).then(r => ({ ...r, data: normalizeAddress(r.data) })),
   remove: (id: string) => apiFetch(`/addresses/${id}`, { method: 'DELETE' }),
 };
