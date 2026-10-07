@@ -267,9 +267,79 @@ app.get('/health/db-diagnostic', dbDiagnosticHandler);
 app.get('/health', standardHealthHandler);
 
 // Security Headers
+/**
+ * SECURITY FIX (MED-07): Content Security Policy Configuration
+ * 
+ * CSP was disabled (HELMET_CSP_ENABLED=false) because the default was too restrictive.
+ * Now using a custom policy tailored to RAWAQA's needs:
+ * - Allows Vercel frontend
+ * - Allows Kashier payment integration
+ * - Allows Cloudinary images
+ * - Allows Google Auth
+ * - Blocks inline scripts except for nonces (if needed)
+ */
+const cspDirectives = {
+  defaultSrc: ["'self'"],
+  scriptSrc: [
+    "'self'",
+    // Kashier payment scripts
+    "https://test-checkout.kashier.io",
+    "https://checkout.kashier.io",
+    // Google Auth
+    "https://accounts.google.com",
+    "https://apis.google.com",
+  ],
+  styleSrc: [
+    "'self'",
+    // Allow inline styles for React/Next.js styled components
+    "'unsafe-inline'",
+    // Google fonts
+    "https://fonts.googleapis.com",
+  ],
+  imgSrc: [
+    "'self'",
+    "data:",
+    "blob:",
+    // Cloudinary images
+    "https://res.cloudinary.com",
+    // Google profile pictures
+    "https://lh3.googleusercontent.com",
+    "https://*.googleusercontent.com",
+  ],
+  fontSrc: [
+    "'self'",
+    "https://fonts.gstatic.com",
+  ],
+  connectSrc: [
+    "'self'",
+    // Kashier API
+    "https://test-api.kashier.io",
+    "https://api.kashier.io",
+    // Google APIs
+    "https://accounts.google.com",
+    // Allow connections to the frontend (for CORS preflight etc)
+    ...(env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map(o => o.trim()) : []),
+  ],
+  frameSrc: [
+    "'self'",
+    // Kashier payment iframe
+    "https://test-checkout.kashier.io",
+    "https://checkout.kashier.io",
+    // Google Auth iframe
+    "https://accounts.google.com",
+  ],
+  objectSrc: ["'none'"],
+  baseUri: ["'self'"],
+  formAction: ["'self'"],
+  frameAncestors: ["'none'"], // Prevent clickjacking
+  upgradeInsecureRequests: env.NODE_ENV === 'production' ? [] : null,
+};
+
 app.use(
   helmet({
-    contentSecurityPolicy: env.HELMET_CSP_ENABLED ? undefined : false,
+    contentSecurityPolicy: env.HELMET_CSP_ENABLED 
+      ? { directives: cspDirectives }
+      : false,
     // Additional security headers for defense-in-depth
     hsts: {
       maxAge: 31536000, // 1 year

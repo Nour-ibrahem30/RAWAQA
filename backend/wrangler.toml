@@ -73,7 +73,8 @@ CLIENT_URL_EN = "https://rawaqa-ruby.vercel.app/en"
 COOKIE_SECURE = "true"
 COOKIE_SAME_SITE = "none"
 TRUST_PROXY = "true"
-HELMET_CSP_ENABLED = "false"
+# SECURITY FIX (MED-07): CSP now enabled with custom policy for RAWAQA
+HELMET_CSP_ENABLED = "true"
 
 # Logging — MUST stay false on Workers (no persistent filesystem for rotate-file)
 LOG_LEVEL = "warn"

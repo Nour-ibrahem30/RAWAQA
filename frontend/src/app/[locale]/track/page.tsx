@@ -15,6 +15,14 @@ const BORDER = 'rgba(210,181,106,.1)';
 const IVORY  = 'var(--ivory)';
 const GOLD   = 'var(--gold-light)';
 
+/**
+ * Public Order Tracking Page
+ * 
+ * SECURITY FIX (HIGH-03): Now requires phone verification for public tracking
+ * - Users must enter order number AND phone number used during checkout
+ * - Prevents order enumeration attacks
+ * - Logged-in users can still see full order details via "My Orders"
+ */
 export default function TrackPage() {
   const t      = useTranslations('track');
   const params = useParams();
@@ -22,27 +30,29 @@ export default function TrackPage() {
   const isAr   = locale === 'ar';
 
 
-  const [input, setInput]   = useState('');
-  const [loading, setLoading] = useState(false);
-  const [order, setOrder]   = useState<Order | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [denied, setDenied] = useState(false);
+  const [orderNumber, setOrderNumber] = useState('');
+  const [phone, setPhone]             = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [order, setOrder]             = useState<Order | null>(null);
+  const [notFound, setNotFound]       = useState(false);
+  const [denied, setDenied]           = useState(false);
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!orderNumber.trim() || !phone.trim()) return;
 
     setLoading(true);
     setOrder(null);
     setNotFound(false);
     setDenied(false);
     try {
-      const res = await ordersApi.getByNumber(input.trim(), locale);
+      const res = await ordersApi.getByNumber(orderNumber.trim(), locale, phone.trim());
       setOrder(res.data);
     } catch (err: any) {
       if (err?.status === 401 || err?.status === 403) {
         setDenied(true);
       } else {
+        // Generic "not found" covers both invalid order AND invalid phone
         setNotFound(true);
       }
     } finally {
@@ -72,34 +82,66 @@ export default function TrackPage() {
             <p style={{ fontSize: '1rem', color: 'rgba(247,244,236,.5)' }}>{t('sub')}</p>
           </div>
 
-          {/* Search form */}
-          <form onSubmit={handleTrack} className="flex flex-col sm:flex-row gap-3 mb-10">
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder={t('placeholder')}
-              dir="ltr"
-              style={{
-                flex: 1,
-                background: CARD,
-                border: `1px solid ${BORDER}`,
-                borderRadius: 999,
-                padding: '.85rem 1.5rem',
-                fontSize: '.9rem',
-                color: IVORY,
-                outline: 'none',
-                transition: 'border-color 250ms ease',
-              }}
-              onFocus={e => (e.currentTarget.style.borderColor = GOLD)}
-              onBlur={e => (e.currentTarget.style.borderColor = BORDER)}
-            />
-            <button type="submit" disabled={loading} className="btn btn-gold" style={{ whiteSpace: 'nowrap' }}>
+          {/* Search form - SECURITY: Now requires both order number AND phone */}
+          <form onSubmit={handleTrack} className="flex flex-col gap-3 mb-10">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={orderNumber}
+                onChange={e => setOrderNumber(e.target.value)}
+                placeholder={t('placeholder')}
+                dir="ltr"
+                style={{
+                  flex: 1,
+                  background: CARD,
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: 999,
+                  padding: '.85rem 1.5rem',
+                  fontSize: '.9rem',
+                  color: IVORY,
+                  outline: 'none',
+                  transition: 'border-color 250ms ease',
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = GOLD)}
+                onBlur={e => (e.currentTarget.style.borderColor = BORDER)}
+              />
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder={isAr ? 'رقم الهاتف' : 'Phone Number'}
+                dir="ltr"
+                style={{
+                  flex: 1,
+                  background: CARD,
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: 999,
+                  padding: '.85rem 1.5rem',
+                  fontSize: '.9rem',
+                  color: IVORY,
+                  outline: 'none',
+                  transition: 'border-color 250ms ease',
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = GOLD)}
+                onBlur={e => (e.currentTarget.style.borderColor = BORDER)}
+              />
+            </div>
+            <p style={{ fontSize: '.75rem', color: 'rgba(247,244,236,.4)', textAlign: 'center' }}>
+              {isAr 
+                ? 'أدخل رقم الطلب ورقم الهاتف المستخدم في الشحن'
+                : 'Enter your order number and the phone number used for shipping'}
+            </p>
+            <button 
+              type="submit" 
+              disabled={loading || !orderNumber.trim() || !phone.trim()} 
+              className="btn btn-gold" 
+              style={{ whiteSpace: 'nowrap', alignSelf: 'center', minWidth: 180 }}
+            >
               {loading ? t('tracking') : t('submit')}
             </button>
           </form>
 
-          {/* Not logged in */}
+          {/* Not logged in (for endpoints that require auth) */}
           {denied && (
             <div style={{
               textAlign: 'center', padding: '3rem',
@@ -120,7 +162,7 @@ export default function TrackPage() {
             </div>
           )}
 
-          {/* Not found */}
+          {/* Not found - generic message covers invalid order OR invalid phone */}
           {notFound && (
             <div style={{
               textAlign: 'center', padding: '3rem',
@@ -128,20 +170,22 @@ export default function TrackPage() {
             }}>
               <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔍</div>
               <p style={{ fontSize: '1.1rem', fontWeight: 700, color: IVORY, marginBottom: '.5rem' }}>
-                {t('not_found')}
+                {isAr ? 'لم يتم العثور على الطلب' : 'Order not found'}
               </p>
               <p style={{ fontSize: '.875rem', color: 'rgba(247,244,236,.45)' }}>
-                {t('not_found_sub')}
+                {isAr 
+                  ? 'تأكد من رقم الطلب ورقم الهاتف المستخدم عند الطلب'
+                  : 'Please verify your order number and the phone number used during checkout'}
               </p>
             </div>
           )}
 
-          {/* Order found */}
+          {/* Order found - SECURITY: Only shows minimal tracking data for public */}
           {order && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-              {/* Meta cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {/* Meta cards - Note: public tracking shows limited info */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                 {[
                   { label: t('order_number'), value: order.orderNumber, mono: true },
                   { label: t('status'), value: (
@@ -150,7 +194,6 @@ export default function TrackPage() {
                     </span>
                   )},
                   { label: t('date'), value: new Date(order.createdAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-EG') },
-                  { label: t('total'), value: formatPrice(order.total, locale) },
                 ].map((m, i) => (
                   <div key={i} style={{ background: CARD, borderRadius: 16, padding: '1rem 1.25rem', border: `1px solid ${BORDER}` }}>
                     <p style={{ fontSize: '.6rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(247,244,236,.35)', marginBottom: '.5rem' }}>
@@ -166,6 +209,18 @@ export default function TrackPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Tracking number if available */}
+              {(order as any).trackingNumber && (
+                <div style={{ background: CARD, borderRadius: 16, padding: '1rem 1.25rem', border: `1px solid ${BORDER}` }}>
+                  <p style={{ fontSize: '.6rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(247,244,236,.35)', marginBottom: '.5rem' }}>
+                    {isAr ? 'رقم التتبع' : 'Tracking Number'}
+                  </p>
+                  <p style={{ fontWeight: 700, color: GOLD, fontSize: '.88rem', fontFamily: 'monospace', letterSpacing: '.06em' }}>
+                    {(order as any).trackingNumber}
+                  </p>
+                </div>
+              )}
 
               {/* Timeline */}
               {order.status !== 'cancelled' && (
@@ -230,12 +285,12 @@ export default function TrackPage() {
                 </div>
               )}
 
-              {/* Items */}
+              {/* Items - Public tracking shows minimal info (name, image, quantity only) */}
               <div style={{ background: CARD, borderRadius: 20, padding: '1.75rem', border: `1px solid ${BORDER}` }}>
                 <h2 style={{ fontWeight: 700, color: IVORY, marginBottom: '1.25rem', fontSize: '1rem' }}>
                   {t('items')}
                 </h2>
-                {order.items.map((item, i) => (
+                {order.items.map((item: any, i: number) => (
                   <div key={i} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '.75rem 0',
@@ -243,29 +298,47 @@ export default function TrackPage() {
                     fontSize: '.875rem',
                   }}>
                     <span style={{ color: 'rgba(247,244,236,.75)' }}>
-                      {loc(item.product.nameAr, item.product.nameEn, locale)} × {item.quantity}
+                      {/* Support both full order (authenticated) and minimal (public) response formats */}
+                      {loc(
+                        item.nameAr || item.product?.nameAr || '',
+                        item.name || item.product?.nameEn || '',
+                        locale
+                      )} × {item.quantity}
                     </span>
-                    <span style={{ fontWeight: 700, color: GOLD }}>
-                      {formatPrice(item.total, locale)}
-                    </span>
+                    {/* Only show price if available (authenticated users only) */}
+                    {item.total !== undefined && (
+                      <span style={{ fontWeight: 700, color: GOLD }}>
+                        {formatPrice(item.total, locale)}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
 
-              {/* Shipping */}
+              {/* Shipping location - Public shows only city/governorate */}
               <div style={{ background: CARD, borderRadius: 20, padding: '1.75rem', border: `1px solid ${BORDER}` }}>
                 <h2 style={{ fontWeight: 700, color: IVORY, marginBottom: '1.25rem', fontSize: '1rem' }}>
-                  {t('shipping_to')}
+                  {isAr ? 'وجهة الشحن' : 'Shipping Destination'}
                 </h2>
-                <p style={{ fontSize: '.875rem', fontWeight: 600, color: IVORY, marginBottom: '.25rem' }}>
-                  {order.shippingAddress.recipientName}
-                </p>
-                <p style={{ fontSize: '.875rem', color: 'rgba(247,244,236,.5)' }}>
-                  {order.shippingAddress.streetAddress}
-                </p>
-                <p style={{ fontSize: '.875rem', color: 'rgba(247,244,236,.5)' }}>
-                  {order.shippingAddress.city}{isAr ? '، ' : ', '}{order.shippingAddress.governorate}
-                </p>
+                {/* Check for full address (authenticated) vs minimal (public) */}
+                {order.shippingAddress?.recipientName ? (
+                  <>
+                    <p style={{ fontSize: '.875rem', fontWeight: 600, color: IVORY, marginBottom: '.25rem' }}>
+                      {order.shippingAddress.recipientName}
+                    </p>
+                    <p style={{ fontSize: '.875rem', color: 'rgba(247,244,236,.5)' }}>
+                      {order.shippingAddress.streetAddress}
+                    </p>
+                    <p style={{ fontSize: '.875rem', color: 'rgba(247,244,236,.5)' }}>
+                      {order.shippingAddress.city}{isAr ? '، ' : ', '}{order.shippingAddress.governorate}
+                    </p>
+                  </>
+                ) : (
+                  <p style={{ fontSize: '.875rem', color: 'rgba(247,244,236,.5)' }}>
+                    {/* Public tracking: only city/governorate from minimal response */}
+                    {(order as any).shippingCity}{isAr ? '، ' : ', '}{(order as any).shippingGovernorate}
+                  </p>
+                )}
               </div>
             </div>
           )}

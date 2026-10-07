@@ -49,6 +49,9 @@ async function apiFetch<T>(
   try {
     res = await fetch(`${apiBase}${path}`, {
       cache: 'no-store',
+      // SECURITY FIX (MED-06): Include credentials to send httpOnly cookies
+      // Refresh token is now stored in httpOnly cookie, not localStorage
+      credentials: 'include',
       // Spread first so our explicit signal override wins below.
       ...fetchOptions,
       // Prefer caller-provided signal (e.g. component unmount); fall back to the
@@ -72,7 +75,11 @@ async function apiFetch<T>(
     const refreshed = await tryRefreshToken();
     if (refreshed) {
       headers['Authorization'] = `Bearer ${localStorage.getItem('accessToken')}`;
-      const retry = await fetch(`${apiBase}${path}`, { ...fetchOptions, headers });
+      const retry = await fetch(`${apiBase}${path}`, {
+        ...fetchOptions,
+        credentials: 'include',
+        headers,
+      });
       return retry.json();
     }
   }
@@ -88,20 +95,34 @@ async function apiFetch<T>(
   return res.json();
 }
 
+/**
+ * SECURITY FIX (MED-06): Refresh token flow using httpOnly cookies
+ * 
+ * The refresh token is now stored server-side in an httpOnly cookie,
+ * not in localStorage. This prevents XSS attacks from stealing the
+ * long-lived refresh token.
+ * 
+ * The access token is still stored in localStorage for the Authorization
+ * header because:
+ * 1. It's short-lived (typically 15-60 minutes)
+ * 2. It's needed for API requests that may not support cookies
+ * 3. If an attacker can run XSS, they can make authenticated requests anyway
+ */
 async function tryRefreshToken(): Promise<boolean> {
   try {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) return false;
     const apiBase = getApiBase();
+    // SECURITY FIX: Refresh uses httpOnly cookie, no localStorage needed
     const res = await fetch(`${apiBase}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include', // Send httpOnly refresh token cookie
+      body: JSON.stringify({}), // Body can be empty, token comes from cookie
     });
     if (!res.ok) return false;
     const data = await res.json();
+    // Only store access token in localStorage (short-lived, for header auth)
+    // Refresh token stays in httpOnly cookie (set by backend)
     localStorage.setItem('accessToken', data.data.accessToken);
-    localStorage.setItem('refreshToken', data.data.refreshToken);
     return true;
   } catch {
     return false;
@@ -128,10 +149,11 @@ export const authApi = {
       body: JSON.stringify({ credential }),
     }),
 
-  logout: (refreshToken: string) =>
+  logout: () =>
     apiFetch('/auth/logout', {
       method: 'POST',
-      body: JSON.stringify({ refreshToken }),
+      // SECURITY FIX (MED-06): No body needed, backend reads refresh token from cookie
+      body: JSON.stringify({}),
     }),
 
   me: (locale?: string) => apiFetch<User>('/auth/me', { locale }),
@@ -413,8 +435,19 @@ export const ordersApi = {
   get: (id: string, locale = 'ar') =>
     apiFetch<Order>(`/orders/${id}`, { locale }),
 
-  getByNumber: (orderNumber: string, locale = 'ar') =>
-    apiFetch<Order>(`/orders/number/${orderNumber}`, { locale }),
+  /**
+   * Get order by order number for tracking
+   * SECURITY FIX (HIGH-03): Public tracking now requires phone verification
+   * @param orderNumber - The order number (e.g., "ORD-XXXXX")
+   * @param locale - Language locale
+   * @param phone - Required for unauthenticated tracking (matches shippingPhone)
+   */
+  getByNumber: (orderNumber: string, locale = 'ar', phone?: string) => {
+    const params = new URLSearchParams();
+    if (phone) params.set('phone', phone);
+    const queryStr = params.toString();
+    return apiFetch<Order>(`/orders/number/${orderNumber}${queryStr ? `?${queryStr}` : ''}`, { locale });
+  },
 
   stats: () => apiFetch<{ totalOrders: number; totalRevenue: number }>('/orders/stats'),
 

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import {
   listOrders, getOrder, getOrderByNumberHandler, getMyOrders,
   updateStatus, updatePayment, addTracking, getStats, exportOrders,
@@ -10,8 +11,33 @@ import {
   updatePaymentStatusSchema,
   addTrackingSchema,
 } from '../middleware/validation';
+import { getRuntimeRateLimitStore, getWorkerRateLimitKeyGenerator } from '../lib/worker-runtime';
 
 const router = Router();
+
+/**
+ * SECURITY FIX (HIGH-03): Rate limiter for public order tracking
+ * 
+ * Limits order tracking lookups to 10 per 15 minutes per IP to prevent:
+ * - Order number enumeration attacks
+ * - Phone number brute-forcing
+ * 
+ * Note: This is MORE restrictive than the global limiter because the endpoint
+ * exposes a guessable identifier (order number) and we want to prevent enumeration.
+ */
+const orderTrackingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per window per IP
+  message: {
+    success: false,
+    error: 'Too Many Requests',
+    message: 'Too many tracking requests. Please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: getRuntimeRateLimitStore(),
+  ...(getWorkerRateLimitKeyGenerator() ? { keyGenerator: getWorkerRateLimitKeyGenerator()! } : {}),
+});
 
 /**
  * @route   GET /api/orders/my
@@ -46,8 +72,9 @@ router.get('/', authenticate, requireAdmin, listOrders);
  * @route   GET /api/orders/number/:orderNumber
  * @desc    Get order by order number (authenticated or public tracking)
  * @access  Public / Authenticated
+ * @query   phone - Required for unauthenticated tracking (SECURITY FIX HIGH-03)
  */
-router.get('/number/:orderNumber', optionalAuth, getOrderByNumberHandler);
+router.get('/number/:orderNumber', orderTrackingLimiter, optionalAuth, getOrderByNumberHandler);
 
 /**
  * @route   GET /api/orders/:id

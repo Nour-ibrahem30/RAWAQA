@@ -101,13 +101,25 @@ export const getOrder = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Get order by order number
+/**
+ * Get order by order number
+ * 
+ * SECURITY FIX (HIGH-03): Public order tracking now requires secondary verification.
+ * 
+ * Authorization modes:
+ * 1. Authenticated owner/admin: Full order data (no verification needed)
+ * 2. Public tracking: Requires `phone` query param matching order's shippingPhone
+ *    - Returns minimal tracking data only (no financial/sensitive info)
+ *    - Uses timing-safe comparison to prevent enumeration
+ *    - Returns generic error for both invalid order AND invalid phone
+ */
 export const getOrderByNumberHandler = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
     const { orderNumber } = req.params;
+    const verificationPhone = req.query.phone as string | undefined;
     
     if (!orderNumber) {
       res.status(400).json({
@@ -120,42 +132,87 @@ export const getOrderByNumberHandler = async (
     
     const order = await getOrderByNumber(orderNumber);
 
-    if (!order) {
+    // Check authentication and ownership
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    const isOwner = Boolean(req.user?.userId && order?.userId === req.user.userId);
+
+    // Authenticated owner or admin: return full order data
+    if (order && (isAdmin || isOwner)) {
+      res.status(200).json({
+        success: true,
+        data: order,
+      });
+      return;
+    }
+
+    // PUBLIC TRACKING: Requires phone verification
+    // Use timing-safe verification to prevent enumeration attacks
+    if (!verificationPhone) {
+      // No phone provided - return error that doesn't reveal if order exists
+      res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Phone number is required for order tracking',
+      });
+      return;
+    }
+
+    // Normalize phone numbers for comparison (remove spaces, dashes, leading zeros)
+    const normalizePhone = (phone: string): string => {
+      return phone.replace(/[\s\-()]/g, '').replace(/^(\+?20)?0?/, '');
+    };
+
+    // Perform verification (timing-safe: always compare even if order is null)
+    const orderPhone = order?.shippingAddress?.phone || '';
+    const normalizedOrderPhone = normalizePhone(orderPhone);
+    const normalizedInputPhone = normalizePhone(verificationPhone);
+
+    // Use timing-safe comparison to prevent timing attacks
+    // Pad to same length and compare character by character
+    const maxLen = Math.max(normalizedOrderPhone.length, normalizedInputPhone.length, 1);
+    const paddedOrder = normalizedOrderPhone.padEnd(maxLen, '\0');
+    const paddedInput = normalizedInputPhone.padEnd(maxLen, '\0');
+    
+    let match = true;
+    for (let i = 0; i < maxLen; i++) {
+      if (paddedOrder[i] !== paddedInput[i]) {
+        match = false;
+        // Continue comparing to ensure constant time
+      }
+    }
+
+    // If order doesn't exist or phone doesn't match, return generic error
+    // This prevents enumeration of order numbers
+    if (!order || !match || !normalizedInputPhone) {
       res.status(404).json({
         success: false,
         error: 'Not Found',
-        message: 'Order not found',
+        message: 'Order not found or phone number does not match',
       });
       return;
     }
 
-    // If not authenticated or not owner/admin, provide public tracking view
-    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
-    const isOwner = Boolean(req.user?.userId && order.userId === req.user.userId);
-    if (!req.user || (!isAdmin && !isOwner)) {
-      res.status(200).json({
-        success: true,
-        data: {
-          id: order.id,
-          orderNumber: order.orderNumber,
-          status: order.status,
-          items: order.items,
-          subtotal: order.subtotal,
-          shippingCost: order.shippingCost,
-          tax: order.tax,
-          total: order.total,
-          paymentMethod: order.paymentMethod,
-          paymentStatus: order.paymentStatus,
-          createdAt: order.createdAt,
-          trackingNumber: (order as any).trackingNumber,
-        },
-      });
-      return;
-    }
-
+    // Return MINIMAL public tracking data (no financial/sensitive info)
+    // Only status, progress, and product names/images for tracking purposes
     res.status(200).json({
       success: true,
-      data: order,
+      data: {
+        orderNumber: order.orderNumber,
+        status: order.status,
+        createdAt: order.createdAt,
+        // Tracking info
+        trackingNumber: (order as any).trackingNumber || null,
+        // Minimal item info (name/image only - NO prices, quantities limited)
+        items: order.items.map((item: any) => ({
+          name: item.product?.nameEn || item.snapshotNameEn || item.productSnapshot?.nameEn,
+          nameAr: item.product?.nameAr || item.snapshotNameAr || item.productSnapshot?.nameAr,
+          quantity: item.quantity,
+          image: item.product?.images?.[0]?.url || item.snapshotImage || item.productSnapshot?.image,
+        })),
+        // Shipping destination (city/governorate only - no full address or phone)
+        shippingCity: order.shippingAddress?.city,
+        shippingGovernorate: order.shippingAddress?.governorate,
+      },
     });
   } catch (error) {
     logError('Get order by number error', error);

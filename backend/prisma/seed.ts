@@ -3,7 +3,9 @@
  * Seeds: Super Admin, Customer, 4 Canonical Categories, 8 Products, and Site Settings.
  *
  * Usage:
- *   npx prisma db seed
+ *   ADMIN_PASSWORD=<secure-password> npx prisma db seed
+ * 
+ * SECURITY FIX (HIGH-02): ADMIN_PASSWORD is REQUIRED - no hardcoded fallback.
  */
 
 import { PrismaClient, UserRole, AuthProvider, ProductStatus } from '@prisma/client';
@@ -15,7 +17,19 @@ async function main() {
   console.log('🌱 Starting Prisma seeding...');
 
   // ─── 1. Users ──────────────────────────────────────────────────
-  const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@123456', 10);
+  
+  // SECURITY FIX (HIGH-02): Fail closed if ADMIN_PASSWORD is not provided
+  // No hardcoded fallback - production deployments MUST set this env var
+  const rawAdminPassword = process.env.ADMIN_PASSWORD;
+  if (!rawAdminPassword) {
+    throw new Error(
+      '❌ SECURITY ERROR: ADMIN_PASSWORD environment variable is required.\n' +
+      '   Set a strong password before running seed:\n' +
+      '   ADMIN_PASSWORD="your-secure-password" npx prisma db seed'
+    );
+  }
+  
+  const adminPassword = await bcrypt.hash(rawAdminPassword, 10);
   const customerPassword = await bcrypt.hash('Customer@123456', 10);
 
   const admin = await prisma.user.upsert({
