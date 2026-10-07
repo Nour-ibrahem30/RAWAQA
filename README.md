@@ -11,7 +11,7 @@
 
 <br />
 
-[![Next.js](https://img.shields.io/badge/Next.js-14.2-black?logo=next.js)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-15.x-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-blue?logo=postgresql)](https://neon.tech)
 [![Cloudflare Workers](https://img.shields.io/badge/Backend-Cloudflare%20Workers-orange?logo=cloudflare)](https://workers.cloudflare.com)
@@ -34,7 +34,7 @@
 - **Neon PostgreSQL** with Prisma ORM
 - **Vercel** frontend with ISR
 - **Cloudinary** image storage with direct browser upload
-- **Cash on Delivery** checkout with inventory protection
+- **Cash on Delivery** + **Kashier** online payments (TEST mode)
 
 ---
 
@@ -43,6 +43,7 @@
 | Area | Highlights |
 |---|---|
 | **Storefront** | Product browsing, categories, cart, checkout, order tracking |
+| **Payments** | Cash on Delivery + Kashier online payments (card, wallet, installments) |
 | **Auth** | JWT + refresh tokens, Google OAuth, email verification |
 | **Admin** | Dashboard, products, orders, categories, coupons, ads, content, site settings |
 | **CMS** | Live editable Hero, About, Why, Stats, CTA, Footer sections |
@@ -115,7 +116,7 @@ All CSS custom properties transition smoothly (280 ms) when switching between th
 
 ```
 ┌─────────────────────────────────────┐
-│     Next.js 14 (App Router)         │
+│     Next.js 15 (App Router)         │
 │     Vercel — ISR revalidate 60s     │
 └──────────────────┬──────────────────┘
                    │ HTTPS / REST
@@ -129,6 +130,12 @@ All CSS custom properties transition smoothly (280 ms) when switching between th
 ┌─────────────────────────────────────┐
 │   Neon PostgreSQL (serverless)      │
 └─────────────────────────────────────┘
+       ┌──────────┴──────────┐
+       ▼                     ▼
+┌─────────────┐       ┌─────────────┐
+│ Cloudinary  │       │  Kashier    │
+│ (images)    │       │ (payments)  │
+└─────────────┘       └─────────────┘
 ```
 
 **Image uploads** go directly from the browser to **Cloudinary** (unsigned preset) — bypassing the Worker to avoid `multipart/form-data` limitations.
@@ -141,7 +148,7 @@ All CSS custom properties transition smoothly (280 ms) when switching between th
 
 | Tech | Purpose |
 |---|---|
-| Next.js 14 | React framework, App Router, ISR |
+| Next.js 15 | React framework, App Router, ISR |
 | TypeScript | Type safety |
 | Tailwind CSS | Utility styling |
 | next-intl | Arabic / English i18n |
@@ -161,6 +168,7 @@ All CSS custom properties transition smoothly (280 ms) when switching between th
 | Neon PostgreSQL | Database |
 | JWT | Auth tokens |
 | Zod | Input validation |
+| Kashier | Payment gateway (TEST mode) |
 
 ---
 
@@ -216,6 +224,10 @@ CLOUDINARY_ENABLED=true
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
+KASHIER_MERCHANT_ID=...
+KASHIER_API_KEY=...
+KASHIER_SECRET_KEY=...
+KASHIER_MODE=test
 ```
 
 ---
@@ -273,7 +285,7 @@ RAWAQA/
 | **Cloudflare Workers** | Backend edge runtime |
 | **Neon** | PostgreSQL serverless DB |
 | **Cloudinary** | Image CDN + upload |
-| **Render** (fallback) | Node.js backend alternative |
+| **Kashier** | Payment gateway (TEST mode) |
 
 ---
 
@@ -287,7 +299,8 @@ RAWAQA/
 - [x] Direct Cloudinary upload
 - [x] Google OAuth
 - [x] Admin dashboard with full CRUD
-- [ ] Online payment gateway (Paymob / Stripe)
+- [x] Kashier online payments (TEST mode)
+- [ ] Kashier production mode activation
 - [ ] Odoo ERP integration
 - [ ] SMS notifications
 - [ ] Shipping provider integration
