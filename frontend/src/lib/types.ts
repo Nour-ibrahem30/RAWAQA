@@ -76,6 +76,8 @@ export interface Product {
   featured: boolean;
   status: 'active' | 'inactive' | 'draft' | 'archived' | 'out_of_stock';
   tags?: string[];
+  colors?: string[];
+  material?: string;
   createdAt: string;
 }
 

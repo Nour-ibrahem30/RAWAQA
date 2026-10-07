@@ -282,6 +282,45 @@ export default function ProductDetailPage() {
               {description}
             </p>
 
+            {/* Product Colors */}
+            {product.colors && product.colors.length > 0 && (
+              <div>
+                <p style={{ fontSize: '.72rem', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(247,244,236,.38)', marginBottom: '.75rem' }}>
+                  {isAr ? 'الألوان المتاحة' : 'Available Colors'}
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem' }}>
+                  {product.colors.map((color, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '.4rem',
+                        padding: '.4rem .75rem',
+                        borderRadius: 999,
+                        background: 'rgba(210,181,106,.08)',
+                        border: '1px solid rgba(210,181,106,.2)',
+                        fontSize: '.8rem',
+                        color: 'rgba(247,244,236,.7)',
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 14,
+                          height: 14,
+                          borderRadius: '50%',
+                          background: color.startsWith('#') ? color : `var(--${color}, ${color})`,
+                          border: '1px solid rgba(255,255,255,.2)',
+                          flexShrink: 0,
+                        }}
+                      />
+                      {color}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {images.length > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.8rem', color: 'rgba(247,244,236,.45)' }}>
                 <span>{isAr ? 'العرض المختار:' : 'Selected view:'}</span>
