@@ -525,6 +525,7 @@ export const contentApi = {
 /* ============ ADS ============ */
 export interface Ad {
   _id: string;
+  id?: string;
   titleAr: string;
   titleEn: string;
   subtitleAr?: string;
@@ -540,17 +541,25 @@ export interface Ad {
   createdAt: string;
 }
 
+// Normalize ad response to ensure _id is always present
+const normalizeAd = (ad: any): Ad => ({
+  ...ad,
+  _id: ad._id || ad.id,
+});
+
+const normalizeAds = (ads: any[]): Ad[] => ads.map(normalizeAd);
+
 export const adsApi = {
   // Public
   list: (placement?: string) =>
-    apiFetch<Ad[]>(`/ads${placement ? `?placement=${placement}` : ''}`),
+    apiFetch<Ad[]>(`/ads${placement ? `?placement=${placement}` : ''}`).then(r => ({ ...r, data: normalizeAds(r.data) })),
 
   // Admin
-  adminList: () => apiFetch<Ad[]>('/admin/ads'),
+  adminList: () => apiFetch<Ad[]>('/admin/ads').then(r => ({ ...r, data: normalizeAds(r.data) })),
   create: (payload: Partial<Ad>) =>
-    apiFetch<Ad>('/admin/ads', { method: 'POST', body: JSON.stringify(payload) }),
+    apiFetch<Ad>('/admin/ads', { method: 'POST', body: JSON.stringify(payload) }).then(r => ({ ...r, data: normalizeAd(r.data) })),
   update: (id: string, payload: Partial<Ad>) =>
-    apiFetch<Ad>(`/admin/ads/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    apiFetch<Ad>(`/admin/ads/${id}`, { method: 'PUT', body: JSON.stringify(payload) }).then(r => ({ ...r, data: normalizeAd(r.data) })),
   toggle: (id: string) =>
     apiFetch<{ id: string; isActive: boolean }>(`/admin/ads/${id}/toggle`, { method: 'PATCH' }),
   delete: (id: string) =>
