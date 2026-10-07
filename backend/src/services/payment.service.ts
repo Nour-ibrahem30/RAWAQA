@@ -247,8 +247,10 @@ export async function createPaymentSessionForOrder(
 
   // 3. Build URLs
   const clientUrl = env.CLIENT_URL || 'http://localhost:3000';
+  const serverUrl = env.SERVER_URL || 'http://localhost:4000';
   const successUrl = `${clientUrl}/checkout/success?orderId=${orderId}`;
   const failureUrl = `${clientUrl}/checkout/failure?orderId=${orderId}`;
+  const webhookUrl = `${serverUrl}/api/webhooks/kashier`;
 
   // 4. Call Kashier API
   let kashierResponse: CreateSessionResponse;
@@ -262,6 +264,7 @@ export async function createPaymentSessionForOrder(
       customerName: order.shippingRecipientName || undefined,
       successUrl,
       failureUrl,
+      webhookUrl,
       description: `RAWAQA Order ${order.orderNumber}`,
     });
   } catch (err) {

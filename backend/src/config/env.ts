@@ -123,6 +123,9 @@ const envSchema = z.object({
   CLIENT_URL_AR: z.string().url().default('http://localhost:3000/ar'),
   CLIENT_URL_EN: z.string().url().default('http://localhost:3000/en'),
 
+  // Server URL (for webhooks)
+  SERVER_URL: z.string().url().optional(),
+
   // Admin
   ADMIN_EMAIL: z.string().email().default('admin@rawaqa.com'),
   ADMIN_PASSWORD: z.string().min(8).optional(),
