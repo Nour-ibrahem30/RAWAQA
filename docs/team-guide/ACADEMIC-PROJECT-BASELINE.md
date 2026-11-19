@@ -99,3 +99,11 @@ RAWAQA عمل تجاري حقيقي لصالح عميل/شركة، لذلك:
 - قواعد Checkout: `backend/src/services/checkout.service.ts`.
 - توثيق المطورين: `docs/README.md` وما يرتبط به.
 - الدليل المبسط للفريق: `docs/team-guide/`.
+
+
+## 11. مرجع أكاديمي للاستئناس
+
+يمكن استخدام نموذج **ACM/AIS IS2020 Competency Model** كمرجع عام لربط المشروع بمجالات نظم المعلومات، مثل إدارة البيانات والمعلومات، البنية التحتية والأمن، تحليل وتصميم النظم، تطوير التطبيقات، مجال الأعمال، وإدارة مشروعات نظم المعلومات. هذا النموذج مرجع إرشادي عام وليس بديلًا عن لائحة الكلية أو تعليمات الدكتور.
+
+- [IS2020 — ACM/AIS Competency Model (PDF)](https://is2020.hosting2.acm.org/wp-content/uploads/2020/11/IS2020-Competencies.pdf)
+- [ACM Curriculum Recommendations — Information Systems](https://www.acm.org/education/curricula-recommendations)
