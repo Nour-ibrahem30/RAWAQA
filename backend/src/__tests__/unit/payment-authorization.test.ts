@@ -9,7 +9,7 @@ jest.mock('../../lib/prisma', () => ({
   },
 }));
 
-const findMany = prisma.payment.findMany as jest.Mock;
+const findMany = prisma.payment.findMany as unknown as jest.Mock;
 
 describe('getPaymentsByOrderId authorization scope', () => {
   beforeEach(() => {
