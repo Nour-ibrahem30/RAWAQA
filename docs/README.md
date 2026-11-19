@@ -1,135 +1,74 @@
-# RAWAQA Project Documentation
+# RAWAQA Documentation Hub
 
-**Project:** Custom E-Commerce Website — Bean Bag Retail (Egypt)  
-**Commercial Value:** 35,000 EGP  
-**Duration:** 4–6 Weeks  
-**Documentation Version:** 1.1  
-**Last Updated:** 2026-09-02  
-**Total documents:** 118+ markdown files + OpenAPI YAML
+**Last reviewed:** 19 November 2026  
+**Code reference:** `refactor/postgresql-prisma`
 
----
+> **Important documentation correction:** Some older documents in this repository describe an earlier static prototype and an obsolete MongoDB/Mongoose target. They are historical planning material, not the source of truth for the current implementation. The current code uses a Next.js 15.5.26 / React 19 frontend and a TypeScript backend with PostgreSQL and Prisma 7.10. Always verify implementation claims against the current source code and deployment configuration.
 
-## Purpose
+## Start here
 
-This documentation pack describes the RAWAQA e-commerce platform from product intent through commercial delivery. It is grounded in the **actual codebase** as of September 2026 and clearly distinguishes **implemented** features from **planned/required** work.
+| Audience | Start with |
+|---|---|
+| Non-technical team members | [Arabic Team Guide](team-guide/README.md) |
+| Business / product stakeholders | [Business Guide](team-guide/BUSINESS-GUIDE.md) |
+| Understanding the customer journey | [System Walkthrough](team-guide/SYSTEM-WALKTHROUGH.md) |
+| Understanding what is implemented | [Current Status & Glossary](team-guide/STATUS-AND-GLOSSARY.md) |
+| Academic / BIS project planning | [Academic Project Baseline](team-guide/ACADEMIC-PROJECT-BASELINE.md) |
+| Developers | Current source code, package manifests, Prisma schema, and the technical documents below |
 
----
+## Current implementation reference
 
-## Current Implementation Snapshot
+| Area | Current source of truth |
+|---|---|
+| Frontend framework versions | `frontend/package.json` |
+| Backend dependencies and scripts | `backend/package.json` |
+| Database entities and relations | `backend/prisma/schema.prisma` |
+| Checkout pricing / shipping rules | `backend/src/services/checkout.service.ts` |
+| API route registration | `backend/src/routes/` and `backend/src/app.ts` |
+| Business logic | `backend/src/services/` |
+| Data access | `backend/src/repositories/` |
+| Deployment configuration | Vercel / Cloudflare project settings (not fully provable from repository files alone) |
 
-| Layer | Status | Evidence |
-|-------|--------|----------|
-| Frontend UI (SPA prototype) | **Implemented** | `index.html`, `css/styles.css`, `js/main.js` |
-| Backend API | **Not Yet Implemented** | No server code in repository |
-| Database | **Not Yet Implemented** | No MongoDB instance, no Mongoose models (schema documented in `docs/05-database/`) |
-| Authentication | **Not Yet Implemented** | No login/register pages or auth logic |
-| Admin Dashboard | **Not Yet Implemented** | No admin UI or routes |
-| Checkout | **Not Yet Implemented** | Placeholder toast in `main.js` |
-| Odoo Integration | **Integration Required** | Not in codebase; in commercial scope |
-| SMS Integration | **Integration Required** | Not in codebase; in commercial scope |
-| Automated Tests | **Not Yet Implemented** | No test files or CI |
-| Deployment Config | **Not Yet Implemented** | No Docker, CI/CD, or hosting config |
+## Technical documentation areas
 
----
+The repository contains historical and technical documents organized by topic:
 
-## Documentation Map
+- `00-ai/` — AI-assisted development context and repository conventions.
+- `01-product/` — product vision, requirements, scope and roadmap.
+- `02-requirements/` — functional and non-functional requirements.
+- `03-architecture/` — architecture, security, data flow and system design.
+- `04-api/` — API reference and OpenAPI material.
+- `05-database/` — database design and data dictionary.
+- `06-integrations/` — Odoo and SMS integration specifications.
+- `08-security/` — security controls and guidance.
+- `09-testing/` — testing strategy and QA plans.
+- `10-deployment/` — deployment notes.
+- `11-project-management/` — planning and delivery documents.
+- `12-client-proposal/` — historical commercial scope and proposal material.
 
-| Folder | Audience | Contents |
-|--------|----------|----------|
-| [01-product/](01-product/) | Product, client, engineering | Vision, scope, personas, journeys, roadmap |
-| [02-requirements/](02-requirements/) | BA, engineering, QA | BRS, FRS, NFR, traceability matrix |
-| [03-architecture/](03-architecture/) | Engineering, DevOps | System, component, domain architecture |
-| [04-api/](04-api/) | Backend, frontend, QA | API design, OpenAPI, admin dashboard spec |
-| [05-database/](05-database/) | Backend, DBA | ERD, data dictionary, migration plan |
-| [06-integrations/](06-integrations/) | Backend, client | Odoo and SMS integration specifications |
-| [07-ux/](07-ux/) | Design, frontend | IA, sitemap, flows, UI states |
-| [08-security/](08-security/) | Engineering, DevOps | Security specification, auth plan |
-| [09-testing/](09-testing/) | QA, engineering | Testing strategy, test plans |
-| [10-deployment/](10-deployment/) | DevOps, client | Deployment, env config, production checklist |
-| [11-project-management/](11-project-management/) | PM, client | Gap analysis, timeline, payment plan, CR process |
-| [12-client-proposal/](12-client-proposal/) | Client | Scope of Work, commercial summary |
+Some of these files predate the current architecture. Treat specifications as intended behavior unless verified in code and the live environment.
 
----
+## Current high-level stack
 
-## Recommended Reading Order
+- **Frontend:** Next.js 15.5.26, React 19, TypeScript, Tailwind CSS, next-intl.
+- **Backend:** TypeScript, Express-based API, Cloudflare Workers entry point.
+- **Database:** PostgreSQL hosted through Neon; Prisma 7.10.
+- **Media:** Cloudinary integration code.
+- **Payments:** Kashier integration code; project context identifies the current setup as test mode.
+- **External operations:** Odoo and SMS service code exist; production connectivity is not verified by source presence alone.
+- **Observability:** Sentry and structured logging code exist; live activation depends on environment configuration.
 
-### For the client
-1. [12-client-proposal/Scope-of-Work.md](12-client-proposal/Scope-of-Work.md)
-2. [01-product/Product-Overview.md](01-product/Product-Overview.md)
-3. [11-project-management/Implementation-Timeline.md](11-project-management/Implementation-Timeline.md)
-4. [11-project-management/Gap-Analysis.md](11-project-management/Gap-Analysis.md)
+## Integration status rule
 
-### For developers
-1. [11-project-management/Gap-Analysis.md](11-project-management/Gap-Analysis.md)
-2. [03-architecture/System-Architecture.md](03-architecture/System-Architecture.md)
-3. [02-requirements/FRS.md](02-requirements/FRS.md)
-4. [04-api/API-Design.md](04-api/API-Design.md)
-5. [05-database/ERD.md](05-database/ERD.md)
-6. [06-integrations/Odoo-Integration-Specification.md](06-integrations/Odoo-Integration-Specification.md)
+Use the following language in reports and presentations:
 
-### For QA
-1. [02-requirements/Requirements-Traceability-Matrix.md](02-requirements/Requirements-Traceability-Matrix.md)
-2. [09-testing/Testing-Strategy.md](09-testing/Testing-Strategy.md)
-3. [09-testing/QA-Test-Plans.md](09-testing/QA-Test-Plans.md)
+- **Implemented in code:** relevant source code exists.
+- **Tested in sandbox:** a test environment has been exercised and evidence is available.
+- **Production verified:** a real production integration has been checked successfully with current evidence.
+- **Not verified:** do not claim the integration is operational.
 
----
+See [Current Status & Glossary](team-guide/STATUS-AND-GLOSSARY.md) for the team-friendly checklist.
 
-## Repository Structure (Code)
+## Academic use and data protection
 
-```text
-RAWAQA/
-├── index.html          # SPA shell: Home, Shop, Product, Cart, Track
-├── css/styles.css      # Design system and page styles
-├── js/main.js          # Router, product data, UI interactions
-├── public/Logo.png     # Brand asset
-├── README.md           # Developer readme (Arabic/English)
-└── docs/               # This documentation pack
-```
-
----
-
-## Canonical Terminology
-
-| Term | Definition |
-|------|------------|
-| **Implemented** | Exists and works in the current codebase |
-| **Partial** | UI or logic exists but is incomplete or non-functional |
-| **Planned** | In agreed scope; design documented; not yet built |
-| **Required** | Must be delivered for production per commercial agreement |
-| **Integration Required** | External system connection specified but not built |
-| **Not Yet Implemented** | No code exists; may or may not be in scope |
-
----
-
-## AI Agent Entry Point
-
-**If you are an AI coding agent (Cursor, Codex, Claude Code, Kiro, or similar), start here:**
-
-```
-docs/00-ai/README.md
-```
-
-Do not read all 118+ files. The AI context layer tells you exactly what to read for your task.
-
-| AI Context File | Purpose |
-|----------------|---------|
-| [00-ai/AI-Context.md](00-ai/AI-Context.md) | Concise project overview and current implementation status |
-| [00-ai/AI-Rules.md](00-ai/AI-Rules.md) | Strict rules for AI agents — read before writing code |
-| [00-ai/Current-State.md](00-ai/Current-State.md) | Evidence-based implementation status table |
-| [00-ai/Source-of-Truth.md](00-ai/Source-of-Truth.md) | Authoritative source for every type of information |
-| [00-ai/Context-Index.md](00-ai/Context-Index.md) | Task → required documents navigation map |
-| [00-ai/Task-Routing.md](00-ai/Task-Routing.md) | Decision trees for common AI agent tasks |
-| [00-ai/Architecture-Summary.md](00-ai/Architecture-Summary.md) | AI-readable architecture with Mermaid diagrams |
-| [00-ai/Decision-Log.md](00-ai/Decision-Log.md) | Accepted and open architectural decisions |
-| [00-ai/Known-Issues.md](00-ai/Known-Issues.md) | Known problems, gaps, and contradictions |
-| [00-ai/Constraints.md](00-ai/Constraints.md) | All business, technical, security, and commercial constraints |
-| [00-ai/Change-Protocol.md](00-ai/Change-Protocol.md) | Safe modification workflow |
-| [00-ai/Documentation-Sync-Protocol.md](00-ai/Documentation-Sync-Protocol.md) | How to keep docs and code in sync |
-
----
-
-## Related Artifacts
-
-- Scaffolded architecture docs under `docs/03-architecture/` (from Project-Docs-Builder) supplement this pack.
-- OpenAPI skeleton: [04-api/openapi.yaml](04-api/openapi.yaml)
-- Mermaid diagrams embedded in architecture and integration documents.
+RAWAQA is a commercial project developed for a client/company. Academic use requires appropriate permission, a separate academic copy where needed, test data instead of customer data, removal of secrets, and accurate contribution records. See [Academic Project Baseline](team-guide/ACADEMIC-PROJECT-BASELINE.md).
