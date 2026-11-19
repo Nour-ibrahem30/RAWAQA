@@ -146,7 +146,7 @@ export async function getPaymentsByOrderHandler(
     
     // Customers may only read payments for their own orders.
     // Admins and super admins can inspect payments for any order.
-    const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
     const payments = await getPaymentsByOrderId(orderId, userId, isAdmin);
 
     res.status(200).json({
