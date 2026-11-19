@@ -1,3 +1,5 @@
+> ⚠️ **HISTORICAL / SUPERSEDED DOCUMENT:** This file contains an earlier project snapshot and may describe obsolete architecture or features that do not match the current code. Do not use it as evidence of current implementation. For the current non-technical explanation and status, read [Team Guide](../team-guide/README.md) and [Current Status](../team-guide/STATUS-AND-GLOSSARY.md). For technical truth, inspect `frontend/package.json`, `backend/package.json`, `backend/prisma/schema.prisma`, and the current source code on `refactor/postgresql-prisma`.
+
 # Current-State — RAWAQA Implementation Status
 
 **Last updated:** 2026-09-02 (v2.0 — architecture sync)
