@@ -601,10 +601,24 @@ export async function getPaymentById(
 
 /**
  * Get all payments for an order.
+ *
+ * Authorization is enforced in the database query to prevent IDOR:
+ * - Customers only receive payments linked to their own orders.
+ * - Admins and super admins may inspect any order.
+ *
+ * A non-owner receives an empty list, the same result as an order with no
+ * payment attempts, so the endpoint does not disclose another user's order.
  */
-export async function getPaymentsByOrderId(orderId: string): Promise<Payment[]> {
+export async function getPaymentsByOrderId(
+  orderId: string,
+  userId: string,
+  isAdmin: boolean = false
+): Promise<Payment[]> {
   return prisma.payment.findMany({
-    where: { orderId },
+    where: {
+      orderId,
+      ...(isAdmin ? {} : { order: { is: { userId } } }),
+    },
     orderBy: { attemptNumber: 'asc' },
   });
 }
