@@ -11,7 +11,7 @@
 
 <br />
 
-[![Next.js](https://img.shields.io/badge/Next.js-14.2-black?logo=next.js)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-15.5.26-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-blue?logo=postgresql)](https://neon.tech)
 [![Cloudflare Workers](https://img.shields.io/badge/Backend-Cloudflare%20Workers-orange?logo=cloudflare)](https://workers.cloudflare.com)
@@ -115,7 +115,7 @@ All CSS custom properties transition smoothly (280 ms) when switching between th
 
 ```
 ┌─────────────────────────────────────┐
-│     Next.js 14 (App Router)         │
+│     Next.js 15.5.26 (App Router)         │
 │     Vercel — ISR revalidate 60s     │
 └──────────────────┬──────────────────┘
                    │ HTTPS / REST
@@ -141,7 +141,8 @@ All CSS custom properties transition smoothly (280 ms) when switching between th
 
 | Tech | Purpose |
 |---|---|
-| Next.js 14 | React framework, App Router, ISR |
+| Next.js 15.5.26 | React framework, App Router, ISR |
+| React 19 | UI library |
 | TypeScript | Type safety |
 | Tailwind CSS | Utility styling |
 | next-intl | Arabic / English i18n |
@@ -277,20 +278,40 @@ RAWAQA/
 
 ---
 
+## 🔌 Integrations — implementation vs activation
+
+The presence of integration code does not by itself mean the external service is active in production. Current verification notes:
+
+| Integration | Code evidence | Production status |
+|---|---|---|
+| Kashier | Payment service + webhook handling | Test-mode integration; do not treat as live payments |
+| Odoo | Odoo service and order mapping fields | Production sync not verified |
+| SMS / Vonage | SMS service and SDK dependency | Provider activation and delivery not verified |
+| Background workers | Outbox, auto-cancel and inventory reconciliation worker files | Continuous production execution not verified |
+| Cloudinary | Upload and media integration code | Depends on environment configuration |
+| Sentry | SDK and initialization code | Depends on DSN and environment configuration |
+
+See [Team Guide — Current Status](docs/team-guide/STATUS-AND-GLOSSARY.md) for non-technical explanations and verification checklist.
+
 ## 🗺️ Roadmap
 
-- [x] Bilingual storefront (AR/EN)
-- [x] PostgreSQL + Prisma cutover
-- [x] Cloudflare Workers deployment
-- [x] Dynamic CMS (Hero, About, Why, Stats, CTA, Footer)
-- [x] 7 colour theme presets + light theme
-- [x] Direct Cloudinary upload
-- [x] Google OAuth
-- [x] Admin dashboard with full CRUD
-- [ ] Online payment gateway (Paymob / Stripe)
-- [ ] Odoo ERP integration
-- [ ] SMS notifications
-- [ ] Shipping provider integration
+The roadmap is maintained separately from implementation status. Do not infer that a feature is live merely because an integration or worker is present in the repository.
+
+- [x] PostgreSQL + Prisma data layer
+- [x] Cloudflare Workers backend entry point
+- [x] Next.js storefront and admin application
+- [x] Core catalog, cart, checkout and order workflows
+- [x] Inventory reservation logic
+- [x] Customer authentication and role-based access foundations
+- [ ] Verify production readiness of payment, Odoo, SMS and background processing
+- [ ] Move mutable checkout business rules into managed settings
+- [ ] Expand operational reporting and business intelligence
+
+## 📘 Documentation
+
+- [Team onboarding guide (Arabic)](docs/team-guide/README.md) — designed for non-technical team members.
+- [Full technical documentation](docs/README.md) — developer and engineering reference.
+- [Project website](https://rawaqa-ruby.vercel.app/ar).
 
 ---
 
